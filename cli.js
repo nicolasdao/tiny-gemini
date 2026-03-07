@@ -2,7 +2,7 @@
 
 import { parseArgs } from 'node:util';
 import { writeFile, readFile, mkdir, access } from 'node:fs/promises';
-import { join, extname } from 'node:path';
+import { join, extname, dirname } from 'node:path';
 import { platform, homedir } from 'node:os';
 import { exec } from 'node:child_process';
 
@@ -14,8 +14,8 @@ const VERSION = '1.0.0';
 const NAME = 'tiny-gemini';
 
 const MODELS = {
-	text: 'gemini-2.5-flash',
-	image: 'gemini-2.5-flash-image',
+	text: 'gemini-3-flash-preview',
+	image: 'gemini-3.1-flash-image-preview',
 	tts: 'gemini-2.5-flash-preview-tts',
 	research: 'deep-research-pro-preview-12-2025',
 };
@@ -128,6 +128,8 @@ function resolveConfig(values) {
 		).replace(/\/+$/, ''),
 		model: values.model || env('TINY_GEMINI_MODEL'),
 		outputDir: values['output-dir'] || './tiny-gemini-output',
+		outputFile: values['output-file'] || null,
+		outputFormat: values['output-format'] || null,
 		stream: !!values.stream,
 		preview: !!values.preview,
 		jsonOutput: !!values['json-output'],
@@ -167,6 +169,9 @@ GLOBAL OPTIONS
   --api-base <url>     API base URL
   --model <model>      Override model
   --output-dir <dir>   Output directory (default: ./tiny-gemini-output)
+  --prompt-file <path> Read file contents into prompt (repeatable)
+  --output-file <path> Write response to file instead of stdout
+  --output-format <f>  Output format: plain or manifest (default: auto)
   --stream             Enable streaming output
   --preview            Open generated files after saving
   --json-output        Print raw JSON response
@@ -190,17 +195,23 @@ USAGE
   ${NAME} [prompt] "text" [options]
 
 OPTIONS
-  --file <path>      Attach a file (image, audio, video, PDF)
-  --system <text>    System instruction
-  --schema <json>    JSON schema for structured output (string or file path)
-  --stream           Stream the response
-  --model <model>    Model (default: ${MODELS.text})
+  --file <path>           Attach a file (image, audio, video, PDF)
+  --prompt-file <path>    Read file contents into prompt (repeatable)
+  --output-file <path>    Write response to file instead of stdout
+  --output-format <fmt>   Output format: plain or manifest (default: auto)
+  --system <text>         System instruction
+  --schema <json>         JSON schema for structured output (string or file path)
+  --stream                Stream the response
+  --model <model>         Model (default: ${MODELS.text})
 
 EXAMPLES
   ${NAME} "What is quantum computing?"
   ${NAME} "Describe this" --file photo.png
   ${NAME} "Summarize" --file doc.pdf
   ${NAME} "Tell me a joke" --stream
+  ${NAME} "Fix bugs" --prompt-file src/app.js --output-file result.json
+  ${NAME} --prompt-file code.js --system "Explain this code"
+  ${NAME} "Review" --prompt-file a.js --prompt-file b.js --output-file out.txt
 `.trim();
 
 const HELP_IMAGE = `
@@ -263,12 +274,15 @@ USAGE
   ${NAME} search "query" [options]
 
 OPTIONS
-  --stream             Stream the response
-  --model <model>      Model (default: ${MODELS.text})
+  --output-file <path>    Write response to file instead of stdout
+  --output-format <fmt>   Output format: plain or manifest (default: auto)
+  --stream                Stream the response
+  --model <model>         Model (default: ${MODELS.text})
 
 EXAMPLES
   ${NAME} search "Who won the 2026 Super Bowl?"
   ${NAME} search "latest React release" --stream
+  ${NAME} search "AI news" --output-file results.txt
 `.trim();
 
 const HELP_RESEARCH = `
@@ -296,7 +310,7 @@ OPTIONS
   --file <path>        Read JSON body from file
 
 EXAMPLES
-  ${NAME} raw '{"model":"gemini-2.5-flash","input":"hello"}'
+  ${NAME} raw '{"model":"gemini-3-flash-preview","input":"hello"}'
   ${NAME} raw --file request.json
 `.trim();
 
@@ -326,7 +340,7 @@ async function callAPI(config, body) {
 	return res.json();
 }
 
-async function callAPIStream(config, body) {
+async function callAPIStream(config, body, outputFile, outputFormat) {
 	const res = await fetch(`${config.apiBase}/interactions?alt=sse`, {
 		method: 'POST',
 		headers: {
@@ -341,6 +355,7 @@ async function callAPIStream(config, body) {
 	const decoder = new TextDecoder();
 	let buf = '';
 	let wrote = false;
+	const chunks = outputFile ? [] : null;
 
 	while (true) {
 		const { done, value } = await reader.read();
@@ -358,7 +373,11 @@ async function callAPIStream(config, body) {
 				if (eventType === 'content.delta') {
 					const d = tryJSON(line.slice(6));
 					if (d?.delta?.type === 'text') {
-						process.stdout.write(d.delta.text);
+						if (chunks) {
+							chunks.push(d.delta.text);
+						} else {
+							process.stdout.write(d.delta.text);
+						}
 						wrote = true;
 					}
 				}
@@ -368,7 +387,20 @@ async function callAPIStream(config, body) {
 		}
 	}
 
-	if (wrote) process.stdout.write('\n');
+	if (outputFile && chunks) {
+		const fullText = chunks.join('');
+		const out = { text: [fullText], images: [], audio: [], functions: [] };
+		const useManifest = shouldUseManifest(out, outputFormat);
+		if (useManifest) {
+			const summary = await writeManifest(outputFile, config.outputDir, out, config);
+			console.log(summary);
+		} else {
+			await writeOutputFile(outputFile, fullText);
+			console.log(`Response written to ${outputFile}`);
+		}
+	} else if (wrote) {
+		process.stdout.write('\n');
+	}
 }
 
 function extractOutputs(response) {
@@ -480,6 +512,78 @@ async function readBase64(path) {
 	return (await readFile(path)).toString('base64');
 }
 
+async function readPromptFiles(paths) {
+	const parts = [];
+	for (const p of paths) {
+		if (!(await exists(p))) die(`Prompt file not found: ${p}`);
+		const content = await readFile(p, 'utf-8');
+		parts.push(`--- FILE: ${p} ---\n${content}\n--- END FILE: ${p} ---`);
+	}
+	return parts.join('\n\n');
+}
+
+async function writeOutputFile(filePath, text) {
+	await ensureDir(dirname(filePath));
+	await writeFile(filePath, text, 'utf-8');
+}
+
+function shouldUseManifest(outputs, format) {
+	if (format === 'manifest') return true;
+	if (format === 'plain') return false;
+	if (outputs.functions.length) return true;
+	if (outputs.text.some(t => t.length > 4000)) return true;
+	return false;
+}
+
+async function writeManifest(outputFile, outputDir, outputs, config) {
+	await ensureDir(outputDir);
+	const manifest = { outputs: [], function_calls: [], images: [], audio: [] };
+	let totalLines = 0;
+
+	for (let i = 0; i < outputs.text.length; i++) {
+		const text = outputs.text[i];
+		const filePath = join(outputDir, `text_${i + 1}.txt`);
+		await writeFile(filePath, text, 'utf-8');
+		const lines = text.split('\n').length;
+		totalLines += lines;
+		manifest.outputs.push({
+			type: 'text',
+			preview: text.slice(0, 200),
+			file: filePath,
+			bytes: Buffer.byteLength(text, 'utf-8'),
+			lines,
+		});
+	}
+
+	for (const f of outputs.functions) {
+		manifest.function_calls.push({
+			name: f.name,
+			id: f.id || null,
+			arguments: f.arguments || f.args || {},
+		});
+	}
+
+	for (let i = 0; i < outputs.images.length; i++) {
+		const img = outputs.images[i];
+		const saved = await saveOutput(outputDir, `prompt_${i + 1}`, img.data, img.mime, config);
+		manifest.images.push({ file: saved });
+	}
+
+	for (let i = 0; i < outputs.audio.length; i++) {
+		const aud = outputs.audio[i];
+		const saved = await saveOutput(outputDir, `prompt_audio_${i + 1}`, aud.data, aud.mime, config);
+		manifest.audio.push({ file: saved });
+	}
+
+	await writeOutputFile(outputFile, JSON.stringify(manifest, null, 2));
+	const parts = [];
+	if (outputs.text.length) parts.push(`${outputs.text.length} text block${outputs.text.length > 1 ? 's' : ''}, ${totalLines} lines`);
+	if (outputs.functions.length) parts.push(`${outputs.functions.length} function call${outputs.functions.length > 1 ? 's' : ''}`);
+	if (outputs.images.length) parts.push(`${outputs.images.length} image${outputs.images.length > 1 ? 's' : ''}`);
+	if (outputs.audio.length) parts.push(`${outputs.audio.length} audio file${outputs.audio.length > 1 ? 's' : ''}`);
+	return `Manifest written to ${outputFile} (${parts.join(', ')})`;
+}
+
 // ────────────────────────────────────────────────────────────────────
 // Prompt Builders
 // ────────────────────────────────────────────────────────────────────
@@ -571,20 +675,28 @@ async function readStdin() {
 // ────────────────────────────────────────────────────────────────────
 
 async function handlePrompt(prompt, values, config) {
-	if (!prompt) die('No prompt provided. Usage: tiny-gemini "your prompt"');
+	const promptFiles = values['prompt-file'];
+	if (!prompt && !promptFiles?.length) die('No prompt provided. Usage: tiny-gemini "your prompt"');
 	const model = config.model || MODELS.text;
 	const body = { model };
+
+	// Build text prompt from user text + prompt files
+	let textPrompt = prompt || '';
+	if (promptFiles?.length) {
+		const fileContent = await readPromptFiles(promptFiles);
+		textPrompt = textPrompt ? `${textPrompt}\n\n${fileContent}` : fileContent;
+	}
 
 	if (values.file) {
 		if (!(await exists(values.file))) die(`File not found: ${values.file}`);
 		const b64 = await readBase64(values.file);
 		const mime = extToMime(values.file);
 		body.input = [
-			{ type: 'text', text: prompt },
+			{ type: 'text', text: textPrompt },
 			{ type: inputType(mime), data: b64, mime_type: mime },
 		];
 	} else {
-		body.input = prompt;
+		body.input = textPrompt;
 	}
 
 	if (values.system) body.system_instruction = values.system;
@@ -604,20 +716,40 @@ async function handlePrompt(prompt, values, config) {
 	}
 
 	if (config.stream) {
-		await callAPIStream(config, body);
+		await callAPIStream(config, body, config.outputFile, config.outputFormat);
 		return;
 	}
 
 	const response = await callAPI(config, body);
 	const out = extractOutputs(response);
-	for (const t of out.text) console.log(t);
-	for (let i = 0; i < out.images.length; i++) {
-		await saveOutput(config.outputDir, `prompt_${i + 1}`, out.images[i].data, out.images[i].mime, config);
+
+	if (config.outputFile) {
+		const useManifest = shouldUseManifest(out, config.outputFormat);
+		if (useManifest) {
+			const summary = await writeManifest(config.outputFile, config.outputDir, out, config);
+			console.log(summary);
+		} else {
+			const text = out.text.join('\n');
+			await writeOutputFile(config.outputFile, text);
+			console.log(`Response written to ${config.outputFile}`);
+			// Still save images/audio to output dir
+			for (let i = 0; i < out.images.length; i++) {
+				await saveOutput(config.outputDir, `prompt_${i + 1}`, out.images[i].data, out.images[i].mime, config);
+			}
+			for (let i = 0; i < out.audio.length; i++) {
+				await saveOutput(config.outputDir, `prompt_audio_${i + 1}`, out.audio[i].data, out.audio[i].mime, config);
+			}
+		}
+	} else {
+		for (const t of out.text) console.log(t);
+		for (let i = 0; i < out.images.length; i++) {
+			await saveOutput(config.outputDir, `prompt_${i + 1}`, out.images[i].data, out.images[i].mime, config);
+		}
+		for (let i = 0; i < out.audio.length; i++) {
+			await saveOutput(config.outputDir, `prompt_audio_${i + 1}`, out.audio[i].data, out.audio[i].mime, config);
+		}
+		for (const f of out.functions) console.log(JSON.stringify(f, null, 2));
 	}
-	for (let i = 0; i < out.audio.length; i++) {
-		await saveOutput(config.outputDir, `prompt_audio_${i + 1}`, out.audio[i].data, out.audio[i].mime, config);
-	}
-	for (const f of out.functions) console.log(JSON.stringify(f, null, 2));
 }
 
 async function handleImage(args, values, config) {
@@ -834,13 +966,26 @@ async function handleSearch(query, values, config) {
 		return;
 	}
 	if (config.stream) {
-		await callAPIStream(config, body);
+		await callAPIStream(config, body, config.outputFile, config.outputFormat);
 		return;
 	}
 
 	const response = await callAPI(config, body);
 	const out = extractOutputs(response);
-	for (const t of out.text) console.log(t);
+
+	if (config.outputFile) {
+		const useManifest = shouldUseManifest(out, config.outputFormat);
+		if (useManifest) {
+			const summary = await writeManifest(config.outputFile, config.outputDir, out, config);
+			console.log(summary);
+		} else {
+			const text = out.text.join('\n');
+			await writeOutputFile(config.outputFile, text);
+			console.log(`Response written to ${config.outputFile}`);
+		}
+	} else {
+		for (const t of out.text) console.log(t);
+	}
 }
 
 async function handleResearch(topic, values, config) {
@@ -904,6 +1049,9 @@ async function main() {
 			stream: { type: 'boolean' },
 			preview: { type: 'boolean' },
 			'json-output': { type: 'boolean' },
+			'prompt-file': { type: 'string', multiple: true },
+			'output-file': { type: 'string' },
+			'output-format': { type: 'string' },
 			file: { type: 'string' },
 			system: { type: 'string' },
 			schema: { type: 'string' },
@@ -951,7 +1099,7 @@ async function main() {
 	if (!command) command = 'prompt';
 
 	// No args at all → show help
-	if (!args.length && command === 'prompt' && !values.file) {
+	if (!args.length && command === 'prompt' && !values.file && !values['prompt-file']?.length) {
 		showHelp();
 		return;
 	}

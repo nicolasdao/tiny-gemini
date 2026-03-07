@@ -1,6 +1,6 @@
 # Prompt Engineering
 
-This document explains the prompt builder functions used by the `image` sub-commands (icon, pattern, diagram, story) and the batch generation system (styles, variations). These presets are inherited from the [Nano Banana](https://github.com/nicolasdao/nanobanana) project.
+This document explains the prompt builder functions used by the `image` sub-commands (icon, pattern, diagram, story) and the batch generation system (styles, variations).
 
 ## Table of Contents
 

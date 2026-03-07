@@ -11,21 +11,24 @@ This document explains the internal structure of `cli.js`, how the pieces fit to
   - [Section 3: .env Loader (lines 60-113)](#section-3-env-loader-lines-60-113)
     - [Search Order](#search-order)
     - [File Format](#file-format)
-  - [Section 4: Config Resolution (lines 115-135)](#section-4-config-resolution-lines-115-135)
+  - [Section 4: Config Resolution (lines 115-137)](#section-4-config-resolution-lines-115-137)
     - [Priority Chain](#priority-chain)
-  - [Section 5: Help Text (lines 137-310)](#section-5-help-text-lines-137-310)
-  - [Section 6: API Client (lines 312-400)](#section-6-api-client-lines-312-400)
+  - [Section 5: Help Text (lines 139-320)](#section-5-help-text-lines-139-320)
+  - [Section 6: API Client (lines 322-420)](#section-6-api-client-lines-322-420)
     - [callAPI](#callapi)
     - [callAPIStream](#callapistream)
     - [extractOutputs](#extractoutputs)
     - [pollCompletion](#pollcompletion)
-  - [Section 7: File Handling (lines 402-481)](#section-7-file-handling-lines-402-481)
+  - [Section 7: File Handling (lines 422-560)](#section-7-file-handling-lines-422-560)
     - [Output Pipeline](#output-pipeline)
+    - [Prompt File Reading](#prompt-file-reading)
+    - [Output File Writing](#output-file-writing)
+    - [Manifest Writing](#manifest-writing)
     - [MIME Type Mapping](#mime-type-mapping)
     - [WAV Header Construction](#wav-header-construction)
-  - [Section 8: Prompt Builders (lines 483-556)](#section-8-prompt-builders-lines-483-556)
-  - [Section 9: Command Handlers (lines 569-890)](#section-9-command-handlers-lines-569-890)
-  - [Section 10: Main Dispatch (lines 892-979)](#section-10-main-dispatch-lines-892-979)
+  - [Section 8: Prompt Builders (lines 562-635)](#section-8-prompt-builders-lines-562-635)
+  - [Section 9: Command Handlers (lines 648-980)](#section-9-command-handlers-lines-648-980)
+  - [Section 10: Main Dispatch (lines 982-1070)](#section-10-main-dispatch-lines-982-1070)
     - [Argument Parsing](#argument-parsing)
     - [Command Detection](#command-detection)
 - [Data Flow](#data-flow)
@@ -54,29 +57,31 @@ This document explains the internal structure of `cli.js`, how the pieces fit to
 The entire CLI is a single file: `cli.js`. This is intentional — it keeps the project NPX-friendly (no `node_modules`, no build step) and makes it easy to audit or fork.
 
 ```
-cli.js (~970 lines)
+cli.js (~1070 lines)
 ├── Shebang + Imports          (lines 1-7)
 ├── Constants                  (lines 9-34)
 ├── Utilities                  (lines 36-58)
 ├── .env Loader                (lines 60-113)
-├── Config Resolution          (lines 115-135)
-├── Help Text                  (lines 137-310)
-├── API Client                 (lines 312-400)
-├── File Handling              (lines 402-481)
-├── Prompt Builders            (lines 483-556)
-├── Stdin Reader               (lines 558-567)
-├── Command Handlers           (lines 569-890)
-└── Main Dispatch              (lines 892-979)
+├── Config Resolution          (lines 115-137)
+├── Help Text                  (lines 139-320)
+├── API Client                 (lines 322-420)
+├── File Handling              (lines 422-560)
+├── Prompt Builders            (lines 562-635)
+├── Stdin Reader               (lines 637-646)
+├── Command Handlers           (lines 648-980)
+└── Main Dispatch              (lines 982-1070)
 ```
 
 ## Code Sections
 
 ### Section 1: Constants (lines 1-34)
 
+> **Note:** Line numbers in section headers are approximate and may drift as the file evolves. Use them as starting points for navigation, not exact references.
+
 ```javascript
 const MODELS = {
-    text: 'gemini-2.5-flash',
-    image: 'gemini-2.5-flash-image',
+    text: 'gemini-3-flash-preview',
+    image: 'gemini-3.1-flash-image-preview',
     tts: 'gemini-2.5-flash-preview-tts',
     research: 'deep-research-pro-preview-12-2025',
 };
@@ -116,9 +121,9 @@ KEY='single quoted value'
 
 The loader is cached (`_dotenvCache`) — it only reads the file once per process.
 
-### Section 4: Config Resolution (lines 115-135)
+### Section 4: Config Resolution (lines 115-137)
 
-The `resolveConfig(values)` function merges CLI flags, environment variables, and `.env` values into a single config object.
+The `resolveConfig(values)` function merges CLI flags, environment variables, and `.env` values into a single config object. In addition to API and model settings, it includes `outputFile` and `outputFormat` for the agentic workflow flags.
 
 #### Priority Chain
 
@@ -133,13 +138,13 @@ For each config value, highest priority first:
 
 The `env()` helper checks `process.env` first, then falls back to `_dotenvCache`.
 
-### Section 5: Help Text (lines 137-310)
+### Section 5: Help Text (lines 139-320)
 
 Each command has its own help string constant (`HELP_PROMPT`, `HELP_IMAGE`, etc.) mapped in `HELP_MAP`. The `showHelp(command)` function prints command-specific help if a command is given, otherwise shows the main help.
 
 Help is triggered by `--help` or `-h`. The `--help` flag is checked **after** command detection, so `tiny-gemini image --help` shows image-specific help.
 
-### Section 6: API Client (lines 312-400)
+### Section 6: API Client (lines 322-420)
 
 Four functions handle all API communication:
 
@@ -154,10 +159,12 @@ Standard POST to `/interactions`. Throws `APIError` on non-2xx responses.
 #### callAPIStream
 
 ```javascript
-async function callAPIStream(config, body) → Promise<void>
+async function callAPIStream(config, body, outputFile?, outputFormat?) → Promise<void>
 ```
 
-POST to `/interactions?alt=sse` with `stream: true` in body. Reads the response as a stream, parses SSE events line by line, and writes text deltas directly to stdout.
+POST to `/interactions?alt=sse` with `stream: true` in body. Reads the response as a stream, parses SSE events line by line.
+
+When `outputFile` is not set, text deltas are written directly to stdout. When `outputFile` is set, text chunks are accumulated in an array (nothing is printed during streaming), and at the end the accumulated text is written to the output file using the same plain/manifest logic as non-streaming mode.
 
 The SSE parser maintains a buffer and splits on newlines. It tracks the current `event:` type and only processes `data:` lines when the event type is `content.delta`. Empty lines reset the event type (SSE event boundary).
 
@@ -179,7 +186,7 @@ async function pollCompletion(config, id) → Promise<object>
 
 Polls `GET /interactions/{id}` every 5 seconds until status is `completed`, `failed`, or `cancelled`. Prints status updates to stderr. Used by the `research` command.
 
-### Section 7: File Handling (lines 402-481)
+### Section 7: File Handling (lines 422-560)
 
 #### Output Pipeline
 
@@ -188,6 +195,25 @@ Polls `GET /interactions/{id}` every 5 seconds until status is `completed`, `fai
 3. `uniquePath()` — appends `_1`, `_2`, etc. to avoid overwriting existing files
 4. `saveOutput()` — decodes base64, converts PCM→WAV if needed, writes file
 5. `openFile()` — platform-aware file opener (`open` on macOS, `xdg-open` on Linux, `start` on Windows)
+
+#### Prompt File Reading
+
+`readPromptFiles(paths)` reads each file as UTF-8 and wraps it with filename delimiters (`--- FILE: path ---` / `--- END FILE: path ---`). Dies with an error if any file doesn't exist. Returns the concatenated content for appending to the user's text prompt.
+
+#### Output File Writing
+
+`writeOutputFile(filePath, text)` creates parent directories via `ensureDir(dirname())` and writes the text as UTF-8. Used for both plain text output and manifest JSON.
+
+#### Manifest Writing
+
+`writeManifest(outputFile, outputDir, outputs, config)` writes a structured manifest:
+1. Writes each text block to `outputDir/text_N.txt`
+2. Saves images and audio via `saveOutput()`
+3. Includes function calls inline in the manifest (typically small JSON)
+4. Writes the manifest JSON to `outputFile`
+5. Returns a one-line summary string for stdout
+
+`shouldUseManifest(outputs, format)` decides between plain and manifest mode based on `--output-format` override, presence of function calls, or text blocks exceeding 4000 characters.
 
 #### MIME Type Mapping
 
@@ -220,20 +246,20 @@ Bytes 36-39: "data"
 Bytes 40-43: Data size
 ```
 
-### Section 8: Prompt Builders (lines 483-556)
+### Section 8: Prompt Builders (lines 562-635)
 
 Functions that engineer prompts for specialized image generation presets. See [Prompt Engineering](prompt-engineering.md) for details.
 
-### Section 9: Command Handlers (lines 569-890)
+### Section 9: Command Handlers (lines 648-980)
 
 Each command has a handler function:
 
 | Handler | Command | Notes |
 |---------|---------|-------|
-| `handlePrompt` | `prompt` | Supports `--file`, `--system`, `--schema`, `--stream` |
+| `handlePrompt` | `prompt` | Supports `--file`, `--prompt-file`, `--output-file`, `--output-format`, `--system`, `--schema`, `--stream` |
 | `handleImage` | `image` | Dispatches to 7 sub-commands |
 | `handleTTS` | `tts` | Saves WAV files |
-| `handleSearch` | `search` | Adds Google Search tool |
+| `handleSearch` | `search` | Adds Google Search tool, supports `--output-file`, `--output-format` |
 | `handleResearch` | `research` | Uses agent + background polling |
 | `handleRaw` | `raw` | Reads from arg, `--file`, or stdin |
 
@@ -243,7 +269,7 @@ All handlers follow the same pattern:
 3. Call API (or stream)
 4. Process and output results
 
-### Section 10: Main Dispatch (lines 892-979)
+### Section 10: Main Dispatch (lines 982-1070)
 
 #### Argument Parsing
 
@@ -271,23 +297,33 @@ This allows both `tiny-gemini "hello"` and `tiny-gemini prompt "hello"` to work 
 
 ```
 User input → parseArgs → resolveConfig → handler
+  → readPromptFiles (if --prompt-file)
   → callAPI(config, body)
     → fetch POST /interactions
     → parse JSON response
   → extractOutputs(response)
-  → print text to stdout
-  → save images/audio to output dir
+  → if --output-file:
+      → shouldUseManifest(outputs, format)
+      → writeManifest() or writeOutputFile()
+      → print summary to stdout
+  → else:
+      → print text to stdout
+      → save images/audio to output dir
 ```
 
 ### Streaming Request
 
 ```
 User input → parseArgs → resolveConfig → handler
-  → callAPIStream(config, body)
+  → callAPIStream(config, body, outputFile?, outputFormat?)
     → fetch POST /interactions?alt=sse
     → read stream chunks
     → parse SSE events
-    → write text deltas to stdout in real-time
+    → if outputFile: accumulate text chunks in array
+    → else: write text deltas to stdout in real-time
+  → if outputFile:
+      → shouldUseManifest() → writeManifest() or writeOutputFile()
+      → print summary to stdout
 ```
 
 ### Background Task (Research)
@@ -378,7 +414,7 @@ TTS responses come as raw PCM audio. Rather than requiring ffmpeg or an audio li
 
 ### Why Per-Command Model Defaults
 
-Different tasks require different models. Text uses `gemini-2.5-flash` (fastest text model), image generation uses `gemini-2.5-flash-image` (image-capable), TTS uses the TTS-specific model, and research uses the Deep Research agent. Users can override any default with `--model`.
+Different tasks require different models. Text uses `gemini-3-flash-preview` (best balance of quality and cost), image generation uses `gemini-3.1-flash-image-preview` (best all-around image model, up to 4K), TTS uses the TTS-specific model, and research uses the Deep Research agent. Users can override any default with `--model`.
 
 ### Why strict: false in parseArgs
 

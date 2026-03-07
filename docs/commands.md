@@ -7,12 +7,15 @@ Complete reference for every command, sub-command, and option. Includes the exac
 - [prompt](#prompt)
   - [Basic Usage](#basic-usage)
   - [Multimodal Input (--file)](#multimodal-input---file)
+  - [Prompt Files (--prompt-file)](#prompt-files---prompt-file)
+  - [Output File (--output-file)](#output-file---output-file)
   - [System Instructions (--system)](#system-instructions---system)
   - [Structured Output (--schema)](#structured-output---schema)
   - [Streaming (--stream)](#streaming---stream)
   - [Request Bodies](#request-bodies)
     - [Text-Only Request](#text-only-request)
     - [Multimodal Request](#multimodal-request)
+    - [With Prompt Files](#with-prompt-files)
     - [With System Instruction](#with-system-instruction)
     - [With Schema](#with-schema)
 - [image](#image)
@@ -43,6 +46,7 @@ Complete reference for every command, sub-command, and option. Includes the exac
   - [TTS Request Body](#tts-request-body)
   - [TTS Output Format](#tts-output-format)
 - [search](#search)
+  - [Search Options](#search-options)
   - [Search Request Body](#search-request-body)
   - [Search Response Handling](#search-response-handling)
 - [research](#research)
@@ -56,7 +60,7 @@ Complete reference for every command, sub-command, and option. Includes the exac
 
 Default command — if the first positional argument isn't a known command name, it's treated as a prompt.
 
-Default model: `gemini-2.5-flash`
+Default model: `gemini-3-flash-preview`
 
 ### Basic Usage
 
@@ -76,6 +80,42 @@ tiny-gemini "Transcribe this" --file recording.mp3
 ```
 
 The file is read, base64-encoded, and sent as an inline content part. The MIME type is detected from the file extension. Supported extensions: `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.pdf`, `.mp3`, `.wav`, `.mp4`, `.mov`, `.webm`.
+
+### Prompt Files (--prompt-file)
+
+Inject text file contents into the prompt without the agent needing to read them. Repeatable for multiple files:
+
+```bash
+tiny-gemini "Fix bugs in this code" --prompt-file src/app.js
+tiny-gemini "Compare these files" --prompt-file a.js --prompt-file b.js
+tiny-gemini --prompt-file src/app.js --system "Explain this code"
+```
+
+Each file is read as UTF-8 and wrapped with filename delimiters:
+
+```
+--- FILE: src/app.js ---
+<file contents>
+--- END FILE: src/app.js ---
+```
+
+The file contents are appended after the user's text prompt (if any). `--prompt-file` can be used without a text prompt — the file contents become the entire prompt. It can also be combined with `--file` (which sends binary content as base64 multimodal data).
+
+### Output File (--output-file)
+
+Write the response to a file instead of printing to stdout. The CLI prints only a short summary:
+
+```bash
+tiny-gemini "What is 2+2?" --output-file answer.txt
+# Stdout: "Response written to answer.txt"
+
+tiny-gemini "Fix this code" --prompt-file app.js --output-file result.json --output-format=manifest
+# Stdout: "Manifest written to result.json (2 text blocks, 150 lines)"
+```
+
+Use `--output-format` to force `plain` (text file) or `manifest` (JSON with file references). Without it, the CLI auto-detects: manifest mode is used when the response contains function calls or any text block exceeds 4000 characters. See [README: Agentic Workflow](../README.md#agentic-workflow---prompt-file---output-file) for the full manifest format and smart detection rules.
+
+Works with `--stream` — text chunks are accumulated silently and written at the end.
 
 ### System Instructions (--system)
 
@@ -110,7 +150,7 @@ Text is printed to stdout as it's generated, token by token.
 
 ```json
 {
-  "model": "gemini-2.5-flash",
+  "model": "gemini-3-flash-preview",
   "input": "What is quantum computing?"
 }
 ```
@@ -119,7 +159,7 @@ Text is printed to stdout as it's generated, token by token.
 
 ```json
 {
-  "model": "gemini-2.5-flash",
+  "model": "gemini-3-flash-preview",
   "input": [
     { "type": "text", "text": "Describe this" },
     { "type": "image", "data": "<base64>", "mime_type": "image/png" }
@@ -127,11 +167,24 @@ Text is printed to stdout as it's generated, token by token.
 }
 ```
 
+#### With Prompt Files
+
+When `--prompt-file` is used, file contents are appended to the text prompt with delimiters. The resulting input sent to the API:
+
+```json
+{
+  "model": "gemini-3-flash-preview",
+  "input": "Fix bugs in this code\n\n--- FILE: src/app.js ---\n<file contents>\n--- END FILE: src/app.js ---"
+}
+```
+
+When combined with `--file` (multimodal), the prompt-file content is included in the text part of the content array.
+
 #### With System Instruction
 
 ```json
 {
-  "model": "gemini-2.5-flash",
+  "model": "gemini-3-flash-preview",
   "input": "Tell me about dogs",
   "system_instruction": "You are a veterinarian. Be concise."
 }
@@ -141,7 +194,7 @@ Text is printed to stdout as it's generated, token by token.
 
 ```json
 {
-  "model": "gemini-2.5-flash",
+  "model": "gemini-3-flash-preview",
   "input": "Extract name and age from: John is 30",
   "response_format": {
     "type": "object",
@@ -157,7 +210,7 @@ Text is printed to stdout as it's generated, token by token.
 
 Image generation, editing, and understanding. Has 7 sub-commands.
 
-Default model: `gemini-2.5-flash-image` (except `describe`, which uses `gemini-2.5-flash`)
+Default model: `gemini-3.1-flash-image-preview` (except `describe`, which uses `gemini-3-flash-preview`)
 
 ### Sub-Command Dispatch
 
@@ -213,7 +266,7 @@ Styles and variations can be combined. `--count` limits total output.
 
 ```json
 {
-  "model": "gemini-2.5-flash-image",
+  "model": "gemini-3.1-flash-image-preview",
   "input": "a yellow banana wearing sunglasses",
   "response_modalities": ["IMAGE"]
 }
@@ -222,7 +275,7 @@ Styles and variations can be combined. `--count` limits total output.
 With image config:
 ```json
 {
-  "model": "gemini-2.5-flash-image",
+  "model": "gemini-3.1-flash-image-preview",
   "input": "a yellow banana wearing sunglasses",
   "response_modalities": ["IMAGE"],
   "generation_config": {
@@ -249,7 +302,7 @@ The first argument after `edit` is the file path, the rest is the edit prompt.
 
 ```json
 {
-  "model": "gemini-2.5-flash-image",
+  "model": "gemini-3.1-flash-image-preview",
   "input": [
     { "type": "text", "text": "add sunglasses" },
     { "type": "image", "data": "<base64>", "mime_type": "image/png" }
@@ -267,13 +320,13 @@ tiny-gemini image describe photo.png
 tiny-gemini image describe photo.png "What breed is this dog?"
 ```
 
-Uses the **text model** (`gemini-2.5-flash`), not the image generation model. Supports `--stream`.
+Uses the **text model** (`gemini-3-flash-preview`), not the image generation model. Supports `--stream`.
 
 #### Describe Request Body
 
 ```json
 {
-  "model": "gemini-2.5-flash",
+  "model": "gemini-3-flash-preview",
   "input": [
     { "type": "text", "text": "Describe this image in detail" },
     { "type": "image", "data": "<base64>", "mime_type": "image/png" }
@@ -297,7 +350,7 @@ Each step is generated as a separate API call with a prompt engineered for seque
 Each step sends:
 ```json
 {
-  "model": "gemini-2.5-flash-image",
+  "model": "gemini-3.1-flash-image-preview",
   "input": "a seed growing into a tree, step 2 of 4, narrative sequence, consistent art style, smooth transition from previous step",
   "response_modalities": ["IMAGE"]
 }
@@ -421,18 +474,28 @@ The API returns `audio/pcm` (raw 16-bit, 24kHz, mono PCM). The CLI converts this
 
 Google Search-grounded generation. The model can search the web to answer questions about current events.
 
-Default model: `gemini-2.5-flash`
+Default model: `gemini-3-flash-preview`
 
 ```bash
 tiny-gemini search "Who won the 2026 Super Bowl?"
 tiny-gemini search "latest React release" --stream
+tiny-gemini search "AI news" --output-file results.txt
 ```
+
+### Search Options
+
+| Option | Description |
+|--------|-------------|
+| `--output-file <path>` | Write response to file instead of stdout |
+| `--output-format <fmt>` | Output format: `plain` or `manifest` (default: auto) |
+| `--stream` | Stream the response |
+| `--model <model>` | Model override |
 
 ### Search Request Body
 
 ```json
 {
-  "model": "gemini-2.5-flash",
+  "model": "gemini-3-flash-preview",
   "input": "Who won the 2026 Super Bowl?",
   "tools": [{ "type": "google_search" }]
 }
@@ -479,7 +542,7 @@ Research tasks can take several minutes. Status updates are printed to stderr so
 JSON passthrough. Sends any JSON body directly to the Interactions API and prints the raw JSON response. This is the escape hatch for any API feature not covered by the dedicated commands (function calling, MCP, code execution, computer use, etc.).
 
 ```bash
-tiny-gemini raw '{"model":"gemini-2.5-flash","input":"hello"}'
+tiny-gemini raw '{"model":"gemini-3-flash-preview","input":"hello"}'
 ```
 
 ### Input Sources
