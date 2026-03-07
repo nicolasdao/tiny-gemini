@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-07
+
+### Added
+
+- Interactive API key setup for first-time users — when no key is configured in a TTY terminal, the CLI guides the user through getting a key and offers a masked input prompt to paste and save it to `~/.gemini/.env`
+- TTY detection for the API key error flow — non-TTY environments (pipes, scripts, LLM agents) get a concise error with actionable setup commands instead of an interactive prompt
+- Smart `.env` file handling — saves new keys without overwriting existing content, replaces existing `GEMINI_API_KEY` lines in-place, or appends to the file with proper newline handling
+
 ## [1.1.0] - 2026-03-07
 
 ### Added
@@ -49,5 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Image variation map with 7 categories (lighting, angle, color-palette, composition, mood, season, time-of-day)
 - Platform-aware file opener (macOS `open`, Linux `xdg-open`, Windows `start`)
 
+[1.2.0]: https://github.com/nicolasdao/tiny-gemini/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/nicolasdao/tiny-gemini/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/nicolasdao/tiny-gemini/releases/tag/v1.0.0

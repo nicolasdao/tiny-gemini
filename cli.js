@@ -10,7 +10,7 @@ import { exec } from 'node:child_process';
 // Constants
 // ────────────────────────────────────────────────────────────────────
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const NAME = 'tiny-gemini';
 
 const MODELS = {
