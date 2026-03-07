@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-07
+
+### Added
+
+- `--prompt-file` flag — inject text file contents into prompts without reading them into the caller's context (repeatable for multiple files)
+- `--output-file` flag — write responses to disk instead of stdout, with only a short summary printed
+- `--output-format` flag — force `plain` (text file) or `manifest` (JSON with file references) output mode
+- Smart detection for manifest vs plain text output based on response content (function calls or text blocks > 4000 chars trigger manifest mode)
+- Manifest output format with text previews, file references, byte/line counts, function calls, and media references
+
+### Changed
+
+- `--prompt-file`-only invocations now work without a text prompt (e.g., `tiny-gemini --prompt-file code.js --system "Explain"`)
+- Streaming mode (`--stream`) now supports `--output-file` — text is accumulated silently and written at the end
+
 ## [1.0.0] - 2026-03-07
 
 ### Added
@@ -34,4 +49,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Image variation map with 7 categories (lighting, angle, color-palette, composition, mood, season, time-of-day)
 - Platform-aware file opener (macOS `open`, Linux `xdg-open`, Windows `start`)
 
+[1.1.0]: https://github.com/nicolasdao/tiny-gemini/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/nicolasdao/tiny-gemini/releases/tag/v1.0.0

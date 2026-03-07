@@ -1,13 +1,31 @@
 {
   "name": "tiny-gemini",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Zero-dependency CLI for the Google Gemini API — text, images, TTS, search, and more via npx",
   "type": "module",
-  "bin": { "tiny-gemini": "./cli.js" },
-  "files": ["cli.js"],
-  "engines": { "node": ">=18.0.0" },
-  "keywords": ["gemini", "ai", "image", "tts", "search", "cli", "npx", "google"],
+  "bin": {
+    "tiny-gemini": "./cli.js"
+  },
+  "files": [
+    "cli.js"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "gemini",
+    "ai",
+    "image",
+    "tts",
+    "search",
+    "cli",
+    "npx",
+    "google"
+  ],
   "author": "Nicolas Dao <nic@cloudlesslabs.com>",
   "license": "BSD-3-Clause",
-  "repository": { "type": "git", "url": "https://github.com/nicolasdao/tiny-gemini.git" }
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicolasdao/tiny-gemini.git"
+  }
 }
