@@ -19,6 +19,7 @@ Zero-dependency CLI for the Google Gemini API. Text, images, TTS, search, deep r
 - [Stack and Dependencies](#stack-and-dependencies)
 - [Project Structure](#project-structure)
 - [Detailed Documentation](#detailed-documentation)
+- [Releasing](#releasing)
 - [Reference Material](#reference-material)
 - [Changelog](#changelog)
 - [License](#license)
@@ -207,6 +208,27 @@ The following docs provide the technical depth needed to understand, extend, or 
 | [Architecture](docs/architecture.md) | Understanding the code structure, adding new commands or sub-commands, modifying config resolution, the `.env` loader, or the API client |
 | [Commands](docs/commands.md) | Full reference for every command and option, including the exact request bodies sent to the API and how responses are processed |
 | [Prompt Engineering](docs/prompt-engineering.md) | Image generation presets (icon, pattern, diagram, story), batch generation with styles/variations, and how prompt builders work |
+
+## Releasing
+
+New versions are released using the `/release` Claude Code skill. It automates the full workflow:
+
+1. **Reasons about session changes** to determine the semver bump type (or accepts `patch`, `minor`, `major` as an argument)
+2. **Runs preflight checks** — clean working tree, npm auth, correct branch
+3. **Bumps the version** in `package.json` and syncs `cli.js`
+4. **Updates `CHANGELOG.md`** with categorized changes in Keep a Changelog format
+5. **Verifies** the CLI loads and shows the correct version
+6. **Commits, tags, and pushes** to GitHub
+7. **Publishes** to npm (with user confirmation before any public action)
+
+```bash
+/release patch    # bug fixes
+/release minor    # new features
+/release major    # breaking changes
+/release          # agent decides and asks you to confirm
+```
+
+The skill is at [`.claude/skills/release/`](.claude/skills/release/SKILL.md) and is user-invoked only — it never triggers automatically.
 
 ## Reference Material
 

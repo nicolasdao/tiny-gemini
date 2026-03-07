@@ -1,0 +1,12 @@
+{
+	"name": "release",
+	"version": "0.1.0",
+	"description": "Release workflow for tiny-gemini. Bumps version, updates changelog, commits, tags, pushes, and publishes to npm.",
+	"keywords": [
+		"deployment",
+		"release",
+		"npm",
+		"changelog",
+		"semver"
+	]
+}
