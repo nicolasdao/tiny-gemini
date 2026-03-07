@@ -1,6 +1,22 @@
 # tiny-gemini
 
-Zero-dependency CLI for the Google Gemini API. Text, images, TTS, search, deep research, and raw API passthrough — all through `npx`.
+Zero-dependency CLI for the Google Gemini API. Text, images, TTS, search, deep research, and raw API passthrough — all through `npx`. Ships with a [Claude Code agent skill](#claude-code-agent-skill) managed by [HappySkills](https://happyskills.ai).
+
+```bash
+# Ask a question
+npx tiny-gemini "What is quantum computing?"
+
+# Generate an image
+npx tiny-gemini image "a dog chasing a cat through a field of sunflowers"
+```
+
+**Using Claude Code?** Install the agent skill and let Claude handle the CLI for you:
+
+```bash
+npx happyskills install nicolasdao/tiny-gemini
+```
+
+Then just ask naturally: *"Use Gemini to generate an image of a dog chasing a cat."*
 
 ## Table of Contents
 
@@ -21,6 +37,10 @@ Zero-dependency CLI for the Google Gemini API. Text, images, TTS, search, deep r
   - [Manifest Format](#manifest-format)
   - [Smart Detection Rules](#smart-detection-rules)
   - [Agentic Examples](#agentic-examples)
+- [Claude Code Agent Skill](#claude-code-agent-skill)
+  - [What It Does](#what-it-does)
+  - [Install the Skill](#install-the-skill)
+  - [How It Works](#how-it-works-1)
 - [Stack and Dependencies](#stack-and-dependencies)
 - [Project Structure](#project-structure)
 - [Model Selection](#model-selection)
@@ -32,14 +52,19 @@ Zero-dependency CLI for the Google Gemini API. Text, images, TTS, search, deep r
 
 ## Why This Exists
 
+As of March 2026, the official [Gemini CLI](https://github.com/google-gemini/gemini-cli) does not ship with built-in support for Nano Banana (Gemini's image generation models). To generate images, you need to install a separate extension — a process that is clunky and fragile. The Gemini CLI is also a heavy install with its own dependency tree, making it impractical for ephemeral or scripted use cases.
+
+This pushed us to create something leaner. `tiny-gemini` doesn't need to be installed — it runs directly via `npx`. The primary motivation was to give other LLM agents (Claude Code, OpenAI Codex, and similar tools) a lightweight, zero-install way to call the Gemini API from bash. An agent can run `npx tiny-gemini "your prompt"` and get results without managing SDKs, dependencies, or extensions.
+
 Google's Gemini API is a single unified endpoint (the [Interactions API](https://ai.google.dev/gemini-api/docs/interactions)) that handles text, images, audio, search, research, and more — all through the request body. But using it requires constructing JSON payloads, managing headers, parsing multimodal responses, and converting binary formats.
 
 `tiny-gemini` wraps this API with dedicated subcommands for common use cases (`prompt`, `image`, `tts`, `search`, `research`) plus a `raw` JSON passthrough for full API coverage. It is:
 
 - **Zero-dependency** — only Node.js built-ins (no `node_modules`)
 - **Single file** — everything in `cli.js` (~1070 lines)
-- **NPX-ready** — `npx tiny-gemini "your prompt"` works immediately
+- **NPX-ready** — `npx tiny-gemini "your prompt"` works immediately, no install required
 - **Complete** — the `raw` command covers 100% of the API surface
+- **Agent-first** — built for LLM agents with `--prompt-file` and `--output-file` to keep context windows clean
 
 
 ## Quick Start
@@ -284,6 +309,43 @@ tiny-gemini "Fix bugs shown in this screenshot" \
   --output-file /tmp/manifest.json
 ```
 
+## Claude Code Agent Skill
+
+This project ships with a [Claude Code](https://claude.ai/claude-code) agent skill that teaches AI agents how to use `tiny-gemini` automatically. The skill is managed by [HappySkills](https://happyskills.ai) — a package manager for AI agent skills.
+
+### What It Does
+
+When the skill is installed in a project, Claude Code automatically knows how to use `npx tiny-gemini` whenever you ask it to work with the Gemini API. No manual instructions needed — just ask naturally:
+
+- "Generate an image of a sunset over the ocean"
+- "Convert this text to speech"
+- "Search for the latest AI news"
+- "Run deep research on quantum computing"
+- "Send this JSON to the Gemini API"
+
+The skill covers 100% of the CLI surface: all 6 commands, all 7 image sub-commands, all options, model selection rules, and agentic workflow patterns.
+
+### Install the Skill
+
+```bash
+npx happyskills install nicolasdao/tiny-gemini
+```
+
+This installs the skill into your project's `.claude/skills/` directory. Claude Code will auto-detect it on the next session.
+
+### How It Works
+
+The skill is a set of reference files that Claude Code loads on demand:
+
+| File | Purpose |
+|------|---------|
+| `SKILL.md` | Core reference — commands, options, examples, constraints |
+| `references/image-commands.md` | All 7 image sub-commands with every option and value |
+| `references/models.md` | Model selection decision rules and comparison tables |
+| `references/raw-api.md` | Raw API passthrough, function calling, tools, multi-turn conversations |
+
+The skill is set to `user-invocable: false` — Claude loads it automatically when it detects Gemini-related intent. You never need to invoke it manually.
+
 ## Stack and Dependencies
 
 | Component | Details |
@@ -308,6 +370,13 @@ tiny-gemini/
 ├── LICENSE         # BSD-3-Clause
 ├── .gitignore
 ├── README.md
+├── .claude/skills/tiny-gemini/         # Claude Code agent skill (managed by HappySkills)
+│   ├── SKILL.md                        # Core skill — commands, options, constraints
+│   ├── skill.json                      # HappySkills manifest (name, version, keywords)
+│   └── references/
+│       ├── image-commands.md           # All 7 image sub-commands
+│       ├── models.md                   # Model selection rules
+│       └── raw-api.md                  # Raw API, function calling, tools
 └── docs/
     ├── api-reference.md       # Gemini Interactions API details
     ├── architecture.md        # Code structure and how to add features
