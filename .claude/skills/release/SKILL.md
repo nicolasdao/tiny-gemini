@@ -1,6 +1,6 @@
 ---
 name: release
-description: Release a new version of tiny-gemini. Bumps version, updates changelog, verifies, commits, tags, pushes to GitHub, and publishes to npm. Use when the user says release, publish, deploy, ship, or bump version.
+description: Release a new version of tiny-gemini. Bumps version, updates changelog, verifies, commits, tags, and pushes to GitHub. Use when the user says release, publish, deploy, ship, or bump version.
 disable-model-invocation: true
 allowed-tools: Bash, Read, Edit, Grep, Glob, AskUserQuestion
 argument-hint: [patch|minor|major]
@@ -30,9 +30,7 @@ Run all three checks. If any fail, stop and tell the user how to fix it.
 
 1. **Clean working tree** — `git status --porcelain`
    - If output is non-empty, tell the user to commit or stash changes first. Do NOT proceed with a dirty tree.
-2. **npm authentication** — `npm whoami 2>&1`
-   - If this fails, tell the user to run `npm login` first.
-3. **Correct branch** — `git branch --show-current`
+2. **Correct branch** — `git branch --show-current`
    - Must be `master`. If not, warn the user.
 
 ## Step 3: Bump Version in package.json
@@ -121,39 +119,44 @@ git commit -m "release: vX.Y.Z"
 git tag vX.Y.Z
 ```
 
-## Step 8: Confirm Before Push and Publish
+## Step 8: Confirm Before Push
 
 Use AskUserQuestion to get explicit user approval before proceeding:
 
-> Ready to push vX.Y.Z to GitHub and publish to npm. This will make the release public. Proceed?
+> Ready to push vX.Y.Z to GitHub. This will make the release public. Proceed?
 
 Do NOT proceed without approval.
 
-## Step 9: Push and Publish
+## Step 9: Push
 
 ```bash
 git push && git push --tags
-npm publish
 ```
 
-If this is the **very first publish** (no versions exist on npm yet), use `npm publish --access public` instead.
-
-To check if the package exists on npm: `npm view tiny-gemini version 2>&1`
-- If it returns a version, the package exists — use `npm publish`
-- If it returns an error (E404), this is the first publish — use `npm publish --access public`
-
-## Step 10: Confirm Success
+## Step 10: Confirm Success and Show Publish Instructions
 
 Show the user:
 - New version number
 - Git tag
-- npm URL: `https://www.npmjs.com/package/tiny-gemini`
-- Verification command: `npx tiny-gemini --version`
+- Confirmation that the release is pushed to GitHub
+
+Then tell the user the package is ready to be published to npm, but this must be done manually. Show the command they need to run:
+
+```
+npm publish
+```
+
+If this is the **very first publish** (no versions exist on npm yet), show `npm publish --access public` instead.
+
+To check if the package exists on npm: `npm view tiny-gemini version 2>&1`
+- If it returns a version, the package exists — show `npm publish`
+- If it returns an error (E404), this is the first publish — show `npm publish --access public`
 
 ## Constraints
 
 - NEVER skip the verification step (Step 6)
-- NEVER push or publish without explicit user confirmation (Step 8)
+- NEVER push without explicit user confirmation (Step 8)
+- NEVER run `npm publish` — publishing to npm must be done manually by the user
 - NEVER amend existing commits — always create new commits
 - NEVER guess the version — always read it from package.json after npm version runs
 - If ANY step fails, STOP immediately and report the error. Do not continue to subsequent steps.

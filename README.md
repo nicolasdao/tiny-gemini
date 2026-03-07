@@ -323,12 +323,12 @@ The following docs provide the technical depth needed to understand, extend, or 
 New versions are released using the `/release` Claude Code skill. It automates the full workflow:
 
 1. **Reasons about session changes** to determine the semver bump type (or accepts `patch`, `minor`, `major` as an argument)
-2. **Runs preflight checks** — clean working tree, npm auth, correct branch
+2. **Runs preflight checks** — clean working tree, correct branch
 3. **Bumps the version** in `package.json` and syncs `cli.js`
 4. **Updates `CHANGELOG.md`** with categorized changes in Keep a Changelog format
 5. **Verifies** the CLI loads and shows the correct version
 6. **Commits, tags, and pushes** to GitHub
-7. **Publishes** to npm (with user confirmation before any public action)
+7. **Shows the `npm publish` command** for the user to run manually
 
 ```bash
 /release patch    # bug fixes
