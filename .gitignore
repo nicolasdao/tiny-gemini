@@ -1,0 +1,4 @@
+node_modules/
+tiny-gemini-output/
+.DS_Store
+*.log
