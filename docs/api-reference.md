@@ -91,7 +91,7 @@ This is more secure than `?key=` in the URL because the key doesn't appear in se
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `model` | string | One of model/agent | Model ID (e.g., `gemini-2.5-flash`) |
+| `model` | string | One of model/agent | Model ID (e.g., `gemini-3-flash-preview`) |
 | `agent` | string | One of model/agent | Agent ID (e.g., `deep-research-pro-preview-12-2025`) |
 | `input` | string or Content[] | Yes | Text or multimodal content |
 | `response_modalities` | string[] | No | Output types: `["IMAGE"]`, `["AUDIO"]` |
@@ -263,7 +263,7 @@ Controls what type of output the model generates:
 ```json
 {
   "id": "interaction-uuid",
-  "model": "gemini-2.5-flash",
+  "model": "gemini-3-flash-preview",
   "input": [...],
   "outputs": [...],
   "status": "completed",
@@ -358,7 +358,7 @@ POST /v1beta/interactions?alt=sse
 Content-Type: application/json
 x-goog-api-key: YOUR_KEY
 
-{ "model": "gemini-2.5-flash", "input": "Hello", "stream": true }
+{ "model": "gemini-3-flash-preview", "input": "Hello", "stream": true }
 ```
 
 ### Event Types
@@ -424,19 +424,19 @@ Poll every 5 seconds. Check `status` field:
 
 | Model ID | Notes |
 |----------|-------|
-| `gemini-2.5-flash` | Fast, default for text/search |
-| `gemini-2.5-flash-lite` | Faster, lower quality |
-| `gemini-2.5-pro` | Higher quality |
-| `gemini-3-flash-preview` | Latest Flash |
-| `gemini-3.1-pro-preview` | Latest Pro |
+| `gemini-3-flash-preview` | Default for text/search, best value |
+| `gemini-3.1-pro-preview` | Most capable, deepest reasoning |
+| `gemini-2.5-flash` | Remote MCP support |
+| `gemini-2.5-pro` | Stable (non-preview) |
+| `gemini-2.5-flash-lite` | Cheapest, lower quality |
 
 ### Image Generation Models
 
 | Model ID | Codename | Notes |
 |----------|----------|-------|
-| `gemini-2.5-flash-image` | Nano Banana | Speed-optimized, default in tiny-gemini |
-| `gemini-3-pro-image-preview` | Nano Banana Pro | Highest quality, advanced reasoning |
-| `gemini-3.1-flash-image-preview` | Nano Banana 2 | Newer Flash variant |
+| `gemini-3.1-flash-image-preview` | Nano Banana 2 | Default in tiny-gemini, best value, up to 4K |
+| `gemini-3-pro-image-preview` | Nano Banana Pro | Highest quality, best text rendering |
+| `gemini-2.5-flash-image` | Nano Banana | Cheapest, 1K only |
 
 All image models output `image/png` as base64. SynthID watermark is embedded in all generated images.
 
