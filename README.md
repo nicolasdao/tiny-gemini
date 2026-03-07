@@ -60,6 +60,23 @@ Requires Node.js >= 18.0.0.
 
 Get an API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
+**Interactive setup (first-time users):** If no API key is configured, the CLI detects whether you're in a terminal (TTY) and offers to save the key for you:
+
+```
+$ npx tiny-gemini "hello"
+
+No API key found. You need a free Google Gemini API key.
+
+  1. Go to https://aistudio.google.com/app/apikey
+  2. Click "Create API key" and copy it.
+
+  Paste it below to save it, or press Enter to skip: ************************************
+
+  Saved to ~/.gemini/.env
+```
+
+The key is saved to `~/.gemini/.env` and the original command continues immediately. Input is masked with `*` characters. In non-TTY environments (pipes, scripts, LLM agents), a concise error with setup commands is shown instead.
+
 **Option A: Environment variable** (recommended)
 ```bash
 export GEMINI_API_KEY="your-key-here"

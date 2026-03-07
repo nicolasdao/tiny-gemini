@@ -40,6 +40,40 @@ const VARIATIONS = {
 const log = (...a) => process.stderr.write(a.join(' ') + '\n');
 const die = (msg) => { log(`Error: ${msg}`); process.exit(1); };
 
+function readSecret(prompt) {
+	return new Promise((resolve) => {
+		process.stderr.write(prompt);
+		process.stdin.setRawMode(true);
+		process.stdin.resume();
+		process.stdin.setEncoding('utf8');
+		let input = '';
+		const onData = (chunk) => {
+			for (const char of chunk) {
+				if (char === '\r' || char === '\n') {
+					process.stdin.setRawMode(false);
+					process.stdin.pause();
+					process.stdin.removeListener('data', onData);
+					process.stderr.write('\n');
+					resolve(input);
+					return;
+				} else if (char === '\u0003') { // Ctrl+C
+					process.stderr.write('\n');
+					process.exit(0);
+				} else if (char === '\u007F' || char === '\b') { // Backspace
+					if (input.length > 0) {
+						input = input.slice(0, -1);
+						process.stderr.write('\b \b');
+					}
+				} else if (char >= ' ') { // Printable characters only
+					input += char;
+					process.stderr.write('*');
+				}
+			}
+		};
+		process.stdin.on('data', onData);
+	});
+}
+
 async function exists(p) {
 	try { await access(p); return true; } catch { return false; }
 }
@@ -1108,7 +1142,58 @@ async function main() {
 	const config = resolveConfig(values);
 
 	if (!config.apiKey) {
-		die('API key required. Set GEMINI_API_KEY, GOOGLE_API_KEY, or use --api-key.\nYou can also create a .gemini/.env file in your project or ~/.gemini/.env');
+		const isTTY = process.stdin.isTTY && process.stderr.isTTY;
+
+		if (isTTY) {
+			log('');
+			log('No API key found. You need a free Google Gemini API key.');
+			log('');
+			log('  1. Go to https://aistudio.google.com/app/apikey');
+			log('  2. Click "Create API key" and copy it.');
+			log('');
+			const key = await readSecret('  Paste it below to save it, or press Enter to skip: ');
+			if (key.trim()) {
+				const geminiDir = join(homedir(), '.gemini');
+				const envPath = join(geminiDir, '.env');
+				await mkdir(geminiDir, { recursive: true });
+				let existing = '';
+				try { existing = await readFile(envPath, 'utf8'); } catch {}
+				const line = `GEMINI_API_KEY=${key.trim()}`;
+				if (existing) {
+					// Replace existing GEMINI_API_KEY line, or append
+					if (/^GEMINI_API_KEY=.*/m.test(existing)) {
+						existing = existing.replace(/^GEMINI_API_KEY=.*/m, line);
+						await writeFile(envPath, existing);
+					} else {
+						const sep = existing.endsWith('\n') ? '' : '\n';
+						await writeFile(envPath, existing + sep + line + '\n');
+					}
+				} else {
+					await writeFile(envPath, line + '\n');
+				}
+				log('');
+				log(`  Saved to ~/.gemini/.env`);
+				log('');
+				config.apiKey = key.trim();
+			} else {
+				log('');
+				log('  No key entered. Set it up manually:');
+				log('');
+				log('     export GEMINI_API_KEY="your-key-here"');
+				log('     # Or: mkdir -p ~/.gemini && echo \'GEMINI_API_KEY=your-key-here\' > ~/.gemini/.env');
+				log('');
+				process.exit(1);
+			}
+		} else {
+			log('');
+			log('Error: No API key found.');
+			log('Get a free key at https://aistudio.google.com/app/apikey then:');
+			log('');
+			log('  export GEMINI_API_KEY="your-key-here"');
+			log('  # Or: npx tiny-gemini --api-key=your-key-here "Hello"');
+			log('');
+			process.exit(1);
+		}
 	}
 
 	switch (command) {

@@ -93,6 +93,7 @@ const MODELS = {
 
 ### Section 2: Utilities (lines 36-58)
 
+- `readSecret()` — reads masked input from stdin (echoes `*` per character), handles paste, backspace, and Ctrl+C. Used for interactive API key setup
 - `log()` — writes to **stderr** (status messages, progress)
 - `die()` — writes error to stderr and exits with code 1
 - `exists()` — async file existence check via `access()`
