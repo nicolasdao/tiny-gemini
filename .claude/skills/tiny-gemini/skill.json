@@ -1,6 +1,6 @@
 {
 	"name": "tiny-gemini",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"description": "Teaches AI agents to use the tiny-gemini NPX CLI for the Google Gemini API. Covers text, image, TTS, search, research, and raw API commands.",
 	"keywords": ["ai", "api", "gemini", "google", "image-generation", "tts", "cli"],
 	"systemDependencies": {

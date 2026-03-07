@@ -1,6 +1,6 @@
 {
 	"lockVersion": 1,
-	"generatedAt": "2026-03-07T07:50:31.145Z",
+	"generatedAt": "2026-03-07T12:48:26.236Z",
 	"skills": {
 		"happyskillsai/happyskills": {
 			"version": "1.2.1",
@@ -37,6 +37,16 @@
 			"ref": "refs/tags/v1.0.4",
 			"commit": "6394de7f8b487c16700f84d5235a3dca5746205d2abafbdfad02e59bbd924a60",
 			"integrity": "sha256-e60d3df49530031a5f663aed8a6999fda6b4caab4deba249ec7cfd5ec65f085c",
+			"requested_by": [
+				"__root__"
+			],
+			"dependencies": {}
+		},
+		"nicolasdao/tiny-gemini": {
+			"version": "1.0.0",
+			"ref": null,
+			"commit": null,
+			"integrity": "sha256-da42d17e1681b8a149361ff558c12af2de73f46453b673ee3bf539077c1d8baf",
 			"requested_by": [
 				"__root__"
 			],
