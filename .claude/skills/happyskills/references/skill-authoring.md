@@ -30,12 +30,12 @@ Keep `SKILL.md` under **200 lines**. Move heavy content to supporting files.
 name: skill-name
 description: What this skill does and when to invoke it (auto-invocation trigger)
 argument-hint: "[what arguments to pass]"
-disable-model-invocation: true
-user-invocable: false
 allowed-tools: Read, Grep, Glob, Bash
 model: opus
 context: fork
 agent: Explore
+# disable-model-invocation: true   ← ONLY add if user explicitly requests it
+# user-invocable: false             ← ONLY add for background knowledge skills
 ---
 
 # Skill Content
@@ -50,8 +50,8 @@ Use $ARGUMENTS, $0, $1, etc. for dynamic substitution.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `name` | string | directory name | Kebab-case name. Becomes `/skill-name` slash command. Max 64 chars. |
-| `description` | string | — | What the skill does + when to use it. Used for auto-invocation matching. |
+| `name` | string | directory name | **Required.** Kebab-case name. Becomes `/skill-name` slash command. Max 64 chars. |
+| `description` | string | — | **Required for auto-invocation.** What the skill does + when to use it. The #1 factor for auto-invocation quality. Without it, Claude cannot auto-invoke the skill. |
 | `argument-hint` | string | — | Autocomplete hint, e.g. `[issue-number]` or `[source] [target]` |
 | `disable-model-invocation` | boolean | `false` | If `true`, only the user can invoke. Claude cannot use automatically. Skill description hidden from context. |
 | `user-invocable` | boolean | `true` | If `false`, hidden from `/` menu. Claude-only auto-invocation. |
@@ -111,6 +111,8 @@ description: Explains code structure using diagrams
 - **Use for**: Reference knowledge + helpful task automation
 
 ### Mode B — User-only (`disable-model-invocation: true`)
+
+> **IMPORTANT — Do NOT set this by default.** When this flag is set, Claude cannot auto-invoke the skill AND the skill's description is completely hidden from Claude's context — Claude won't even know the skill exists. This is a common source of confusion ("why isn't my skill being invoked?"). Only set this when the user **explicitly** requests it. When creating, converting, or initializing a skill, always use AskUserQuestion to ask the user about their invocation preference with a clear explanation of the consequences (see Section 9, rule 5).
 
 ```yaml
 disable-model-invocation: true
@@ -274,7 +276,10 @@ Use ultrathink to analyze the architectural trade-offs...
 2. **Specific, keyword-rich descriptions** — Include words and phrases users would naturally say.
 3. **Always add a Constraints section** — Prevents hallucinated commands and misuse.
 4. **Include verification steps** — "Run tests", "check exit code", "show output". Silent failures are worse than visible errors.
-5. **Use `disable-model-invocation: true` for side-effect workflows** — Releases, deploys, commits, deletes.
+5. **NEVER set `disable-model-invocation: true` unless the user explicitly asks for it.** When creating, converting, or initializing a skill, always ask the user with AskUserQuestion: "Should Claude be able to auto-invoke this skill, or should it be user-only (manual /slash command)?" with these options:
+   - **"Auto-invoke (Recommended)"** — Claude invokes when relevant. Best for most skills.
+   - **"User-only (/slash command)"** — Only you can trigger it. Claude won't know it exists. Use for deployments, releases, or destructive operations.
+   Default to auto-invoke. Only set the flag if the user picks "User-only".
 6. **Use `user-invocable: false` for background knowledge** — Architectural context, conventions, domain knowledge.
 7. **Split large domains into a skill suite** — Three focused 150-line skills > one 500-line skill.
 8. **Name supporting files clearly** — `json-shapes.md`, `api-reference.md`, not `stuff.md`.
@@ -483,6 +488,7 @@ Claude allocates ~2% of its context window for all skill descriptions combined. 
 
 | Symptom | Likely Cause | Fix |
 |---|---|---|
+| Skill never auto-invokes | No frontmatter or missing `description` field | Add YAML frontmatter with `name` and `description` |
 | Skill never auto-invokes | Description too vague or missing trigger phrases | Add specific keywords users would say |
 | Skill triggers for wrong requests | Description overlaps with another skill | Differentiate descriptions; narrow scope |
 | Skill not in `/` menu | `user-invocable: false` is set | Remove the flag if user should invoke |

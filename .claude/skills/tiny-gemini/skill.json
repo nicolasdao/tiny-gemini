@@ -1,8 +1,17 @@
 {
 	"name": "tiny-gemini",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Teaches AI agents to use the tiny-gemini NPX CLI for the Google Gemini API. Covers text, image, TTS, search, research, and raw API commands.",
-	"keywords": ["ai", "api", "gemini", "google", "image-generation", "tts", "cli"],
+	"keywords": [
+		"ai",
+		"api",
+		"gemini",
+		"google",
+		"image-generation",
+		"tts",
+		"cli"
+	],
+	"repository": "https://github.com/nicolasdao/tiny-gemini",
 	"systemDependencies": {
 		"node": {
 			"description": "Node.js runtime",

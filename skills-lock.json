@@ -1,12 +1,12 @@
 {
 	"lockVersion": 1,
-	"generatedAt": "2026-03-07T12:48:26.236Z",
+	"generatedAt": "2026-03-10T08:31:09.285Z",
 	"skills": {
 		"happyskillsai/happyskills": {
-			"version": "1.2.1",
-			"ref": "refs/tags/v1.2.1",
-			"commit": "731b618f27b63f0fd76d254c92a4f011542cab0c945d460484d60d77571c1658",
-			"integrity": "sha256-518e105fe3009df6d17819da2da7a24c17f3caa76024773793a3b302dfb9807e",
+			"version": "1.5.0",
+			"ref": "refs/tags/v1.5.0",
+			"commit": "8b1cb945bc42da2ef75466271b184bcf27552e56485a2384261f158194ff76b4",
+			"integrity": "sha256-085608bf93fb3773b41a4fc2d2bf35734174d5dd89e3f955f8d8b0be3fdf545c",
 			"requested_by": [
 				"__root__"
 			],
@@ -43,10 +43,10 @@
 			"dependencies": {}
 		},
 		"nicolasdao/tiny-gemini": {
-			"version": "1.0.0",
-			"ref": null,
-			"commit": null,
-			"integrity": "sha256-da42d17e1681b8a149361ff558c12af2de73f46453b673ee3bf539077c1d8baf",
+			"version": "1.0.1",
+			"ref": "refs/tags/v1.0.1",
+			"commit": "cb16c37c55b0cd49d6aa8f24f8c2428fdbc30076be43efe30b9b981200127561",
+			"integrity": "sha256-b1d2a5ea625727bdccd65304d316b1b88558452db6efa902ea88315d964811e1",
 			"requested_by": [
 				"__root__"
 			],

@@ -204,7 +204,7 @@ Format: `owner/name` (e.g., `acme/deploy-aws`)
 
 | Scope | Location |
 |---|---|
-| Project | `.claude-lock.json` |
+| Project | `skills-lock.json` (in the project root directory, next to `.claude/`) |
 | Global | `~/.claude/skills-lock.json` |
 
 **Key rules:**
@@ -238,13 +238,15 @@ node_modules, .git, .env, .env.*, .DS_Store, .tmp, *.log
 ### Project-Level
 
 ```
-.claude/skills/
-├── owner/
-│   └── skill-name/
-│       ├── SKILL.md
-│       ├── skill.json
-│       └── ...
-└── .claude-lock.json
+project-root/
+├── skills-lock.json              ← project-level lock file
+├── .claude/
+│   └── skills/
+│       └── owner/
+│           └── skill-name/
+│               ├── SKILL.md
+│               ├── skill.json
+│               └── ...
 ```
 
 ### Global

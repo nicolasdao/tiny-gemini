@@ -1,6 +1,6 @@
 ---
 name: happyskills
-description: How many happy skills do I have installed. What happy skills are on this project. Are my happy skills up to date. Show my happy skills. Do I have any happy skills. Find happy skills for AWS, databases, deployment. Which happy skills should I install. What happy skills are available. Install, update, uninstall, search, publish, fork, convert happy skills. HappySkills CLI package manager for AI agent skills. Authenticate with HappySkills. Log in, log out, whoami. Design and review Claude Code skills including SKILL.md, frontmatter, invocation models, best practices, anti-patterns. Release a skill update, ship skill changes. Make my skills happy. Make my skills happier. Are my skills happy. Why are my skills not happy. Which skills are unhappy. Show me my unhappy skills.
+description: How many happy skills do I have installed. What happy skills are on this project. Are my happy skills up to date. Show my happy skills. Do I have any happy skills. Find happy skills for AWS, databases, deployment. Which happy skills should I install. What happy skills are available. Install, update, uninstall, search, publish, fork, convert happy skills. HappySkills CLI package manager for AI agent skills. Authenticate with HappySkills. Log in, log out, whoami. Design and review Claude Code skills including SKILL.md, frontmatter, invocation models, best practices, anti-patterns. Release a skill update, ship skill changes. Make my skills happy. Make my skills happier. Are my skills happy. Why are my skills not happy. Which skills are unhappy. Show me my unhappy skills. Refresh my happy skills. Refresh my skills. Check and update all skills at once.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 argument-hint: "[what you want to do]"
 ---
@@ -28,6 +28,7 @@ Map the user's intent to a CLI command using this table:
 | "what's installed", "show skills", "list", "how many skills", "count skills", "skill inventory", "which skills", "audit skills" | `list` | No |
 | "update", "upgrade", "latest version" | `update` | No |
 | "outdated", "check updates", "new versions available" | `check` | No |
+| "refresh my skills", "refresh happy skills", "refresh skills", "check and update all" | `refresh` | No |
 | "create new skill", "scaffold", "initialize" | `init` | No |
 | "bump version", "increment version" | `bump` | No |
 | "publish", "push to registry", "release skill" | Publish with release check (Section 3.3) | Yes |
@@ -111,6 +112,16 @@ npx happyskills check owner/name --json
 ```
 
 Present a table showing: Skill, Installed Version, Latest Version, Status. Highlight outdated skills. Show summary counts.
+
+**Refresh skills (check + update in one step):**
+
+```bash
+npx happyskills refresh -y --json
+# or globally:
+npx happyskills refresh -g -y --json
+```
+
+Combines `check` and `update --all` into one command. Present a results table showing what was checked, what was outdated, and what was updated.
 
 ### 3.2 Installation Commands
 
@@ -204,24 +215,28 @@ Show old version → new version.
 Before running `npx happyskills publish`, run these pre-flight checks in order:
 
 1. **Check if the skill is managed** — Run `npx happyskills list --json` and check whether the skill appears in `data.skills` (managed) or `data.external` (external). If external, tell the user the skill needs to be converted to a HappySkill first, and offer to run the conversion workflow (Section 3.3 Convert + Section 7 Post-Convert Enrichment). Do not attempt to publish an unconverted skill.
-2. **Read `CHANGELOG.md` and `skill.json`** in the skill's directory.
-3. **Review the conversation context and recent changes** — have there been modifications to the skill since the last CHANGELOG entry?
-4. **If the version has already been bumped and the CHANGELOG already covers the current changes** → proceed directly to publish (step 6).
-5. **If changes exist that are not yet reflected in the version or CHANGELOG** → run the Skill Release Workflow (Section 7) first. This handles bump, CHANGELOG, and then publishes.
-6. **Confirm with AskUserQuestion** before publishing. Show the skill name, version, and target workspace. If this is the **first publish** (the skill has no prior versions in the registry — check the lock file for a missing or null `commit` field), ask whether the skill should be public or private (default: private). If the skill has been published before (lock file has a `commit` value), do NOT ask about visibility — the existing visibility is preserved automatically by the server.
+2. **Resolve the target workspace (MANDATORY)** — Run `npx happyskills whoami --json` and extract the list of workspaces from `data.workspaces`. Then determine which workspace to publish to:
+   - If exactly **one** workspace → use it.
+   - If **multiple** workspaces → read the project's lock file (`skills-lock.json` in the project root directory) and look for an entry whose key matches `<workspace-slug>/<skill-name>` for the skill being published. If exactly **one** workspace matches → use it. If **zero** match (first publish) or **multiple** match → ask the user via AskUserQuestion which workspace to publish to.
+   Store the resolved workspace slug. You **MUST** pass `--workspace <slug>` in every publish command. NEVER run publish without `--workspace`.
+3. **Read `CHANGELOG.md` and `skill.json`** in the skill's directory.
+4. **Review the conversation context and recent changes** — have there been modifications to the skill since the last CHANGELOG entry?
+5. **If the version has already been bumped and the CHANGELOG already covers the current changes** → proceed directly to publish (step 7).
+6. **If changes exist that are not yet reflected in the version or CHANGELOG** → run the Skill Release Workflow (Section 7) first. This handles bump, CHANGELOG, and then publishes.
+7. **Confirm with AskUserQuestion** before publishing. Show the skill name, version, and target workspace. To detect whether this is a **first publish**, run `npx happyskills check <workspace>/<skill-name> --json`. If the response contains an error (skill not found in the registry), this is a first publish — ask about visibility using AskUserQuestion with exactly these options in this order:
+   1. **"Private (Recommended)"** — MUST be the FIRST option. Description: "Only visible to members of your workspace."
+   2. **"Public"** — MUST be the SECOND option. Description: "Visible in the public catalog to all users."
+   NEVER present "Public" as the first or default option for a first-time publish. NEVER use the lock file `commit` field to detect first publish — locally developed skills always have `commit: null` even after publishing. If `happyskills check` returns version data (skill exists in the registry), do NOT ask about visibility — the existing visibility is preserved automatically by the server.
 
 ```bash
-# Publish (private by default)
-npx happyskills publish my-skill --json
+# ALWAYS include --workspace in every publish command
+npx happyskills publish my-skill --workspace <slug> --json
 
 # Publish as public
-npx happyskills publish my-skill --public --json
+npx happyskills publish my-skill --workspace <slug> --public --json
 
 # Auto-bump before publishing
-npx happyskills publish my-skill --bump patch --json
-
-# Override workspace
-npx happyskills publish my-skill --workspace myorg --json
+npx happyskills publish my-skill --workspace <slug> --bump patch --json
 ```
 
 Show the published skill name, version, and ref.
@@ -263,7 +278,7 @@ happyskills setup --json
 happyskills setup -g --json
 ```
 
-Always installs the latest version of `happyskillsai/happyskills-cli`. By default installs at the project level (`.claude/skills/`); pass `-g` to install globally (`~/.claude/skills/`). The command is idempotent — if the skill is already up to date, it reports `"status": "already_up_to_date"`.
+Always installs the latest version of `happyskillsai/happyskills`. By default installs at the project level (`.claude/skills/`); pass `-g` to install globally (`~/.claude/skills/`). The command is idempotent — if the skill is already up to date, it reports `"status": "already_up_to_date"`.
 
 Show whether the skill was freshly installed or was already current. If newly installed, tell the user: "Restart Claude Code to activate the skill."
 
@@ -321,7 +336,7 @@ After running any command, parse the JSON output and present results in a human-
 - **Whoami**: Username, email, and workspace list.
 - **Bump**: "Bumped skill-name from X.Y.Z to A.B.C".
 - **Init**: "Created new skill 'name' at /path" with file list.
-- **Setup**: "happyskillsai/happyskills-cli@version installed" or "Already up to date (version)". If newly installed, add: "Restart Claude Code to activate the skill."
+- **Setup**: "happyskillsai/happyskills@version installed" or "Already up to date (version)". If newly installed, add: "Restart Claude Code to activate the skill."
 - **Self-update**: "happyskills updated from X.Y.Z to A.B.C" or "Already up to date (version)".
 - **Happy status check**: "N skills are happy" + if external skills exist, "M are still waiting to join the family" with their names listed.
 - **Happy conversion complete**: "N skills are now happy! Welcome to the family, skill-a, skill-b, and skill-c."
@@ -401,16 +416,23 @@ When helping a user design a skill, follow this sequence:
 1. **Clarify purpose** — Ask: What will this skill do? Reference knowledge, task workflow, or both?
 2. **Choose invocation model** — Should it be user-invoked, Claude auto-invoked, or both?
 3. **Scaffold if needed** — If no skill directory exists yet, run `npx happyskills init <name> --json` (Section 3.3) to create the skeleton, then proceed to design the content.
-4. **Write the SKILL.md description** — This is the #1 lever for auto-invocation quality. Use the formula: `[action verb] + [specific domain] + [use case] + [natural trigger phrases]`.
+4. **Write the SKILL.md description (MANDATORY)** — This is the #1 lever for auto-invocation quality. Without it, Claude cannot auto-invoke the skill. Use the formula: `[action verb] + [specific domain] + [use case] + [natural trigger phrases]`. Use only safe characters (no semicolons, colons, or other forbidden YAML characters). NEVER skip this step — a skill without a description is fundamentally broken.
 5. **Design content structure** — Keep SKILL.md lean; move details to supporting files.
-6. **Set SKILL.md frontmatter fields** — `allowed-tools`, `disable-model-invocation`, `argument-hint`, etc.
+6. **Set SKILL.md frontmatter fields** — The frontmatter MUST include `name` and `description` at minimum. Also set `allowed-tools`, `argument-hint`, etc. as needed. **NEVER set `disable-model-invocation: true` by default.** Before writing the frontmatter, use AskUserQuestion to ask whether Claude should be able to auto-invoke this skill (see Invocation Model rule below). NEVER write a SKILL.md without a YAML frontmatter block.
 7. **Write the skill content** — Use Write/Edit to create the SKILL.md and any supporting files.
-8. **Complete skill.json** — Ensure `name` (lowercase-with-hyphens), `version` (start at `0.1.0`), `description`, and `keywords` (include at least one canonical slug) are set. Add `dependencies` if the skill relies on other published skills, and `systemDependencies` if external CLIs are required.
-9. **Check against anti-patterns** — Review before finalizing. Key checks: description is specific (not vague), verification steps exist, constraints section present, SKILL.md size under 200 lines, skill.json has keywords.
+8. **Verify skill.json basics** — Ensure `name` (lowercase-with-hyphens) and `version` (start at `0.1.0`) are set. Do not fill in `description`, `keywords`, or `dependencies` here — those are handled by Post-Init Enrichment.
+9. **Check against anti-patterns** — Review before finalizing. Key checks: description is specific (not vague), verification steps exist, constraints section present, SKILL.md size under 200 lines.
+10. **Run Post-Init Enrichment** — Complete HappySkills ecosystem metadata (skill.json description, keywords, dependencies, CHANGELOG, optional publish). This is the final step of the authoring workflow.
 
 **Reference docs** (read on demand):
 - [references/skill-authoring.md](references/skill-authoring.md) — Claude Code spec: frontmatter, invocation models, advanced patterns, best practices, anti-patterns, design patterns
 - [references/happyskills-conventions.md](references/happyskills-conventions.md) — HappySkills superset: skill.json manifest, naming rules, canonical keywords, dependency management, publishing checklist
+
+### Post-Init Enrichment
+
+After the authoring workflow completes (steps 1–9), run Post-Init Enrichment to fill in HappySkills ecosystem metadata — skill.json description, keywords, dependencies, system dependencies, optional fields, CHANGELOG, and optionally publish. This is the same quality process as Post-Convert Enrichment but tailored for newly authored skills.
+
+For the full step-by-step procedure, read [references/skill-workflows.md](references/skill-workflows.md) § Post-Init Enrichment.
 
 ### Post-Convert Enrichment
 
@@ -438,6 +460,7 @@ For the full step-by-step procedure, read [references/skill-workflows.md](refere
 | Write a specific, keyword-rich description | Determines whether Claude auto-invokes reliably |
 | Use `disable-model-invocation: true` for side-effect workflows | Prevents accidental automatic execution |
 | Use `user-invocable: false` for background/contextual knowledge | Hides from menu; Claude uses automatically when relevant |
+| **NEVER** set `disable-model-invocation: true` unless the user explicitly asks | When set, Claude cannot auto-invoke the skill and its description is hidden from context. Always ask the user first with AskUserQuestion and explain the trade-off. |
 | Add a Constraints section | Prevents hallucinated commands and misuse |
 | Include verification steps in task workflows | Silent failures are worse than visible errors |
 | Split large domains into a skill suite | Multiple focused skills > one giant skill |

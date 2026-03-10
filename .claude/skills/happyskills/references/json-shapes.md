@@ -136,16 +136,16 @@ Or if not logged in:
 
 ## setup
 
-Installs `happyskillsai/happyskills-cli` globally (`~/.claude/skills/`). Always installs the latest version.
+Installs `happyskillsai/happyskills` globally (`~/.claude/skills/`). Always installs the latest version.
 
 ```json
-{ "data": { "skill": "happyskillsai/happyskills-cli", "version": "1.2.0", "status": "installed" } }
+{ "data": { "skill": "happyskillsai/happyskills", "version": "1.2.0", "status": "installed" } }
 ```
 
 Or if already current:
 
 ```json
-{ "data": { "skill": "happyskillsai/happyskills-cli", "version": "1.2.0", "status": "already_up_to_date" } }
+{ "data": { "skill": "happyskillsai/happyskills", "version": "1.2.0", "status": "already_up_to_date" } }
 ```
 
 `status`: "installed" = skill was freshly installed or upgraded, "already_up_to_date" = no change needed.
@@ -165,3 +165,11 @@ Or if an upgrade was applied:
 ```
 
 `status`: "already_up_to_date" = CLI is current, "updated" = CLI was upgraded. In non-json mode, npm install output streams directly to the terminal.
+
+## refresh
+
+```json
+{ "data": { "results": [{ "skill": "owner/name", "installed": "1.0.0", "latest": "1.1.0", "status": "outdated" }], "outdated_count": 1, "up_to_date_count": 2, "updated": [{ "skill": "owner/name", "from": "1.0.0", "to": "1.1.0" }], "already_up_to_date": [{ "skill": "owner/name2", "version": "2.0.0" }], "errors": [] } }
+```
+
+Combines `check` and `update --all`. `results` is the full check table. `updated` lists skills that were upgraded. `errors` lists skills that could not be checked or updated.
