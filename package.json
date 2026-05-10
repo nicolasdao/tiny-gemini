@@ -1,13 +1,14 @@
 {
   "name": "tiny-gemini",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Zero-dependency CLI for the Google Gemini API — text, images, TTS, search, and more via npx",
   "type": "module",
   "bin": {
     "tiny-gemini": "./cli.js"
   },
   "files": [
-    "cli.js"
+    "cli.js",
+    "models.json"
   ],
   "engines": {
     "node": ">=18.0.0"

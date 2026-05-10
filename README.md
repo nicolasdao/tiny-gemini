@@ -31,6 +31,7 @@ Then just ask naturally: *"Use Gemini to generate an image of a dog chasing a ca
   - [search](#search)
   - [research](#research)
   - [raw](#raw)
+  - [models](#models)
 - [Global Options](#global-options)
 - [Agentic Workflow (--prompt-file, --output-file)](#agentic-workflow---prompt-file---output-file)
   - [How It Works](#how-it-works)
@@ -199,6 +200,20 @@ echo '{"model":"...","input":"..."}' | tiny-gemini raw
 tiny-gemini raw --file request.json
 ```
 
+### models
+
+List the available Gemini models from an embedded snapshot. No API key required, no network call.
+
+```bash
+tiny-gemini models                       # human-readable table (alias for `models list`)
+tiny-gemini models list --type=image     # filter by type: text, image, audio, embeddings, agent
+tiny-gemini models list --status=ga      # filter by status: ga, preview, deprecated
+tiny-gemini models pricing               # pricing-only table
+tiny-gemini models list --json           # machine-readable
+```
+
+The data is a snapshot of [ai.google.dev/gemini-api/docs/models](https://ai.google.dev/gemini-api/docs/models) plus the pricing and deprecations pages — refreshed each release. Deprecated models surface their shutdown date and recommended replacement in the same row.
+
 ## Global Options
 
 | Option | Env Var | Default | Description |
@@ -364,7 +379,8 @@ The skill is set to `user-invocable: false` — Claude loads it automatically wh
 
 ```
 tiny-gemini/
-├── cli.js          # Single executable (~1070 lines, all logic)
+├── cli.js          # Single executable (~1300 lines, all logic)
+├── models.json     # Embedded snapshot of Gemini model registry + pricing
 ├── package.json    # NPX-ready with bin entry
 ├── CHANGELOG.md    # Release history (Keep a Changelog format)
 ├── LICENSE         # BSD-3-Clause

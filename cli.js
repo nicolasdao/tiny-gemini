@@ -3,6 +3,7 @@
 import { parseArgs } from 'node:util';
 import { writeFile, readFile, mkdir, access } from 'node:fs/promises';
 import { join, extname, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { platform, homedir } from 'node:os';
 import { exec } from 'node:child_process';
 
@@ -10,18 +11,34 @@ import { exec } from 'node:child_process';
 // Constants
 // ────────────────────────────────────────────────────────────────────
 
-const VERSION = '1.2.0';
+const VERSION = '2.0.0';
 const NAME = 'tiny-gemini';
 
 const MODELS = {
 	text: 'gemini-3-flash-preview',
 	image: 'gemini-3.1-flash-image-preview',
-	tts: 'gemini-2.5-flash-preview-tts',
-	research: 'deep-research-pro-preview-12-2025',
+	tts: 'gemini-3.1-flash-tts-preview',
+	research: 'deep-research-preview-04-2026',
 };
 
-const COMMANDS = ['prompt', 'image', 'tts', 'search', 'research', 'raw'];
+// Opt into the new Interactions API schema (steps/step.delta/etc.).
+// New schema becomes default 2026-05-26; legacy removed 2026-06-08.
+const API_REVISION = '2026-05-20';
+
+// Models scheduled for shutdown on 2026-10-16. After that date, refuse them.
+const SHUTDOWN_DATE = '2026-10-16';
+const SUNSET_MODELS = {
+	'gemini-2.5-pro': 'gemini-3.1-pro-preview',
+	'gemini-2.5-flash': 'gemini-3-flash-preview',
+	'gemini-2.5-flash-lite': 'gemini-3.1-flash-lite',
+};
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const MODELS_JSON_PATH = join(__dirname, 'models.json');
+
+const COMMANDS = ['prompt', 'image', 'tts', 'search', 'research', 'raw', 'models'];
 const IMAGE_SUBS = ['generate', 'edit', 'describe', 'story', 'icon', 'pattern', 'diagram'];
+const MODELS_SUBS = ['list', 'pricing'];
 
 const VARIATIONS = {
 	lighting: ['dramatic lighting', 'soft lighting'],
@@ -89,6 +106,19 @@ class APIError extends Error {
 		super(`API error ${status}: ${msg}`);
 		this.status = status;
 	}
+}
+
+function isPastShutdown() {
+	return new Date() >= new Date(SHUTDOWN_DATE + 'T00:00:00Z');
+}
+
+function checkSunset(model) {
+	const replacement = SUNSET_MODELS[model];
+	if (!replacement) return;
+	if (isPastShutdown()) {
+		die(`${model} was shut down on ${SHUTDOWN_DATE}. Use ${replacement} instead. See https://ai.google.dev/gemini-api/docs/deprecations`);
+	}
+	log(`Warning: ${model} is deprecated and will be removed on ${SHUTDOWN_DATE}. Use ${replacement} instead.`);
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -187,6 +217,7 @@ COMMANDS
   search [query]      Google Search-grounded generation
   research [topic]    Deep Research agent (background task)
   raw [json]          Raw JSON passthrough to Interactions API
+  models [sub]        List available Gemini models and pricing
 
 IMAGE SUB-COMMANDS
   generate [prompt]        Generate image(s) from text (default)
@@ -348,9 +379,32 @@ EXAMPLES
   ${NAME} raw --file request.json
 `.trim();
 
+const HELP_MODELS = `
+${NAME} models — List available Gemini models and pricing
+
+USAGE
+  ${NAME} models                  Same as: models list
+  ${NAME} models list             Human-readable model table
+  ${NAME} models pricing          Pricing-only table
+  ${NAME} models list --json      Machine-readable JSON
+  ${NAME} models list --type=text Filter by type (text|image|audio|embeddings|agent)
+  ${NAME} models list --status=ga Filter by status (ga|preview|deprecated)
+
+DATA SOURCE
+  Embedded snapshot of https://ai.google.dev/gemini-api/docs/models
+  and /pricing and /deprecations. Refreshed each release.
+
+EXAMPLES
+  ${NAME} models
+  ${NAME} models list --type=image
+  ${NAME} models list --status=deprecated
+  ${NAME} models pricing --json
+`.trim();
+
 const HELP_MAP = {
 	prompt: HELP_PROMPT, image: HELP_IMAGE, tts: HELP_TTS,
 	search: HELP_SEARCH, research: HELP_RESEARCH, raw: HELP_RAW,
+	models: HELP_MODELS,
 };
 
 function showHelp(command) {
@@ -361,13 +415,18 @@ function showHelp(command) {
 // API Client
 // ────────────────────────────────────────────────────────────────────
 
+function apiHeaders(config) {
+	return {
+		'Content-Type': 'application/json',
+		'x-goog-api-key': config.apiKey,
+		'Api-Revision': API_REVISION,
+	};
+}
+
 async function callAPI(config, body) {
 	const res = await fetch(`${config.apiBase}/interactions`, {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'x-goog-api-key': config.apiKey,
-		},
+		headers: apiHeaders(config),
 		body: JSON.stringify(body),
 	});
 	if (!res.ok) throw new APIError(res.status, await res.text());
@@ -377,10 +436,7 @@ async function callAPI(config, body) {
 async function callAPIStream(config, body, outputFile, outputFormat) {
 	const res = await fetch(`${config.apiBase}/interactions?alt=sse`, {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'x-goog-api-key': config.apiKey,
-		},
+		headers: apiHeaders(config),
 		body: JSON.stringify({ ...body, stream: true }),
 	});
 	if (!res.ok) throw new APIError(res.status, await res.text());
@@ -390,6 +446,10 @@ async function callAPIStream(config, body, outputFile, outputFormat) {
 	let buf = '';
 	let wrote = false;
 	const chunks = outputFile ? [] : null;
+
+	// Accept both legacy (content.delta) and new (step.delta) event names so the
+	// CLI works during the May 7–June 8 transition window without rev pinning.
+	const DELTA_EVENTS = new Set(['content.delta', 'step.delta']);
 
 	while (true) {
 		const { done, value } = await reader.read();
@@ -404,7 +464,7 @@ async function callAPIStream(config, body, outputFile, outputFormat) {
 			if (line.startsWith('event: ')) {
 				eventType = line.slice(7).trim();
 			} else if (line.startsWith('data: ')) {
-				if (eventType === 'content.delta') {
+				if (DELTA_EVENTS.has(eventType)) {
 					const d = tryJSON(line.slice(6));
 					if (d?.delta?.type === 'text') {
 						if (chunks) {
@@ -437,14 +497,37 @@ async function callAPIStream(config, body, outputFile, outputFormat) {
 	}
 }
 
+// Reads from the new `steps` array if present, falling back to the legacy
+// `outputs` array. Each item may carry content directly (legacy shape) or
+// nested in a `content` array (new shape).
 function extractOutputs(response) {
 	const r = { text: [], images: [], audio: [], functions: [] };
-	if (!response?.outputs) return r;
-	for (const o of response.outputs) {
-		if (o.type === 'text') r.text.push(o.text);
-		else if (o.type === 'image') r.images.push({ data: o.data, mime: o.mime_type });
-		else if (o.type === 'audio') r.audio.push({ data: o.data, mime: o.mime_type });
-		else if (o.type === 'function_call') r.functions.push(o);
+	const items = response?.steps || response?.outputs || [];
+	for (const item of items) {
+		if (item.type === 'function_call') {
+			r.functions.push(item);
+			continue;
+		}
+		if (item.type === 'text' && typeof item.text === 'string') {
+			r.text.push(item.text);
+			continue;
+		}
+		if (item.type === 'image' && item.data) {
+			r.images.push({ data: item.data, mime: item.mime_type });
+			continue;
+		}
+		if (item.type === 'audio' && item.data) {
+			r.audio.push({ data: item.data, mime: item.mime_type });
+			continue;
+		}
+		if (Array.isArray(item.content)) {
+			for (const part of item.content) {
+				if (part.type === 'text') r.text.push(part.text);
+				else if (part.type === 'image') r.images.push({ data: part.data, mime: part.mime_type });
+				else if (part.type === 'audio') r.audio.push({ data: part.data, mime: part.mime_type });
+				else if (part.type === 'function_call') r.functions.push(part);
+			}
+		}
 	}
 	return r;
 }
@@ -452,7 +535,7 @@ function extractOutputs(response) {
 async function pollCompletion(config, id) {
 	while (true) {
 		const res = await fetch(`${config.apiBase}/interactions/${id}`, {
-			headers: { 'x-goog-api-key': config.apiKey },
+			headers: { 'x-goog-api-key': config.apiKey, 'Api-Revision': API_REVISION },
 		});
 		if (!res.ok) throw new APIError(res.status, await res.text());
 		const data = await res.json();
@@ -712,6 +795,7 @@ async function handlePrompt(prompt, values, config) {
 	const promptFiles = values['prompt-file'];
 	if (!prompt && !promptFiles?.length) die('No prompt provided. Usage: tiny-gemini "your prompt"');
 	const model = config.model || MODELS.text;
+	checkSunset(model);
 	const body = { model };
 
 	// Build text prompt from user text + prompt files
@@ -741,7 +825,7 @@ async function handlePrompt(prompt, values, config) {
 			schema = tryJSON(await readFile(values.schema, 'utf-8'));
 		}
 		if (!schema) die('Invalid --schema: must be a JSON string or path to a JSON file');
-		body.response_format = schema;
+		body.response_format = { type: 'text', mime_type: 'application/json', schema };
 	}
 
 	if (config.jsonOutput) {
@@ -792,18 +876,15 @@ async function handleImage(args, values, config) {
 	if (rest.length && IMAGE_SUBS.includes(rest[0])) sub = rest.shift();
 
 	const model = config.model || (sub === 'describe' ? MODELS.text : MODELS.image);
+	checkSunset(model);
 	const imgConfig = { ...config, model };
 
-	const genConfig = {};
-	if (values['aspect-ratio']) {
-		genConfig.image_config = genConfig.image_config || {};
-		genConfig.image_config.aspect_ratio = values['aspect-ratio'];
-	}
-	if (values['image-size']) {
-		genConfig.image_config = genConfig.image_config || {};
-		genConfig.image_config.image_size = values['image-size'];
-	}
-	const hasGenConfig = Object.keys(genConfig).length > 0;
+	// New schema (May 2026): aspect_ratio + image_size live inside response_format
+	// with type:"image", not under generation_config.image_config.
+	const imageResponseFormat = { type: 'image' };
+	if (values['aspect-ratio']) imageResponseFormat.aspect_ratio = values['aspect-ratio'];
+	if (values['image-size']) imageResponseFormat.image_size = values['image-size'];
+	const hasImageConfig = values['aspect-ratio'] || values['image-size'];
 
 	switch (sub) {
 		case 'generate': {
@@ -817,7 +898,7 @@ async function handleImage(args, values, config) {
 			for (let i = 0; i < prompts.length; i++) {
 				log(`Generating image ${i + 1}/${prompts.length}...`);
 				const body = { model, input: prompts[i], response_modalities: ['IMAGE'] };
-				if (hasGenConfig) body.generation_config = genConfig;
+				if (hasImageConfig) body.response_format = imageResponseFormat;
 
 				if (config.jsonOutput) {
 					console.log(JSON.stringify(await callAPI(imgConfig, body), null, 2));
@@ -848,7 +929,7 @@ async function handleImage(args, values, config) {
 				],
 				response_modalities: ['IMAGE'],
 			};
-			if (hasGenConfig) body.generation_config = genConfig;
+			if (hasImageConfig) body.response_format = imageResponseFormat;
 
 			log('Editing image...');
 			if (config.jsonOutput) {
@@ -900,7 +981,7 @@ async function handleImage(args, values, config) {
 			for (let i = 0; i < prompts.length; i++) {
 				log(`Generating step ${i + 1}/${prompts.length}...`);
 				const body = { model, input: prompts[i], response_modalities: ['IMAGE'] };
-				if (hasGenConfig) body.generation_config = genConfig;
+				if (hasImageConfig) body.response_format = imageResponseFormat;
 				const resp = await callAPI(imgConfig, body);
 				const out = extractOutputs(resp);
 				for (const img of out.images) {
@@ -915,7 +996,7 @@ async function handleImage(args, values, config) {
 			const engineered = buildIconPrompt(prompt, values);
 			log('Generating icon...');
 			const body = { model, input: engineered, response_modalities: ['IMAGE'] };
-			if (hasGenConfig) body.generation_config = genConfig;
+			if (hasImageConfig) body.response_format = imageResponseFormat;
 			const resp = await callAPI(imgConfig, body);
 			const out = extractOutputs(resp);
 			for (const img of out.images) {
@@ -929,7 +1010,7 @@ async function handleImage(args, values, config) {
 			const engineered = buildPatternPrompt(prompt, values);
 			log('Generating pattern...');
 			const body = { model, input: engineered, response_modalities: ['IMAGE'] };
-			if (hasGenConfig) body.generation_config = genConfig;
+			if (hasImageConfig) body.response_format = imageResponseFormat;
 			const resp = await callAPI(imgConfig, body);
 			const out = extractOutputs(resp);
 			for (const img of out.images) {
@@ -943,7 +1024,7 @@ async function handleImage(args, values, config) {
 			const engineered = buildDiagramPrompt(prompt, values);
 			log('Generating diagram...');
 			const body = { model, input: engineered, response_modalities: ['IMAGE'] };
-			if (hasGenConfig) body.generation_config = genConfig;
+			if (hasImageConfig) body.response_format = imageResponseFormat;
 			const resp = await callAPI(imgConfig, body);
 			const out = extractOutputs(resp);
 			for (const img of out.images) {
@@ -957,6 +1038,7 @@ async function handleImage(args, values, config) {
 async function handleTTS(text, values, config) {
 	if (!text) die('No text. Usage: tiny-gemini tts "your text"');
 	const model = config.model || MODELS.tts;
+	checkSunset(model);
 	const voice = values.voice || 'kore';
 	const language = values.language || 'en-us';
 
@@ -989,6 +1071,7 @@ async function handleTTS(text, values, config) {
 async function handleSearch(query, values, config) {
 	if (!query) die('No query. Usage: tiny-gemini search "your query"');
 	const model = config.model || MODELS.text;
+	checkSunset(model);
 	const body = {
 		model,
 		input: query,
@@ -1025,6 +1108,7 @@ async function handleSearch(query, values, config) {
 async function handleResearch(topic, values, config) {
 	if (!topic) die('No topic. Usage: tiny-gemini research "your topic"');
 	const agent = config.model || MODELS.research;
+	checkSunset(agent);
 	const body = { agent, input: topic, background: true };
 
 	log('Starting deep research...');
@@ -1069,6 +1153,76 @@ async function handleRaw(jsonStr, values, config) {
 }
 
 // ────────────────────────────────────────────────────────────────────
+// Models registry — reads embedded models.json snapshot
+// ────────────────────────────────────────────────────────────────────
+
+async function loadModelsRegistry() {
+	if (!(await exists(MODELS_JSON_PATH))) {
+		die(`models.json not found at ${MODELS_JSON_PATH}. Reinstall tiny-gemini.`);
+	}
+	const data = tryJSON(await readFile(MODELS_JSON_PATH, 'utf-8'));
+	if (!data?.models) die('models.json is malformed');
+	return data;
+}
+
+function formatPriceRange(low, high) {
+	if (low == null) return '—';
+	if (high == null) return low.toFixed(2);
+	return `${low.toFixed(2)}–${high.toFixed(2)}`;
+}
+
+function rowsToTable(headers, rows) {
+	const widths = headers.map((h, i) => Math.max(h.length, ...rows.map(r => String(r[i] ?? '').length)));
+	const fmt = (cells) => cells.map((c, i) => String(c ?? '').padEnd(widths[i])).join('  ').trimEnd();
+	const sep = widths.map(w => '─'.repeat(w)).join('  ');
+	return [fmt(headers), sep, ...rows.map(fmt)].join('\n');
+}
+
+function applyModelFilters(models, type, status) {
+	let out = models;
+	if (type) out = out.filter(m => m.type === type);
+	if (status) out = out.filter(m => m.status === status);
+	return out;
+}
+
+async function handleModels(args, values) {
+	const sub = args[0] && MODELS_SUBS.includes(args[0]) ? args[0] : 'list';
+	const { snapshot_date, source, models } = await loadModelsRegistry();
+	const filtered = applyModelFilters(models, values.type, values.status);
+
+	if (values['json-output'] || values.json) {
+		console.log(JSON.stringify(filtered, null, 2));
+		return;
+	}
+
+	if (sub === 'pricing') {
+		const rows = filtered.map(m => {
+			const p = m.pricing || {};
+			const input = formatPriceRange(p.input_per_1m, p.input_per_1m_over_200k);
+			const output = formatPriceRange(p.output_per_1m, p.output_per_1m_over_200k);
+			return [m.id, input, output, p.notes || ''];
+		});
+		console.log(rowsToTable(['ID', 'IN $/1M', 'OUT $/1M', 'NOTES'], rows));
+		log(`\nSnapshot: ${snapshot_date} — ${source}`);
+		return;
+	}
+
+	const rows = filtered.map(m => {
+		const p = m.pricing || {};
+		const input = formatPriceRange(p.input_per_1m, p.input_per_1m_over_200k);
+		const output = formatPriceRange(p.output_per_1m, p.output_per_1m_over_200k);
+		const fate = m.shutdown_on
+			? `shutdown ${m.shutdown_on} → ${m.replacement || '?'}`
+			: m.replacement
+				? `→ ${m.replacement}`
+				: '';
+		return [m.id, m.type, m.status, input, output, m.free_tier ? 'yes' : 'no', fate];
+	});
+	console.log(rowsToTable(['ID', 'TYPE', 'STATUS', 'IN $/1M', 'OUT $/1M', 'FREE', 'NOTES'], rows));
+	log(`\nSnapshot: ${snapshot_date} — ${source}`);
+}
+
+// ────────────────────────────────────────────────────────────────────
 // Main
 // ────────────────────────────────────────────────────────────────────
 
@@ -1107,6 +1261,8 @@ async function main() {
 			transition: { type: 'string' },
 			'aspect-ratio': { type: 'string' },
 			'image-size': { type: 'string' },
+			status: { type: 'string' },
+			json: { type: 'boolean' },
 			help: { type: 'boolean', short: 'h' },
 			version: { type: 'boolean', short: 'v' },
 		},
@@ -1135,6 +1291,12 @@ async function main() {
 	// No args at all → show help
 	if (!args.length && command === 'prompt' && !values.file && !values['prompt-file']?.length) {
 		showHelp();
+		return;
+	}
+
+	// `models` is offline — runs before API-key resolution.
+	if (command === 'models') {
+		await handleModels(args, values);
 		return;
 	}
 

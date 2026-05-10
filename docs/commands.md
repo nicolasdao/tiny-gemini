@@ -55,6 +55,10 @@ Complete reference for every command, sub-command, and option. Includes the exac
 - [raw](#raw)
   - [Input Sources](#input-sources)
   - [Raw Request Handling](#raw-request-handling)
+- [models](#models)
+  - [Sub-Commands](#sub-commands)
+  - [Filters](#filters)
+  - [Output Format](#output-format)
 
 ## prompt
 
@@ -192,15 +196,21 @@ When combined with `--file` (multimodal), the prompt-file content is included in
 
 #### With Schema
 
+The `--schema` flag wraps your JSON schema in `response_format` with `type: "text"` and `mime_type: "application/json"`, per the May 2026 Interactions API schema:
+
 ```json
 {
   "model": "gemini-3-flash-preview",
   "input": "Extract name and age from: John is 30",
   "response_format": {
-    "type": "object",
-    "properties": {
-      "name": { "type": "string" },
-      "age": { "type": "integer" }
+    "type": "text",
+    "mime_type": "application/json",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "age": { "type": "integer" }
+      }
     }
   }
 }
@@ -272,17 +282,16 @@ Styles and variations can be combined. `--count` limits total output.
 }
 ```
 
-With image config:
+With image config (post-2026-05 schema — `image_config` lives inside `response_format` with `"type": "image"`):
 ```json
 {
   "model": "gemini-3.1-flash-image-preview",
   "input": "a yellow banana wearing sunglasses",
   "response_modalities": ["IMAGE"],
-  "generation_config": {
-    "image_config": {
-      "aspect_ratio": "16:9",
-      "image_size": "2K"
-    }
+  "response_format": {
+    "type": "image",
+    "aspect_ratio": "16:9",
+    "image_size": "2K"
   }
 }
 ```
@@ -436,7 +445,7 @@ Values: `512px` (gemini-3.1-flash only), `1K` (default), `2K`, `4K`. Must use up
 
 Text-to-speech. Generates audio and saves as a `.wav` file.
 
-Default model: `gemini-2.5-flash-preview-tts`
+Default model: `gemini-3.1-flash-tts-preview`
 
 ```bash
 tiny-gemini tts "Hello, how are you today?"
@@ -454,7 +463,7 @@ tiny-gemini tts "Bonjour le monde" --voice=kore --language=fr-fr
 
 ```json
 {
-  "model": "gemini-2.5-flash-preview-tts",
+  "model": "gemini-3.1-flash-tts-preview",
   "input": "Hello, how are you today?",
   "response_modalities": ["AUDIO"],
   "generation_config": {
@@ -509,17 +518,18 @@ The response may contain both text outputs and search metadata. The CLI extracts
 
 Deep Research agent. Submits a research topic and polls for completion.
 
-Default agent: `deep-research-pro-preview-12-2025`
+Default agent: `deep-research-preview-04-2026`. For a comprehensive (longer, slower) variant, pass `--model=deep-research-max-preview-04-2026`.
 
 ```bash
 tiny-gemini research "History of Google TPUs focusing on 2025-2026"
+tiny-gemini research "Comprehensive analysis of TPU history" --model=deep-research-max-preview-04-2026
 ```
 
 ### Research Request Body
 
 ```json
 {
-  "agent": "deep-research-pro-preview-12-2025",
+  "agent": "deep-research-preview-04-2026",
   "input": "History of Google TPUs focusing on 2025-2026",
   "background": true
 }
@@ -555,4 +565,58 @@ The JSON body can come from three sources (checked in this order):
 
 ### Raw Request Handling
 
-The JSON body is sent directly to `POST /interactions` without any modification. The raw JSON response is printed to stdout with 2-space indentation.
+The JSON body is sent directly to `POST /interactions` without any modification. The CLI does add the `Api-Revision: 2026-05-20` header, so responses use the post-2026-05 schema (`steps` array, renamed SSE events). The raw JSON response is printed to stdout with 2-space indentation.
+
+## models
+
+Lists the embedded model registry. **No API key required, no network call** — reads `models.json` shipped with the package.
+
+```bash
+tiny-gemini models                       # alias for `models list`
+tiny-gemini models list                  # human-readable table
+tiny-gemini models pricing               # pricing-only table
+tiny-gemini models list --json           # machine-readable JSON
+tiny-gemini models list --type=image     # filter by type
+tiny-gemini models list --status=ga      # filter by status
+```
+
+### Sub-Commands
+
+| Sub-command | Description |
+|-------------|-------------|
+| `list` (default) | Full model table with type, status, pricing, free-tier flag, and replacement notes |
+| `pricing` | Pricing-only table with input/output costs and notes |
+
+### Filters
+
+| Flag | Values |
+|------|--------|
+| `--type` | `text`, `image`, `audio`, `embeddings`, `agent` |
+| `--status` | `ga`, `preview`, `deprecated` |
+| `--json` | Output JSON (the full registry shape, after filters applied) |
+
+### Output Format
+
+`--json` returns an array of objects with this shape:
+
+```json
+{
+  "id": "gemini-3-flash-preview",
+  "type": "text",
+  "status": "preview",
+  "context_window": 1048576,
+  "capabilities": ["text", "vision", "function_calling", "..."],
+  "pricing": {
+    "input_per_1m": 0.50,
+    "output_per_1m": 3.00,
+    "currency": "USD",
+    "notes": null
+  },
+  "deprecated_on": null,
+  "shutdown_on": null,
+  "replacement": null,
+  "free_tier": true
+}
+```
+
+Tiered models (e.g., `gemini-3.1-pro-preview`) include `input_per_1m_over_200k` / `output_per_1m_over_200k` for the >200k tier; cache pricing models include `cache_read_per_1m` and `cache_storage_per_1m_per_hour`. Models with deprecation set carry `deprecated_on` (announce date), `shutdown_on` (removal date), and `replacement` (recommended successor).

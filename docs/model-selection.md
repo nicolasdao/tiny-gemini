@@ -1,6 +1,6 @@
 # Model Selection Guide
 
-Which Gemini model should you use? This document gives you one unambiguous answer for every use case. Pricing is from March 2026 (per 1M tokens unless noted).
+Which Gemini model should you use? This document gives you one unambiguous answer for every use case. Snapshot is May 2026 (per 1M tokens unless noted). For the live registry, run `npx tiny-gemini models`.
 
 ## Decision Rules
 
@@ -9,28 +9,34 @@ Follow these rules in order. The FIRST match is your answer.
 1. **Generating images and need professional quality or accurate text rendering?** Use `gemini-3-pro-image-preview`.
 2. **Generating images?** Use `gemini-3.1-flash-image-preview`.
 3. **Generating images at the lowest possible cost (1K resolution acceptable)?** Use `gemini-2.5-flash-image`.
-4. **Generating speech from text?** Use `gemini-2.5-flash-preview-tts`.
-5. **Running deep research (multi-minute autonomous investigation)?** Use `deep-research-pro-preview-12-2025` (agent, not model).
-6. **Need Remote MCP tool integration?** Use `gemini-2.5-flash` (Gemini 3 models do not support Remote MCP yet).
-7. **Need maximum reasoning quality regardless of cost?** Use `gemini-3.1-pro-preview`.
-8. **Need the cheapest possible text generation?** Use `gemini-2.5-flash-lite`.
-9. **Everything else (text, multimodal understanding, function calling, structured output, streaming)?** Use `gemini-3-flash-preview`.
+4. **Generating speech from text?** Use `gemini-3.1-flash-tts-preview`.
+5. **Native speech-in / speech-out conversation (not TTS)?** Use `gemini-2.5-flash-native-audio-preview-12-2025`.
+6. **Running deep research (multi-minute autonomous investigation)?** Use `deep-research-preview-04-2026` (speed-optimized) or `deep-research-max-preview-04-2026` (comprehensive). These are agents, not models — set the request `agent` field, not `model`, and require `background: true`.
+7. **Generating multimodal embeddings?** Use `gemini-embedding-2`.
+8. **Need Remote MCP tool integration?** Use `gemini-2.5-flash` (Gemini 3 models do not support Remote MCP yet, and `gemini-2.5-flash` is being shut down on 2026-10-16 — plan accordingly).
+9. **Need maximum reasoning quality regardless of cost?** Use `gemini-3.1-pro-preview`.
+10. **Need the cheapest possible text generation?** Use `gemini-3.1-flash-lite`.
+11. **Everything else (text, multimodal understanding, function calling, structured output, streaming)?** Use `gemini-3-flash-preview`.
 
 ## All Models
 
-| Model ID | Type | Use Case | Capabilities | Cost (Paid Tier) | Free Tier |
-|----------|------|----------|--------------|------------------|-----------|
-| `gemini-3-flash-preview` | Text | Default for all text tasks | Text gen, multimodal understanding (image/audio/video input), function calling, structured output (JSON schema), streaming, Google Search grounding, thinking levels (minimal to high) | In: $0.50 / Out: $3.00 | Yes |
-| `gemini-3.1-pro-preview` | Text | Hardest reasoning problems | Most capable model, deepest reasoning, largest context | In: $2–4 / Out: $12–18 | No |
-| `gemini-2.5-flash` | Text | Remote MCP, stable workloads | Text gen, multimodal understanding, Remote MCP support, streaming | In: $0.30 / Out: $2.50 | Yes |
-| `gemini-2.5-pro` | Text | Stable production (non-preview) | Strong reasoning, stable API, multimodal understanding | In: $1.25–2.50 / Out: $10–15 | Yes |
-| `gemini-2.5-flash-lite` | Text | High-volume simple tasks | Lightweight text gen, cheapest option | In: $0.10 / Out: $0.40 | Yes |
-| `gemini-3.1-flash-image-preview` | Image | Default for all image generation | Text-to-image, image editing, 512px/1K/2K/4K output, up to 14 reference images (10 objects + 4 characters), Google Web + Image Search grounding, thinking mode, all 14 aspect ratios | In: $0.50 / Out: $60 (images), $3 (text) | No |
-| `gemini-3-pro-image-preview` | Image | Professional assets, complex instructions | Text-to-image, image editing, 1K/2K/4K output, up to 14 reference images (6 objects + 5 characters), Google Web Search grounding, thinking mode, best text rendering in images, 10 aspect ratios | In: $2.00 / Out: $120 (images), $12 (text) | No |
-| `gemini-2.5-flash-image` | Image | Cheapest image generation | Text-to-image, image editing, 1K output only, up to 3 input images, 10 aspect ratios | In: $0.30 / Out: ~$0.039/image | Yes |
-| `gemini-2.5-flash-preview-tts` | Audio | Text-to-speech | Text to WAV audio, multi-speaker, multiple languages | In: $0.50 / Out: $10 (audio) | Yes |
-| `deep-research-pro-preview-12-2025` | Agent | Autonomous deep research | Multi-minute research reports, requires `background: true`, uses `agent` field (not `model`) | Pro-tier pricing | No |
-| `gemini-2.5-computer-use-preview-10-2025` | Specialized | UI automation | Screen interaction, computer control | In: $1.25–2.50 / Out: $10–15 | No |
+| Model ID | Type | Status | Use Case | Cost (per 1M tokens) | Free Tier |
+|----------|------|--------|----------|----------------------|-----------|
+| `gemini-3-flash-preview` | Text | Preview | Default for all text tasks | In: $0.50 / Out: $3.00 | Yes |
+| `gemini-3.1-pro-preview` | Text | Preview | Hardest reasoning problems | In: $2/$4 (≤200k/>200k) / Out: $12/$18. Cache reads $0.20, cache storage $4.50/hour | No |
+| `gemini-3.1-flash-lite` | Text | GA | Cheapest text generation in the Gemini 3 family | In: $0.25 / Out: $1.50 | Yes |
+| `gemini-2.5-flash` | Text | **Deprecated** (shutdown 2026-10-16, → `gemini-3-flash-preview`) | Currently the only path to Remote MCP | In: $0.30 / Out: $2.50 | Yes |
+| `gemini-2.5-pro` | Text | **Deprecated** (shutdown 2026-10-16, → `gemini-3.1-pro-preview`) | — | In: $1.25/$2.50 / Out: $10/$15 | Yes |
+| `gemini-2.5-flash-lite` | Text | **Deprecated** (shutdown 2026-10-16, → `gemini-3.1-flash-lite`) | — | In: $0.10 / Out: $0.40 | Yes |
+| `gemini-3.1-flash-image-preview` | Image | Preview | Default for image generation. Up to 4K, up to 14 reference images, 14 aspect ratios | In: $0.50 / Out: $60 (images), $3 (text) | No |
+| `gemini-3-pro-image-preview` | Image | Preview | Professional assets, complex instructions, best in-image text | In: $2.00 / Out: $120 (images), $12 (text) | No |
+| `gemini-2.5-flash-image` | Image | GA | Cheapest image generation. 1K only | In: $0.30 / Out: ~$0.039/image | Yes |
+| `gemini-3.1-flash-tts-preview` | Audio | Preview | Default for text-to-speech | In: $1.00 / Out: $20.00 | No |
+| `gemini-2.5-flash-preview-tts` | Audio | **Deprecated** (no shutdown date yet, → `gemini-3.1-flash-tts-preview`) | — | In: $0.50 / Out: $10 | Yes |
+| `gemini-2.5-flash-native-audio-preview-12-2025` | Audio | Preview | Native speech-in / speech-out (distinct from TTS) | In: $0.50 text / $3 audio. Out: $2 text / $12 audio | No |
+| `gemini-embedding-2` | Embeddings | GA | Multimodal embeddings (text, image, video, audio, PDF) | $0.20 in / — out | Yes |
+| `deep-research-preview-04-2026` | Agent | Preview | Autonomous deep research (speed-optimized) | Billed via underlying model | No |
+| `deep-research-max-preview-04-2026` | Agent | Preview | Autonomous deep research (comprehensive variant) | Billed via underlying model | No |
 
 ## Image Model Comparison
 
@@ -53,22 +59,22 @@ Use this when choosing between the three image models.
 
 ## Text Model Comparison
 
-Use this when choosing between text models.
+Use this when choosing between text models. The Gemini 2.5 family is in the table for context — they are deprecated and will shut down on 2026-10-16.
 
-| Capability | `gemini-2.5-flash-lite` | `gemini-2.5-flash` | `gemini-3-flash-preview` | `gemini-2.5-pro` | `gemini-3.1-pro-preview` |
-|------------|:-----------------------:|:-------------------:|:------------------------:|:-----------------:|:------------------------:|
-| Output cost (per 1M tokens) | $0.40 | $2.50 | $3.00 | $10–15 | $12–18 |
-| Reasoning quality | Basic | Good | Very good | Strong | Best |
-| Thinking level control | No | No | Yes (minimal→high) | No | No |
-| Multimodal input | Yes | Yes | Yes | Yes | Yes |
-| Function calling | Yes | Yes | Yes | Yes | Yes |
-| Structured output | Yes | Yes | Yes | Yes | Yes |
-| Streaming | Yes | Yes | Yes | Yes | Yes |
-| Remote MCP | No | Yes | No (coming soon) | No | No |
-| API stability | Stable | Stable | Preview | Stable | Preview |
-| Free tier | Yes | Yes | Yes | Yes | No |
+| Capability | `gemini-3.1-flash-lite` | `gemini-3-flash-preview` | `gemini-3.1-pro-preview` |
+|------------|:-----------------------:|:------------------------:|:------------------------:|
+| Output cost (per 1M tokens) | $1.50 | $3.00 | $12–18 |
+| Reasoning quality | Good | Very good | Best |
+| Thinking level control | No | Yes (minimal→high) | Yes |
+| Multimodal input | Yes | Yes | Yes |
+| Function calling | Yes | Yes | Yes |
+| Structured output | Yes | Yes | Yes |
+| Streaming | Yes | Yes | Yes |
+| Remote MCP | No | No (coming soon) | No |
+| API stability | Stable (GA) | Preview | Preview |
+| Free tier | Yes | Yes | No |
 
-**Rule of thumb:** Start with `gemini-3-flash-preview`. It handles the vast majority of text tasks well. Move to `gemini-3.1-pro-preview` for problems that require deeper reasoning. Move to `gemini-2.5-flash-lite` when cost matters more than quality.
+**Rule of thumb:** Start with `gemini-3-flash-preview`. It handles the vast majority of text tasks well. Move to `gemini-3.1-pro-preview` for problems that require deeper reasoning. Move to `gemini-3.1-flash-lite` when cost matters more than quality.
 
 ## CLI Defaults
 
@@ -79,8 +85,22 @@ The `tiny-gemini` CLI uses these defaults (overridable with `--model`):
 | `prompt` | `gemini-3-flash-preview` |
 | `image` (generate, edit, story, icon, pattern, diagram) | `gemini-3.1-flash-image-preview` |
 | `image describe` | `gemini-3-flash-preview` |
-| `tts` | `gemini-2.5-flash-preview-tts` |
+| `tts` | `gemini-3.1-flash-tts-preview` |
 | `search` | `gemini-3-flash-preview` |
-| `research` | `deep-research-pro-preview-12-2025` |
+| `research` | `deep-research-preview-04-2026` |
 
-To override: `tiny-gemini image "a cat" --model=gemini-3.1-flash-image-preview`
+To override: `tiny-gemini image "a cat" --model=gemini-3-pro-image-preview`
+
+If you pass `--model` resolving to `gemini-2.5-pro`, `gemini-2.5-flash`, or `gemini-2.5-flash-lite`, the CLI prints a deprecation warning to stderr and proceeds. After 2026-10-16 it fails fast with a link to the deprecation page.
+
+## Live Discovery
+
+Prefer the CLI over reading this doc — the embedded registry stays in sync with releases:
+
+```bash
+tiny-gemini models                       # all models
+tiny-gemini models list --type=image     # filter
+tiny-gemini models list --status=deprecated
+tiny-gemini models pricing
+tiny-gemini models list --json           # for scripting
+```

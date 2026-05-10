@@ -15,6 +15,7 @@ This document explains the internal structure of `cli.js`, how the pieces fit to
     - [Priority Chain](#priority-chain)
   - [Section 5: Help Text (lines 139-320)](#section-5-help-text-lines-139-320)
   - [Section 6: API Client (lines 322-420)](#section-6-api-client-lines-322-420)
+    - [apiHeaders](#apiheaders)
     - [callAPI](#callapi)
     - [callAPIStream](#callapistream)
     - [extractOutputs](#extractoutputs)
@@ -82,14 +83,24 @@ cli.js (~1070 lines)
 const MODELS = {
     text: 'gemini-3-flash-preview',
     image: 'gemini-3.1-flash-image-preview',
-    tts: 'gemini-2.5-flash-preview-tts',
-    research: 'deep-research-pro-preview-12-2025',
+    tts: 'gemini-3.1-flash-tts-preview',
+    research: 'deep-research-preview-04-2026',
+};
+
+const API_REVISION = '2026-05-20';   // opt into new Interactions schema
+const SHUTDOWN_DATE = '2026-10-16';  // gemini-2.5-* family hard removal
+const SUNSET_MODELS = {
+    'gemini-2.5-pro': 'gemini-3.1-pro-preview',
+    'gemini-2.5-flash': 'gemini-3-flash-preview',
+    'gemini-2.5-flash-lite': 'gemini-3.1-flash-lite',
 };
 ```
 
-- `COMMANDS` — recognized top-level commands: `prompt`, `image`, `tts`, `search`, `research`, `raw`
+- `COMMANDS` — recognized top-level commands: `prompt`, `image`, `tts`, `search`, `research`, `raw`, `models`
 - `IMAGE_SUBS` — image sub-commands: `generate`, `edit`, `describe`, `story`, `icon`, `pattern`, `diagram`
+- `MODELS_SUBS` — models sub-commands: `list`, `pricing`
 - `VARIATIONS` — variation map for batch image generation (7 categories, 2 alternatives each)
+- `MODELS_JSON_PATH` — absolute path to the embedded model registry, resolved relative to `cli.js` via `import.meta.url`
 
 ### Section 2: Utilities (lines 36-58)
 
@@ -99,6 +110,8 @@ const MODELS = {
 - `exists()` — async file existence check via `access()`
 - `tryJSON()` — safe JSON parse returning null on failure
 - `APIError` — error class that extracts the API error message from response body
+- `isPastShutdown()` — returns `true` once the system clock has crossed `SHUTDOWN_DATE`
+- `checkSunset(model)` — if the model is in `SUNSET_MODELS`, prints a stderr warning naming the replacement; after shutdown, calls `die()` instead
 
 ### Section 3: .env Loader (lines 60-113)
 
@@ -147,7 +160,15 @@ Help is triggered by `--help` or `-h`. The `--help` flag is checked **after** co
 
 ### Section 6: API Client (lines 322-420)
 
-Four functions handle all API communication:
+Five functions handle all API communication:
+
+#### apiHeaders
+
+```javascript
+function apiHeaders(config) → { 'Content-Type', 'x-goog-api-key', 'Api-Revision' }
+```
+
+Centralized header builder. Always sets `Api-Revision: 2026-05-20` to opt into the post-2026-05 Interactions API schema (`steps` array, renamed SSE events).
 
 #### callAPI
 
@@ -167,7 +188,7 @@ POST to `/interactions?alt=sse` with `stream: true` in body. Reads the response 
 
 When `outputFile` is not set, text deltas are written directly to stdout. When `outputFile` is set, text chunks are accumulated in an array (nothing is printed during streaming), and at the end the accumulated text is written to the output file using the same plain/manifest logic as non-streaming mode.
 
-The SSE parser maintains a buffer and splits on newlines. It tracks the current `event:` type and only processes `data:` lines when the event type is `content.delta`. Empty lines reset the event type (SSE event boundary).
+The SSE parser maintains a buffer and splits on newlines. It tracks the current `event:` type and processes `data:` lines when the event type matches `step.delta` (new) or `content.delta` (legacy). Empty lines reset the event type (SSE event boundary). The dual-name match keeps the parser working through the May→June 2026 transition.
 
 **Current limitation:** Only text deltas are extracted during streaming. Images and audio from streaming responses are not captured.
 
@@ -177,7 +198,7 @@ The SSE parser maintains a buffer and splits on newlines. It tracks the current 
 function extractOutputs(response) → { text: string[], images: [], audio: [], functions: [] }
 ```
 
-Categorizes the `outputs` array from a non-streaming response by type. Used by all command handlers to process results.
+Categorizes either the new `steps` array or the legacy `outputs` array from a non-streaming response by type. Each item may carry `text`/`data` directly (legacy or simple step shapes) or nest its parts in a `content` array (new step shape). Used by all command handlers to process results.
 
 #### pollCompletion
 
@@ -263,6 +284,9 @@ Each command has a handler function:
 | `handleSearch` | `search` | Adds Google Search tool, supports `--output-file`, `--output-format` |
 | `handleResearch` | `research` | Uses agent + background polling |
 | `handleRaw` | `raw` | Reads from arg, `--file`, or stdin |
+| `handleModels` | `models` | Reads `models.json`, prints table or JSON. Runs **before** API key resolution — no key needed |
+
+All API-bound handlers call `checkSunset(model)` immediately after resolving the model so deprecation warnings appear before the request fires.
 
 All handlers follow the same pattern:
 1. Validate required inputs

@@ -11,6 +11,7 @@ This document covers the external API that `tiny-gemini` wraps. All requests go 
 - [Endpoint and Authentication](#endpoint-and-authentication)
   - [Base URL](#base-url)
   - [Authentication Header](#authentication-header)
+  - [Schema Revision Header](#schema-revision-header)
   - [Operations](#operations)
 - [Request Body](#request-body)
   - [Top-Level Fields](#top-level-fields)
@@ -50,7 +51,8 @@ This document covers the external API that `tiny-gemini` wraps. All requests go 
 - [Models and Agents](#models-and-agents)
   - [Text Models](#text-models)
   - [Image Generation Models](#image-generation-models)
-  - [TTS Model](#tts-model)
+  - [Audio Models](#audio-models)
+  - [Embeddings](#embeddings)
   - [Agents](#agents)
 - [Conversation Management](#conversation-management)
   - [Stateful (Server-Side)](#stateful-server-side)
@@ -76,6 +78,26 @@ x-goog-api-key: YOUR_API_KEY
 
 This is more secure than `?key=` in the URL because the key doesn't appear in server logs or browser history.
 
+### Schema Revision Header
+
+As of May 2026, the API has two response schemas in flight. The CLI sends:
+
+```
+Api-Revision: 2026-05-20
+```
+
+This opts into the new schema (`steps` array, renamed SSE events). Background:
+
+| Date | Phase |
+|------|-------|
+| 2026-05-07 | Opt-in available via `Api-Revision: 2026-05-20` |
+| 2026-05-26 | New schema becomes the default for REST clients |
+| 2026-06-08 | Legacy schema removed |
+
+Sending the explicit header makes our requests deterministic across the transition. To pin to the legacy shape (only useful before 2026-06-08), pass `Api-Revision: 2026-05-07` directly via the `raw` command after constructing the body manually.
+
+See https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026 for the full migration matrix.
+
 ### Operations
 
 | Method | Path | Description |
@@ -92,7 +114,7 @@ This is more secure than `?key=` in the URL because the key doesn't appear in se
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `model` | string | One of model/agent | Model ID (e.g., `gemini-3-flash-preview`) |
-| `agent` | string | One of model/agent | Agent ID (e.g., `deep-research-pro-preview-12-2025`) |
+| `agent` | string | One of model/agent | Agent ID (e.g., `deep-research-preview-04-2026`) |
 | `input` | string or Content[] | Yes | Text or multimodal content |
 | `response_modalities` | string[] | No | Output types: `["IMAGE"]`, `["AUDIO"]` |
 | `generation_config` | object | No | Temperature, thinking, image config, speech config |
@@ -260,12 +282,21 @@ Controls what type of output the model generates:
 
 ### Interaction Object
 
+Post-2026-05 schema (default after 2026-05-26):
+
 ```json
 {
   "id": "interaction-uuid",
   "model": "gemini-3-flash-preview",
   "input": [...],
-  "outputs": [...],
+  "steps": [
+    {
+      "type": "model_turn",
+      "content": [
+        { "type": "text", "text": "The answer is..." }
+      ]
+    }
+  ],
   "status": "completed",
   "usage": {
     "prompt_token_count": 123,
@@ -274,6 +305,20 @@ Controls what type of output the model generates:
   }
 }
 ```
+
+Legacy schema (removed 2026-06-08):
+
+```json
+{
+  "id": "interaction-uuid",
+  "outputs": [
+    { "type": "text", "text": "The answer is..." }
+  ],
+  ...
+}
+```
+
+`tiny-gemini`'s `extractOutputs()` reads either shape so the CLI keeps working through the transition.
 
 ### Status Values
 
@@ -363,15 +408,19 @@ x-goog-api-key: YOUR_KEY
 
 ### Event Types
 
+Post-2026-05 schema (the CLI emits these via `Api-Revision: 2026-05-20`):
+
 | Event | Contains | Purpose |
 |-------|----------|---------|
-| `interaction.start` | `id`, `status` | First event |
-| `interaction.status_update` | `status` | Status changes |
-| `content.start` | `index`, `content.type` | New output block begins |
-| `content.delta` | `delta` object | Incremental content |
-| `content.stop` | `index` | Output block ends |
-| `interaction.complete` | `id`, `status`, `usage` | Final event (`outputs` is null) |
-| `error` | `error.code`, `error.message` | Error |
+| `interaction.created` | `id`, `status` | First event (was `interaction.start`) |
+| `interaction.in_progress` / `interaction.requires_action` / etc. | `status` | Status changes (was `interaction.status_update`) |
+| `step.start` | `index`, `step.type` | New step begins (was `content.start`) |
+| `step.delta` | `delta` object | Incremental content (was `content.delta`) |
+| `step.stop` | `index` | Step ends (was `content.stop`) |
+| `interaction.completed` | `id`, `status`, `usage` | Final event, `steps` is null (was `interaction.complete`) |
+| `interaction.error` | `error.code`, `error.message` | Error (was `error`) |
+
+The CLI's SSE parser accepts both `step.delta` and the legacy `content.delta` event names, so it stays functional during the transition window.
 
 ### Delta Types
 
@@ -388,7 +437,7 @@ data: {"delta": {"type": "function_call", "id": "...", "name": "...", "arguments
 
 ### Reconstruction
 
-The `interaction.complete` event does **not** include `outputs`. Clients must reconstruct the full response by accumulating `content.delta` events. `tiny-gemini` currently only extracts text deltas during streaming — images and audio from streaming are not supported (use non-streaming mode for those).
+The `interaction.completed` event does **not** include `steps`. Clients must reconstruct the full response by accumulating `step.delta` events. `tiny-gemini` currently only extracts text deltas during streaming — images and audio from streaming are not supported (use non-streaming mode for those).
 
 ## Background Tasks and Polling
 
@@ -398,7 +447,7 @@ Used for agents like Deep Research:
 
 ```json
 {
-  "agent": "deep-research-pro-preview-12-2025",
+  "agent": "deep-research-preview-04-2026",
   "input": "Research topic...",
   "background": true
 }
@@ -420,15 +469,18 @@ Poll every 5 seconds. Check `status` field:
 
 ## Models and Agents
 
+For the live registry, run `npx tiny-gemini models`. See [Model Selection](model-selection.md) for the decision rules and full pricing.
+
 ### Text Models
 
 | Model ID | Notes |
 |----------|-------|
 | `gemini-3-flash-preview` | Default for text/search, best value |
 | `gemini-3.1-pro-preview` | Most capable, deepest reasoning |
-| `gemini-2.5-flash` | Remote MCP support |
-| `gemini-2.5-pro` | Stable (non-preview) |
-| `gemini-2.5-flash-lite` | Cheapest, lower quality |
+| `gemini-3.1-flash-lite` | Cheapest text in the Gemini 3 family (GA) |
+| `gemini-2.5-flash` | Remote MCP support — **sunset 2026-10-16** |
+| `gemini-2.5-pro` | **Sunset 2026-10-16**, → `gemini-3.1-pro-preview` |
+| `gemini-2.5-flash-lite` | **Sunset 2026-10-16**, → `gemini-3.1-flash-lite` |
 
 ### Image Generation Models
 
@@ -440,17 +492,26 @@ Poll every 5 seconds. Check `status` field:
 
 All image models output `image/png` as base64. SynthID watermark is embedded in all generated images.
 
-### TTS Model
+### Audio Models
 
 | Model ID | Notes |
 |----------|-------|
-| `gemini-2.5-flash-preview-tts` | Outputs raw PCM (24kHz, 16-bit, mono) |
+| `gemini-3.1-flash-tts-preview` | TTS default. Outputs raw PCM (24kHz, 16-bit, mono) |
+| `gemini-2.5-flash-preview-tts` | **Deprecated**, → `gemini-3.1-flash-tts-preview` |
+| `gemini-2.5-flash-native-audio-preview-12-2025` | Native speech-in / speech-out (distinct from TTS) |
+
+### Embeddings
+
+| Model ID | Notes |
+|----------|-------|
+| `gemini-embedding-2` | Multimodal (text, image, video, audio, PDF). Accessed via `/embeddings` or via `raw` |
 
 ### Agents
 
 | Agent ID | Notes |
 |----------|-------|
-| `deep-research-pro-preview-12-2025` | Requires `background: true` |
+| `deep-research-preview-04-2026` | Default research agent. Requires `background: true` |
+| `deep-research-max-preview-04-2026` | Comprehensive variant. Requires `background: true` |
 
 ## Conversation Management
 

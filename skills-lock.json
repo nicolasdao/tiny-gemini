@@ -1,52 +1,188 @@
 {
-	"lockVersion": 1,
-	"generatedAt": "2026-03-10T08:31:09.285Z",
+	"lockVersion": 2,
+	"generatedAt": "2026-05-10T12:09:08.593Z",
 	"skills": {
 		"happyskillsai/happyskills": {
-			"version": "1.5.0",
-			"ref": "refs/tags/v1.5.0",
-			"commit": "8b1cb945bc42da2ef75466271b184bcf27552e56485a2384261f158194ff76b4",
+			"version": "2.0.0",
+			"ref": "refs/tags/v2.0.0",
+			"commit": "ce7b632e9c36413549682d61ad4a1220469a3cbe362b590e57e2468931a8a2c7",
 			"integrity": "sha256-085608bf93fb3773b41a4fc2d2bf35734174d5dd89e3f955f8d8b0be3fdf545c",
+			"base_commit": "ce7b632e9c36413549682d61ad4a1220469a3cbe362b590e57e2468931a8a2c7",
+			"base_integrity": "sha256-085608bf93fb3773b41a4fc2d2bf35734174d5dd89e3f955f8d8b0be3fdf545c",
 			"requested_by": [
 				"__root__"
 			],
-			"dependencies": {}
+			"dependencies": {
+				"happyskillsai/happyskills-design": "^0.1.0",
+				"happyskillsai/happyskills-publish": "^0.1.0",
+				"happyskillsai/happyskills-sync": "^0.1.0",
+				"happyskillsai/happyskills-help": "^0.1.0"
+			},
+			"type": "skill"
 		},
 		"nicolasdao/git-commit": {
-			"version": "1.0.1",
-			"ref": "refs/tags/v1.0.1",
-			"commit": "315daee8d9d3ad5e88c42ed35b8e89ccc7ff57bfc28ef0d72ad5122c8e834e19",
+			"version": "1.1.0",
+			"ref": "refs/tags/v1.1.0",
+			"commit": "91371b0dde3dd3c192feb5728c24b56367e0aa905e02644835839cccc7c778ca",
 			"integrity": "sha256-d7e5a0e9afe9f2633e4e9ad64d8248fca0ee8e20a44f54586474bbfecc79d7e7",
+			"base_commit": "91371b0dde3dd3c192feb5728c24b56367e0aa905e02644835839cccc7c778ca",
+			"base_integrity": "sha256-d7e5a0e9afe9f2633e4e9ad64d8248fca0ee8e20a44f54586474bbfecc79d7e7",
 			"requested_by": [
 				"__root__"
 			],
 			"dependencies": {}
 		},
 		"nicolasdao/init-context": {
-			"version": "1.0.1",
-			"ref": "refs/tags/v1.0.1",
-			"commit": "a52d089f1c6a102feac17b99e7df72e29899952f393013bd479e3f97cc614f32",
+			"version": "1.2.0",
+			"ref": "refs/tags/v1.2.0",
+			"commit": "d5da5b0f76080e7245b0e23c1b961e03a0bce9c684d7db3ed9dd95eca83ec081",
 			"integrity": "sha256-417c5dc3e0b59f785fd8af166bbaa757f4bfac8343d7365708342e84d386bd01",
+			"base_commit": "d5da5b0f76080e7245b0e23c1b961e03a0bce9c684d7db3ed9dd95eca83ec081",
+			"base_integrity": "sha256-417c5dc3e0b59f785fd8af166bbaa757f4bfac8343d7365708342e84d386bd01",
 			"requested_by": [
 				"__root__"
 			],
-			"dependencies": {}
+			"dependencies": {},
+			"type": "skill"
 		},
 		"nicolasdao/update-doc": {
-			"version": "1.0.4",
-			"ref": "refs/tags/v1.0.4",
-			"commit": "6394de7f8b487c16700f84d5235a3dca5746205d2abafbdfad02e59bbd924a60",
+			"version": "1.3.0",
+			"ref": "refs/tags/v1.3.0",
+			"commit": "ccb24e080689e67eab4a7f7595af8955903c9253b28210f4ed5f9b6d72a2f0e8",
 			"integrity": "sha256-e60d3df49530031a5f663aed8a6999fda6b4caab4deba249ec7cfd5ec65f085c",
+			"base_commit": "ccb24e080689e67eab4a7f7595af8955903c9253b28210f4ed5f9b6d72a2f0e8",
+			"base_integrity": "sha256-e60d3df49530031a5f663aed8a6999fda6b4caab4deba249ec7cfd5ec65f085c",
+			"requested_by": [
+				"__root__"
+			],
+			"dependencies": {},
+			"type": "skill"
+		},
+		"nicolasdao/tiny-gemini": {
+			"version": "2.0.0",
+			"ref": "refs/tags/v2.0.0",
+			"commit": "385891105c56ea8fcad2439f802f44081d6a5444356591565b311e1c37eb2faf",
+			"integrity": "sha256-328098d9a11c1a8c1d3ea5c03cff29c72053792171a4f6f427131ab541cbbaed",
+			"base_commit": "385891105c56ea8fcad2439f802f44081d6a5444356591565b311e1c37eb2faf",
+			"base_integrity": "sha256-328098d9a11c1a8c1d3ea5c03cff29c72053792171a4f6f427131ab541cbbaed",
+			"requested_by": [
+				"__root__"
+			],
+			"dependencies": {
+				"nicolasdao/tiny-gemini-image": "^0.1.0",
+				"nicolasdao/tiny-gemini-tts": "^0.1.0",
+				"nicolasdao/tiny-gemini-research": "^0.1.0",
+				"nicolasdao/tiny-gemini-models": "^0.1.0"
+			}
+		},
+		"happyskillsai/happyskills-design": {
+			"version": "0.2.1",
+			"ref": "refs/tags/v0.2.1",
+			"commit": "6533f944ce0a72e513109bdb76fc6f49db46fa553d07986a9191cff4c7d94f19",
+			"integrity": "sha256-2275cd1377993925e8635dc7a61056316c7c2c1452ec874b93df5854671e48de",
+			"base_commit": "6533f944ce0a72e513109bdb76fc6f49db46fa553d07986a9191cff4c7d94f19",
+			"base_integrity": "sha256-2275cd1377993925e8635dc7a61056316c7c2c1452ec874b93df5854671e48de",
+			"requested_by": [
+				"happyskillsai/happyskills"
+			],
+			"dependencies": {},
+			"type": "skill"
+		},
+		"happyskillsai/happyskills-publish": {
+			"version": "0.1.1",
+			"ref": "refs/tags/v0.1.1",
+			"commit": "961fc468197f12101d919f7e23bdcd2add0708fae7bfc568f892df7b59f09a71",
+			"integrity": "sha256-5161a96ec4d6286cc953c9fb317df79f0c77f89e43186fc5b1890a5b668d3fbe",
+			"base_commit": "961fc468197f12101d919f7e23bdcd2add0708fae7bfc568f892df7b59f09a71",
+			"base_integrity": "sha256-5161a96ec4d6286cc953c9fb317df79f0c77f89e43186fc5b1890a5b668d3fbe",
+			"requested_by": [
+				"happyskillsai/happyskills"
+			],
+			"dependencies": {},
+			"type": "skill"
+		},
+		"happyskillsai/happyskills-sync": {
+			"version": "0.1.1",
+			"ref": "refs/tags/v0.1.1",
+			"commit": "75788b03f55a2d6152391142a7c1cb03521b2c32e0cbd21225f4c4577ebb2097",
+			"integrity": "sha256-db5e271fe0dac3fa6e02facbdfd5f4ed1c0048d3692ca1d036848f7ef585db51",
+			"base_commit": "75788b03f55a2d6152391142a7c1cb03521b2c32e0cbd21225f4c4577ebb2097",
+			"base_integrity": "sha256-db5e271fe0dac3fa6e02facbdfd5f4ed1c0048d3692ca1d036848f7ef585db51",
+			"requested_by": [
+				"happyskillsai/happyskills"
+			],
+			"dependencies": {},
+			"type": "skill"
+		},
+		"happyskillsai/happyskills-help": {
+			"version": "0.2.1",
+			"ref": "refs/tags/v0.2.1",
+			"commit": "1619dcee3600e023b8d4af44843641df5a3cee8b9b7d3e2a24d00be24e467d82",
+			"integrity": "sha256-966fff7df8ef08c446f27070f401a3b747f1da2df1b8f1fde4fc9bfc064aa033",
+			"base_commit": "1619dcee3600e023b8d4af44843641df5a3cee8b9b7d3e2a24d00be24e467d82",
+			"base_integrity": "sha256-966fff7df8ef08c446f27070f401a3b747f1da2df1b8f1fde4fc9bfc064aa033",
+			"requested_by": [
+				"happyskillsai/happyskills"
+			],
+			"dependencies": {},
+			"type": "skill"
+		},
+		"nicolasdao/create-release-skill": {
+			"version": "0.1.0",
+			"ref": "refs/tags/v0.1.0",
+			"commit": "cff85c7d4b8c5661ea86c418dcfe62981c5d156309683154e7a50c3d27c47eb1",
+			"integrity": "sha256-f6cd172cdbc24a5aadd5eaea7ea557b6b5253296e5e30e96d1ba36249ebc4e50",
+			"base_commit": "cff85c7d4b8c5661ea86c418dcfe62981c5d156309683154e7a50c3d27c47eb1",
+			"base_integrity": "sha256-f6cd172cdbc24a5aadd5eaea7ea557b6b5253296e5e30e96d1ba36249ebc4e50",
+			"requested_by": [
+				"__root__"
+			],
+			"dependencies": {},
+			"type": "skill"
+		},
+		"nicolasdao/tiny-gemini-image": {
+			"version": "0.1.0",
+			"ref": "refs/tags/v0.1.0",
+			"commit": "80a969c43caa5f0fc193a304a6aaca039aad897e9e83049a4fe761a50b473811",
+			"integrity": "sha256-a2d8f84ab01261488b288689fb56e8e68c546ce0b96948f40dcd86af9a3b3efb",
+			"base_commit": "80a969c43caa5f0fc193a304a6aaca039aad897e9e83049a4fe761a50b473811",
+			"base_integrity": "sha256-a2d8f84ab01261488b288689fb56e8e68c546ce0b96948f40dcd86af9a3b3efb",
 			"requested_by": [
 				"__root__"
 			],
 			"dependencies": {}
 		},
-		"nicolasdao/tiny-gemini": {
-			"version": "1.0.1",
-			"ref": "refs/tags/v1.0.1",
-			"commit": "cb16c37c55b0cd49d6aa8f24f8c2428fdbc30076be43efe30b9b981200127561",
-			"integrity": "sha256-b1d2a5ea625727bdccd65304d316b1b88558452db6efa902ea88315d964811e1",
+		"nicolasdao/tiny-gemini-tts": {
+			"version": "0.1.0",
+			"ref": "refs/tags/v0.1.0",
+			"commit": "49f426b02abba037c4ac5010e4067d8b02ec771ff049931eb13153bf9cf9e416",
+			"integrity": "sha256-af05197c8c87d5293b209f2a4617dcb1d745b4f666bbe5ed5829dace06f392f7",
+			"base_commit": "49f426b02abba037c4ac5010e4067d8b02ec771ff049931eb13153bf9cf9e416",
+			"base_integrity": "sha256-af05197c8c87d5293b209f2a4617dcb1d745b4f666bbe5ed5829dace06f392f7",
+			"requested_by": [
+				"__root__"
+			],
+			"dependencies": {}
+		},
+		"nicolasdao/tiny-gemini-research": {
+			"version": "0.1.0",
+			"ref": "refs/tags/v0.1.0",
+			"commit": "beafd3a15e226d1d5db4ae63b55f01ea66880a94e21c9e24fe316ab3e5658145",
+			"integrity": "sha256-168b01bb28d96e5f6918558b533906d4afc27da741464b66df4c3f60173b2c45",
+			"base_commit": "beafd3a15e226d1d5db4ae63b55f01ea66880a94e21c9e24fe316ab3e5658145",
+			"base_integrity": "sha256-168b01bb28d96e5f6918558b533906d4afc27da741464b66df4c3f60173b2c45",
+			"requested_by": [
+				"__root__"
+			],
+			"dependencies": {}
+		},
+		"nicolasdao/tiny-gemini-models": {
+			"version": "0.1.0",
+			"ref": "refs/tags/v0.1.0",
+			"commit": "5d79ac349d1e39d6777d73838221789ae9c6dfd749832146a32bad7999be53f2",
+			"integrity": "sha256-d472844a46ba18b5ab04eb9910f02c3a9e1afa02ea491429f0e4a5fbd7d66b63",
+			"base_commit": "5d79ac349d1e39d6777d73838221789ae9c6dfd749832146a32bad7999be53f2",
+			"base_integrity": "sha256-d472844a46ba18b5ab04eb9910f02c3a9e1afa02ea491429f0e4a5fbd7d66b63",
 			"requested_by": [
 				"__root__"
 			],
