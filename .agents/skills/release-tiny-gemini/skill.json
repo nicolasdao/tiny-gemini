@@ -1,0 +1,41 @@
+{
+	"name": "release-tiny-gemini",
+	"version": "0.1.0",
+	"description": "Release a new version of the tiny-gemini Node.js CLI. Bumps package.json, syncs cli.js, updates CHANGELOG.md, commits, and tags. Stops before push and npm publish.",
+	"keywords": [
+		"release",
+		"version",
+		"changelog",
+		"semver",
+		"tiny-gemini",
+		"cli",
+		"npm",
+		"ai",
+		"devops",
+		"keep-a-changelog"
+	],
+	"type": "skill",
+	"dependencies": {},
+	"systemDependencies": {
+		"git": {
+			"description": "Git is required to inspect status, commit, and tag the release.",
+			"version": ">=2.0.0",
+			"check": "git --version",
+			"install": {
+				"darwin": "brew install git",
+				"linux": "Use your distro package manager, e.g. apt install git or dnf install git",
+				"win32": "winget install Git.Git"
+			}
+		},
+		"node": {
+			"description": "Node.js 18+ runs cli.js for the version verification step.",
+			"version": ">=18.0.0",
+			"check": "node --version",
+			"install": {
+				"darwin": "brew install node",
+				"linux": "Use nvm: https://github.com/nvm-sh/nvm",
+				"win32": "winget install OpenJS.NodeJS"
+			}
+		}
+	}
+}
