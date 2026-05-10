@@ -406,24 +406,33 @@ The following docs provide the technical depth needed to understand, extend, or 
 
 ## Releasing
 
-New versions are released using the `/release` Claude Code skill. It automates the full workflow:
+New versions are released using the `/release-tiny-gemini` Claude Code skill. It automates the local release workflow:
 
-1. **Reasons about session changes** to determine the semver bump type (or accepts `patch`, `minor`, `major` as an argument)
-2. **Runs preflight checks** — clean working tree, correct branch
-3. **Bumps the version** in `package.json` and syncs `cli.js`
-4. **Updates `CHANGELOG.md`** with categorized changes in Keep a Changelog format
-5. **Verifies** the CLI loads and shows the correct version
-6. **Commits, tags, and pushes** to GitHub
-7. **Shows the `npm publish` command** for the user to run manually
+1. **Reasons about session changes** to determine the semver bump type (or accepts `patch`, `minor`, `major` as an argument, plus an optional quoted description)
+2. **Runs preflight checks** — clean working tree, on `master` branch, `CHANGELOG.md` exists
+3. **Bumps the version** in `package.json` and syncs the `const VERSION` constant in `cli.js`
+4. **Updates `CHANGELOG.md`** with categorized changes in Keep a Changelog format (stamps the `[Unreleased]` section into a versioned release)
+5. **Verifies** the CLI loads via `node cli.js --version` and confirms the output matches
+6. **Commits and tags** locally — `chore(release): tiny-gemini v<version>` plus an annotated `v<version>` tag
+
+The skill stops there. Pushing and publishing are intentionally manual — when you're ready, run:
 
 ```bash
-/release patch    # bug fixes
-/release minor    # new features
-/release major    # breaking changes
-/release          # agent decides and asks you to confirm
+git push origin master
+git push origin v<version>
+npm publish
 ```
 
-The skill is at [`.claude/skills/release/`](.claude/skills/release/SKILL.md) and is user-invoked only — it never triggers automatically.
+```bash
+/release-tiny-gemini patch                              # bug fixes
+/release-tiny-gemini minor                              # new features
+/release-tiny-gemini major                              # breaking changes
+/release-tiny-gemini                                    # agent decides and asks you to confirm
+/release-tiny-gemini draft                              # capture unreleased notes mid-session, no version bump
+/release-tiny-gemini minor "Added streaming SSE"        # explicit bump with a description
+```
+
+The skill is at [`.claude/skills/release-tiny-gemini/`](.claude/skills/release-tiny-gemini/SKILL.md). It is auto-invocable (Claude may trigger it on phrases like "release tiny-gemini" or "ship a new version"), and always confirms via prompt before any commit or tag.
 
 ## Reference Material
 
