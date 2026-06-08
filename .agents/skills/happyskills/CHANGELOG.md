@@ -1,5 +1,99 @@
 # Changelog
 
+## [2.5.3] - 2026-06-06
+
+### Changed
+- Restructured `capabilities` into tighter, single-purpose clusters with richer, synonym-varied intents, and added a `skill-safety-net` capability owning the `snapshot` command — so `happyskills schema` and `happyskills resolve` cover snapshot and resolve intents more precisely (spec 260606-01). Additive metadata; no behavior change.
+
+## [2.5.2] - 2026-06-06
+
+### Added
+- Declared `capabilities` in `skill.json` (skill-lifecycle, account-config) so `happyskills schema` and `happyskills resolve` can map user intents and CLI commands to this skill (spec 260606-01). Additive metadata — older CLIs ignore it; no routing or behavior change.
+
+## [2.5.1] - 2026-06-03
+
+### Changed
+- **Section 1 disambiguation now covers kits.** The `happyskills-design` "what NOT to handle here" line cedes *editing what a kit bundles* (add / remove / swap a member skill, change a bundled version range) to design, while keeping *upgrading* an installed kit ("upgrade my kit", "refresh my kit") in core — a kit is a package like any other. Resolves the "update my kit" routing ambiguity in lockstep with `happyskills-design@0.10.0`.
+
+## [2.5.0] - 2026-06-02
+
+### Changed
+- **Section 7 dispatch table updated for the `discover_schema` action** (aligns with happyskills CLI v1.1.0). `COMMAND_NOT_FOUND` and `USAGE_ERROR` now dispatch on the new `discover_schema` (routing) action — the agent runs `next_step.context.commands[0]` (`happyskills schema --json`) to discover the full CLI surface, then retries with a corrected command. The `show_format` row is narrowed to `INVALID_SLUG` / `INVALID_VERSION`. Replaces the prior behavior where unknown commands and bad flags fell through to the generic `show_format` recovery.
+
+## [2.4.1] - 2026-06-01
+
+### Changed
+- **Reference + dispatch docs aligned to the canonical six-key envelope.** `references/cli-reference.md` now describes the full `{ ok, data, error, next_step, warnings, meta }` shape (list payloads under `data.results`, exit status on `meta.exit_code`); the error-code recovery table is corrected to the closed enum (`INTERNAL_ERROR` for the generic case — the non-emitted `ERROR`/`API_ERROR` are gone) and `DIVERGED` dispatch no longer string-matches prose. SKILL.md Section 7 hardened to surface the envelope's `warnings[]` and to stop on an unrecognised `next_step.action` (alongside the existing `UNKNOWN_CODE` handler).
+
+## [2.4.0] - 2026-05-28
+
+### Changed
+- **Section 7 (Error Handling) rewritten as a strict `next_step.action` dispatch table** (spec 260525-cli-default-json § 7). Replaces the prose recovery table that branched on free-form `error.code` strings (`API_ERROR`, `ERROR`, "diverged" substring match) with a closed-enum dispatch on `next_step.action`: `login`, `retry`, `reconcile_first`, `pull_rebase_first`, `fix_validation_errors`, `provide_changelog`, `self_update`, `show_format`, `pick_version`, `specify_bump_type`, `specify_workspace`, `resolve_regression` / `resolve_missing_skill_json` / `resolve_missing_dir` (all routed to `happyskills-sync`), and the four `confirm_*` variants. Each row documents which `next_step.context.*` fields carry the actionable payload (commands, options, candidates, validation_errors, etc.). The `UNKNOWN_CODE` forward-compat behavior is locked: explain to principal, do not retry autonomously. Acknowledges `next_step.route_to_skill` as the open-string sibling-skill router. The envelope is the canonical six-key shape — `ok`, `data`, `error`, `next_step`, `warnings`, `meta` — and `meta.exit_code` is the source of truth for the process exit code, not the (removed) `error.exit_code`.
+
+## [2.3.0] - 2026-05-25
+
+### Changed
+- **Section 5 (Happy Skills) and `references/happy-skills.md` rewritten** to distinguish drafts (`data.drafts[]`, `happyskills@0.51.0+`) from external skills (`data.external[]`). The "make my skills happy" routing now buckets the unmanaged skills: drafts route to `happyskills-publish` for `release` (one-step publish, no convert); externals route to publish for `convert` + post-convert enrichment + publish. Drafts are never described as "external" and never told they "need to be converted" — that was the principal-side jargon leak reported in spec 260522-02. Status-check phrasings ("are my skills happy?") gain a three-bucket variant when both drafts and externals exist.
+- **Section 6 (Present Results) — list formatting** now renders three sections when applicable: "Managed Skills", "Drafts", and "External Skills", each with its own suggested next step. Never label a draft as external.
+
+## [2.2.2] - 2026-05-24
+
+### Added
+- **`happyskillsai/happyskills-search@^0.1.0` added to `dependencies`** — search is now an official default-bundled satellite in the HappySkills constellation, installed automatically when core is installed. See `happyskills-search` for the full discovery surface (find/recommend/versions/changelog) and `specs/260524-02-extract-happyskills-search/spec.md` for the rationale.
+
+### Changed
+- **`description` updated** to name search as a family member: *"...depends on design, publish, sync, search, help."*
+- **SKILL.md routing prose updated.** Discovery intents (find / search / recommend / versions / changelog) now route to `happyskills-search` instead of `happyskills-help`. Three edits: the line-42 disambiguation rule, the line-199 `search` keyword routing inside the parameter-extraction block, and the line-218 Section 9 constraint. The line-10 family-members sentence is rewritten to name search as a sibling. The line-121 multi-agent Q&A routing (to help) is unchanged — multi-agent Q&A is a feature-routing question, owned by help.
+
+### Notes
+- This is a coordinated release with `happyskills-search@0.1.0` and `happyskills-help@0.4.0`. The three skills must be published atomically — search must reach the registry BEFORE help loses its discovery sections (otherwise users on the in-between window have help routing to search, but search does not yet exist to install). Execution order is in the spec.
+- Existing installations on core ≥ 2.2.2 will pick up `happyskills-search` on the next `update --all` (or any `install` that resolves the dependency graph). Existing installations on core ≤ 2.2.1 are unaffected until they upgrade core.
+- No CLI change required. No breaking change to agent contracts.
+
+## [2.2.1] - 2026-05-24
+
+### Changed
+- **SKILL.md `description` tightened.** `Install and update AI agent skills` → `Install and update AI agent skills locally` (anchors against the registry-side actions owned by `happyskills-publish` and `happyskills-sync`). Trigger phrasing replaced `refreshing or removing them` with the sharper user-vocabulary verbs `upgrading, uninstalling`; `configuring HappySkills` → `configuring agents`. Same Domain, Verbs, Object, and Negative — surface-only refinement to bring trigger vocabulary closer to the words users actually say.
+
+## [2.2.0] - 2026-05-23
+
+### Added
+- **Routing for the new `snapshot` command** — added a row in Section 1 covering "snapshot", "capture state", "save state", "rollback point", "restore from snapshot". The `snapshot` primitive is the safety net for every non-trivial mutation; making it discoverable from core's routing surface is part of spec 260523-02's "snapshot-first invariant."
+- **Cross-skill constraint paragraphs in Section 9 (Constraints).** Two new constraints: (1) NEVER recommend `install --fresh` for drift repair (the silent-fallback footgun closed in `happyskills@0.49.0`); (2) ALWAYS snapshot before non-trivial mutations. These guard against the failure-mode class that triggered spec 260523-02 in the first place.
+- **`install --fresh` hardening documented in Section 9.** New constraint explicitly states that `--fresh` now hard-fails with `VERSION_NOT_FOUND` when the requested version isn't on the registry, refuses on local edits without `--force-discard-local`, and snapshots before wiping. Operators MUST NOT pass `--force-discard-local` without explicit user authorization.
+
+### Changed
+- **Section 3 (Command Quick Reference)** gains rows for: `install <skill>@<version> --fresh` (with the hardening footnote), `install <skill>@<version> --fresh --force-discard-local` (explicit edit-discard), and `snapshot create/restore`.
+
+### Documentation
+- **`references/cli-reference.md` overhauled.** Updated `list` and `check` JSON shapes to surface the new `ahead` top-level status and the narrowed `drift` taxonomy (`regression`/`missing_skill_json`/`missing_dir` — `version_mismatch` removed). Added a full `snapshot` command section with create/list/restore/delete/prune JSON shapes. Added a pointer to `reconcile` (owned by sync). Added a §8.5 install --fresh hardening section explaining the pre-flight version check, snapshot-first behavior, and `--force-discard-local` gate. Requires `happyskills@0.49.0+`.
+
+### Notes
+- This release bumps the minimum CLI version requirement to `>=0.49.0` via the new `requires.happyskills` field in `skill.json`. The prose references new CLI primitives (`snapshot`, `release`, `reconcile`, `pull --rebase`) that don't exist in earlier CLI versions.
+
+## [2.1.0] - 2026-05-20
+
+### Added
+- Routing and presentation for the new `agents` CLI verb (`agents list|add|remove`). This is the project-scoped agent configuration command that complements the existing user-global `config agents`: it creates/removes `.<agent>/skills/` folders in the project root and mirrors enabled installed skills as symlinks. Section 1 gains a row covering "add codex / try a new agent here / configure agents for this project / which agents are configured here". Section 3 quick syntax gains three rows (`agents add`, `agents remove`, `agents list`). Section 4 gains a disambiguation rule: "this project / here / in this repo" → `agents`; "default / global / always" → `config agents`. Section 6 gains a presentation block for `agents list` (table) and `agents add` (surface skipped disabled skills + point at `enable`).
+- `references/multi-agent.md` gains a "Per-Project Agent Configuration" section with full command syntax, a comparison table for `agents` vs `config agents` vs `--agents`, and updates the priority chain from 4 tiers to 5 (inserting **project-physical** at tier 3, above the user-global config).
+- `references/cli-reference.md` gains a dedicated `agents` section with JSON shapes for `list`, `add`, `remove`, plus presentation guidance.
+
+### Changed
+- Detection model now keys on `.<agent>/skills/`, not the bare `.<agent>/` folder. Updated the agent table in `references/multi-agent.md` to reflect both project-detection (`<project>/.<agent>/skills/`) and home-detection (`~/.<agent>/skills/`) paths, and added a note explaining why the tighter signal is required (agents create `.<agent>/` for their own settings/history/sessions regardless of skill configuration).
+- The "How It Works" steps in `references/multi-agent.md` were rewritten to describe the new detection model in plain terms.
+
+### Rationale
+The CLI just shipped `happyskills agents add|remove|list` — a project-scoped command that lets a user opt a single project into a new agentic client (e.g., trying Codex on one repo) without touching their global default. The core skill is the LLM-facing interpreter for these commands; without this update, prompts like "add codex to this project" would route to `config agents` (wrong: that's machine-wide) or to no command at all. The disambiguation rule in Section 4 is the load-bearing line that keeps `agents` and `config agents` orthogonal in the user's vocabulary.
+
+## [2.0.1] - 2026-05-12
+
+### Added
+- Section 6 (Present Results) now prescribes drift surfacing for `list` and `check`: drift must be flagged prominently and not rolled into the "installed" or "needs update" headers (drift is a different failure class — the lock and disk disagree about what's installed). The `check` summary line gains "K drifted" alongside "N outdated, M up to date".
+- Section 9 constraint clarified: drift repair (lock-vs-disk disagreement) is owned by `happyskills-sync` — route with "say 'fix drift on X'".
+
+### Rationale
+The CLI (`happyskills@0.44.0`) added a `drift` status to `list`/`check`/`update`. The core skill is the first interpreter of these commands for the user — it must teach the agent to surface drift in plain English rather than silently rolling it into existing buckets.
+
 ## [2.0.0] - 2026-05-03
 
 ### BREAKING CHANGES

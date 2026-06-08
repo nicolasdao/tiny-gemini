@@ -1,0 +1,21 @@
+{
+	"snapshot_id": "snap_2026-06-08T053027029Z_d5d39a2c677c",
+	"timestamp": "2026-06-08T05:30:27.032Z",
+	"skill_state_hash": "sha256-d5d39a2c677c1a2590d5b5816c63c1a3ceb15a2b078a1c7c9a4608c4458b3d6a",
+	"workspace": "nicolasdao",
+	"skill": "tiny-gemini-tts",
+	"dir_integrity": "sha256-f18f72551647d70cccf8210e461c925428fb68d038b159a2b4d392cef5744732",
+	"note": "pre-rebase-pull",
+	"lock_entry": {
+		"version": "0.1.0",
+		"ref": "refs/tags/v0.1.0",
+		"commit": "49f426b02abba037c4ac5010e4067d8b02ec771ff049931eb13153bf9cf9e416",
+		"integrity": "sha256-af05197c8c87d5293b209f2a4617dcb1d745b4f666bbe5ed5829dace06f392f7",
+		"base_commit": "49f426b02abba037c4ac5010e4067d8b02ec771ff049931eb13153bf9cf9e416",
+		"base_integrity": "sha256-af05197c8c87d5293b209f2a4617dcb1d745b4f666bbe5ed5829dace06f392f7",
+		"requested_by": [
+			"__root__"
+		],
+		"dependencies": {}
+	}
+}

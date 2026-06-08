@@ -158,8 +158,17 @@ Every response includes a top-level `mode` field telling you which strategy ran.
 2. **Interpret `match_quality` correctly.** In `semantic`, the label is from cosine similarity (`strong ≥ 0.5`). In `fuzzy_slug` / `fuzzy_scoped`, it's from a trigram tier (`strong ≥ 0.85`). Same labels, different signals — both meaningful, just don't compare scores across modes.
 3. **Detect the workspace-not-found honest failure** (`fuzzy_scoped` only). If the response is:
    ```json
-   { "mode": "fuzzy_scoped", "data": [], "workspace_match": null,
-     "match_notice": "No workspace matched \"helo\".", "workspace_candidates": [] }
+   {
+     "data": {
+       "mode": "fuzzy_scoped",
+       "query": "acme/helo",
+       "formulated_query": "acme/helo",
+       "results": [],
+       "count": 0,
+       "workspace_match": null,
+       "match_notice": "No workspace matched \"helo\"."
+     }
+   }
    ```
    the server is telling you it could not match the workspace half of `workspace/skill` — it did **not** silently search globally. **Surface this specifically.** Don't say "no skills found"; say "I couldn't find a workspace called `helo` — did you mean a different workspace, or should I search globally without the prefix?" This is the "transparency over magic" path: the user named a workspace, we honor that, and we ask before second-guessing them.
 
@@ -194,27 +203,30 @@ Want me to install any of these?
 
 ## When to Ask for Clarification
 
-**Default: figure it out yourself.** Read the project, make a reasonable guess, state your assumption, and proceed.
+The clarification decision lives in SKILL.md Section 2 Step C — read it there for the full rule. The short version, restated here because this file is the authoritative reference on search reasoning:
 
-```
-"I see both a frontend (Next.js) and a backend (Express API) in this project.
-I'll search for skills for both — let me know if you want to focus on just one."
-```
+**Ask exactly when the Section 1 rule says to ask** — i.e., when you would otherwise fan out into 2+ parallel searches and you cannot name a distinct, project-grounded reason for each one. That fan-out instinct, in the absence of distinct reasons, IS the clarification trigger. There is no separate "is this query vague?" heuristic; the fan-out check covers the vague case automatically (a truly vague query has no domain anchor, so any search strategy would be hedging across guesses).
 
-**Ask ONE focused question only when:**
-- The project has no readable config files (no package.json, no README, nothing) AND the user's request is vague — you literally cannot infer the tech stack
-- The user describes something genuinely ambiguous where wrong guess = completely useless results (e.g., "help me deploy this" when the project has a Kubernetes config AND a Vercel config AND a Terraform setup — three very different deployment targets)
-- The user mentions a technology or term you cannot resolve to a specific domain
+**Do not ask when:**
+
+- You're about to run a single focused search and you can name the domain in one sentence.
+- The user named a specific skill (slug-shaped query) or a workspace/skill form — go straight to `fuzzy_slug` / `fuzzy_scoped`, no clarification.
+- You've already asked one or more clarifying questions in this discovery thread and the user has answered them. The state flag in SKILL.md Section 2 Step C says "search permitted" once an answer is in; do not re-litigate.
+- The clarification budget for this thread is at 2/2. Search no matter what.
 
 **How to ask:**
-- ONE question, not a form
-- Offer specific options when possible: "Are you deploying the frontend (Vercel) or the backend (AWS Lambda)?"
-- Never ask "what technologies do you use?" — read the project instead
 
-**Never ask when:**
-- You can make any reasonable guess from context
-- The user's request is clear even if broad ("what skills for my project?" — just analyze the project)
-- You're unsure about a minor detail that won't change the search results
+- ONE question, via AskUserQuestion. Not a form. Not a sequence.
+- Offer concrete options on the highest-leverage axis of branching. "Are you deploying the frontend (Vercel) or the backend (AWS Lambda)?" — good. "What are your goals?" — bad.
+- Always include "Just search anyway" as the last option. If the user picks it, proceed with your best-guess decomposition and state it explicitly in SKILL.md Section 2 Step D.
+
+**Never ask:**
+
+- About a technology you can read from the project files (`package.json`, `requirements.txt`, etc.).
+- About something the user has already told you earlier in the session — re-read your own context first.
+- A minor detail that won't change the search results.
+
+**The deeper "why":** the default for *directive* queries (where the user named a target) is still "just search" — clarification on a clear query is friction with no payoff. The hedging rule is what makes that default safe: it engages clarification only when the agent's own intent to fan out signals genuine framing ambiguity. There is no contradiction between "prefer searching over asking on a clear query" and "ask on a hedging fan-out" — they apply to different cases, identified by the agent's own internal state.
 
 ## Narrating Your Work
 
@@ -262,10 +274,10 @@ Quality tiers are **informational**. All matching skills are shown regardless of
 {
   "data": {
     "query": "...",
+    "formulated_query": "...",
     "mode": "semantic",
     "match_notice": null,
     "workspace_match": null,
-    "workspace_candidates": [],
     "results": [
       {
         "skill": "owner/name",
@@ -305,10 +317,10 @@ Quality tiers are **informational**. All matching skills are shown regardless of
 | Field | Type / Values | Notes |
 |---|---|---|
 | `query` | string \| `null` | Search term, or `null` in `list` mode (no query, only filters) |
+| `formulated_query` | string | The query echoed back for display — surface it in your preamble (`data.formulated_query`). |
 | `mode` | `"semantic"` \| `"fuzzy_slug"` \| `"fuzzy_scoped"` \| `"list"` | Which strategy the dispatcher picked. Always set. See "How the server picks a strategy" above. |
 | `match_notice` | string \| `null` | Server-authored honest-failure message. Emitted by `semantic` (when no result hits `strong`/`good`) or `fuzzy_scoped` (when no workspace matched). `null` for `fuzzy_slug` / `list`. **Display verbatim — do not recompute on the client.** |
-| `workspace_match` | object \| `null` | `fuzzy_scoped` only. The strongest matched workspace `{ slug, similarity }`, or `null` when the workspace half of `workspace/skill` didn't fuzzy-match anything (honest-failure path; `data` is also `[]`). Always `null` for other modes. |
-| `workspace_candidates` | array | `fuzzy_scoped` only. The workspaces the dispatcher selected (1 row when the top match was effectively exact, otherwise up to 3). Empty `[]` for other modes. |
+| `workspace_match` | object \| `null` | `fuzzy_scoped` only. The strongest matched workspace `{ slug, similarity }`, or `null` when the workspace half of `workspace/skill` didn't fuzzy-match anything (honest-failure path; `data.results` is also `[]`). Always `null` for other modes. |
 | `results[].skill` | string | Fully qualified `owner/name` |
 | `results[].type` | `"skill"` \| `"kit"` | Use `--type kit` to filter to kits only |
 | `results[].description` | string | skill.json description (registry-search optimized) |
@@ -333,5 +345,4 @@ Quality tiers are **informational**. All matching skills are shown regardless of
 - **Always use `--json`** for all search requests through the skill. The dispatcher's response includes `mode` — read it to confirm which strategy ran (especially when a slug-shaped query unexpectedly routes to `semantic`, or vice versa).
 - **Always show quality caveats** for low-quality matches (score < 40).
 - **Do not hide results** because of low quality.
-- **Prefer guessing over asking** — state your assumption and proceed.
 - **Never silently rewrite the user's query** when the workspace half of `workspace/skill` doesn't match. Surface the honest failure (`workspace_match: null`) verbatim and ask the user what they meant.

@@ -6,14 +6,22 @@ Most of design's work is file editing (Write, Edit). The one CLI command design 
 
 ## Envelopes
 
-- Success: `{ "data": { ... } }`
-- Error: `{ "error": { "code": "...", "message": "...", "exit_code": N } }`
+Every `--json` response is the canonical six-key envelope `{ ok, data, error, next_step, warnings, meta }`:
+
+- `ok` — `true` on success, `false` on failure.
+- `data` — **always an object** (never null, never a bare array; a top-level array payload is wrapped as `data.results`).
+- `error` — `{}` on success, else `{ code, message, details? }`. The exit/HTTP status is in **`meta.exit_code`**, never inside `error`.
+- `next_step` — `{}` when none, else a closed-enum `{ kind, action, instructions, context }`; dispatch on `next_step.action`.
+- `warnings` — array of non-fatal advisories; surface them to the user.
+- `meta` — includes `command`, `cli_version`, `exit_code`, `envelope_schema_version`.
+
+The per-command examples below show only the `data` payload — assume the six-key wrapper around each.
 
 ---
 
 ## init
 
-Scaffold a new skill or kit directory. Used by the Authoring Workflow (SKILL.md Section 2 step 3) and the Kit Creation Workflow (SKILL.md Section 5).
+Scaffold a new skill or kit directory. Used by the Authoring Workflow (SKILL.md Section 2 step 3) and the Kit Workflows — Create (SKILL.md Section 6).
 
 ```bash
 npx happyskills init my-skill --json              # named skill
@@ -22,7 +30,7 @@ npx happyskills init my-skill -g --json            # global
 npx happyskills init my-kit --kit --json           # scaffold a kit
 ```
 
-For kits, `--kit` flips the scaffolded `skill.json` to `"type": "kit"` and produces a plain SKILL.md without YAML frontmatter (kits are invisible to Claude auto-invocation by design — the user invokes them by name via `install`).
+For kits, `--kit` flips the scaffolded `skill.json` to `"type": "kit"` and produces a plain `README.md` instead of a `SKILL.md`. Kits never ship a `SKILL.md` — its absence is what keeps the kit invisible to every agent runtime (Claude Code, Codex, Gemini, etc.). The user invokes a kit by name via `install`.
 
 ### JSON shape
 
@@ -44,8 +52,8 @@ For kits, `--kit` flips the scaffolded `skill.json` to `"type": "kit"` and produ
 
 ### Result formatting
 
-- For a skill: `"Created new skill '<name>' at <directory>"` with the file list (`files_created`).
-- For a kit: `"Created new kit '<name>' at <directory>"`. Remind the user that the next step is to populate `dependencies` in `skill.json` (or run the Kit Creation Workflow which does this for them).
+- For a skill: `"Created new skill '<name>' at <directory>"` with the file list (`files_created` — typically `["skill.json", "SKILL.md"]`).
+- For a kit: `"Created new kit '<name>' at <directory>"` (`files_created` is `["skill.json", "README.md"]`). Remind the user that the next step is to populate `dependencies` in `skill.json` (or run the Kit Creation Workflow which does this for them).
 
 ### Common errors
 

@@ -37,9 +37,9 @@ HappySkills **never parses** SKILL.md frontmatter or content. All packaging deci
 
 A **kit** is a dependency manifest — a skill whose value comes entirely from its `dependencies` list. Kits bundle a curated set of skills that install together. Key differences from regular skills:
 
-- Kit SKILL.md has **no frontmatter** (plain markdown only). This makes the kit invisible to Claude's auto-invocation, which is intentional — kits don't contain agent instructions.
-- Kit SKILL.md is a plain markdown description of what the kit contains and when to use it.
-- Validation skips frontmatter checks for kits.
+- Kits ship a `README.md`, **not** a `SKILL.md`. The absence of `SKILL.md` is what keeps the kit invisible to every agent runtime (Claude Code, Codex, Gemini, etc.) — no frontmatter trick required.
+- The `README.md` is plain markdown documenting what the kit bundles and when to use it. No frontmatter, no line cap, no auto-invocation contract.
+- Validation requires a `README.md` and rejects any `SKILL.md` it finds inside a kit.
 - The `dependencies` field in `skill.json` is the kit's primary content — it lists the skills the kit installs.
 
 ### Recommended Fields
@@ -47,7 +47,6 @@ A **kit** is a dependency manifest — a skill whose value comes entirely from i
 | Field | Type | Purpose |
 |---|---|---|
 | `description` | string | Short summary. Shown in search results and the web catalog. Keep under 200 chars. |
-| `keywords` | string[] | Searchable category slugs. Include at least one canonical slug (see Section 3). |
 | `authors` | string[] | Author names/emails (e.g., `["Jane Doe <jane@acme.com>"]`) |
 | `license` | string | SPDX identifier (e.g., `MIT`, `Apache-2.0`) |
 
@@ -73,7 +72,6 @@ A **kit** is a dependency manifest — a skill whose value comes entirely from i
   "authors": ["Jane Doe <jane@acme.com>"],
   "license": "MIT",
   "repository": "https://github.com/acme/deploy-aws",
-  "keywords": ["deployment", "aws", "cloud", "devops"],
   "dependencies": {
     "acme/aws-auth": "^1.0.0",
     "acme/s3-utils": "^2.1.0"
@@ -101,7 +99,6 @@ A **kit** is a dependency manifest — a skill whose value comes entirely from i
   "version": "1.0.0",
   "type": "kit",
   "description": "Full-stack React development kit with UI, database, and deployment skills",
-  "keywords": ["kit"],
   "dependencies": {
     "acme/react": "^1.0.0",
     "acme/shadcn": "^2.0.0",
@@ -123,26 +120,9 @@ A **kit** is a dependency manifest — a skill whose value comes entirely from i
 
 ---
 
-## 3. Keyword System
+## 3. Keywords (deprecated)
 
-### Canonical Category Slugs
-
-The HappySkills registry recognizes these slugs for filtering and discovery in the web catalog:
-
-| Slug | Category |
-|---|---|
-| `deployment` | Deployment & release automation |
-| `database` | Databases & migrations |
-| `security` | Security & secret scanning |
-| `ai` | AI / ML |
-| `api` | APIs & integrations |
-| `monitoring` | Monitoring & observability |
-| `testing` | Testing & QA |
-| `devops` | DevOps & CI/CD |
-| `cloud` | Cloud infrastructure |
-| `analytics` | Analytics & data |
-
-**Best practice**: Include at least one canonical slug so the skill appears in the right filter category. Additional custom keywords are allowed.
+The `keywords` array in `skill.json` is a **legacy field**, retained only for backward compatibility. It is still accepted by the manifest and the validator does not require it. HappySkills curates and labels skills through a server-side process driven by the skill's *content*, not author-supplied keywords — so **do not spend effort populating `keywords`** during authoring, conversion, fork, enrichment, or updates. Leave any existing value as-is; a freshly scaffolded skill ships an empty `keywords: []`, which is fine to leave untouched.
 
 ---
 
@@ -245,7 +225,7 @@ Each entry has:
 - `description` — human-readable name
 - `version` — minimum version constraint
 - `check` — command to verify installation
-- `install` — platform-specific install commands. **Always include all three platforms:**
+- `install` — platform-specific install commands. **All three platform keys (`darwin`, `linux`, `win32`) MUST be present.** A missing key is a validation failure, not a "TBD."
 
 | Key | Platform |
 |-----|----------|
@@ -253,15 +233,38 @@ Each entry has:
 | `linux` | Linux |
 | `win32` | Windows |
 
-If the install command for a platform is known, include it. If the tool is not available or the install method is unknown for a platform, set the value to a message explaining the situation:
+Each value MUST be exactly one of:
+
+1. **A verified install command** (passed the Confidence Gate below), e.g. `"brew install mytool"`.
+2. **An official-docs pointer** in the form `"See <official-docs-url> for install instructions"`, when no command can be verified.
+3. **An explicit capability statement** `"Not supported on <platform>"`, when the tool genuinely does not run on that OS.
+
+An empty string, a `null`, a placeholder like `"TBD"`, or a hand-wavy `"Install manually"` is rejected. Guessing a command to fill the slot is rejected — use option 2 instead.
 
 ```json
 "install": {
   "darwin": "brew install mytool",
-  "linux": "apt install mytool",
+  "linux": "See https://mytool.example.com/docs/install#linux for install instructions",
   "win32": "Not supported on Windows"
 }
 ```
+
+#### Confidence Gate — verify install commands before writing them
+
+An install command is a runtime contract: if it's wrong, the user's install fails on first use. LLMs hallucinate package names, vendor IDs (`winget` IDs especially), and Homebrew tap/formula names. Before writing any `install.<platform>` value, apply this gate per tool, per platform:
+
+1. **Self-rate confidence.** For each `(tool, platform)` pair, answer honestly: *"Am I certain — from training, not inference-by-analogy — that this exact command installs this exact tool on this platform today?"*
+2. **High confidence** (ubiquitous tools: `git`, `node`, `python`, `docker`, `curl`, `jq`, major cloud CLIs): write the command directly.
+3. **Any uncertainty** (niche tools, vendor-specific CLIs, recent releases, anything where you'd "probably guess" the package name): **STOP. Do not write a plausible-sounding command from memory.** Instead:
+   - Use `WebSearch` for `"<tool name> install <platform>"` and read the **official** docs (vendor site, GitHub README, official package registry). Prefer first-party sources.
+   - If web tools are unavailable or the official docs are ambiguous, set the platform value to `"See <official-docs-url> for install instructions"` rather than guessing.
+4. **Forbidden shortcuts:**
+   - Guessing the Homebrew formula name by analogy (`brew install <toolname>` when you have not verified the formula exists).
+   - Guessing the apt/yum package name by analogy — binary name ≠ package name in many cases.
+   - Guessing the `winget` ID — the `Vendor.Product` format is **not** derivable; it must be looked up.
+   - Filling all three platforms when only one is verified, by extrapolating from the verified one.
+
+**Rule of thumb:** if you cannot point to a specific source (training-distilled or freshly fetched) for an install command, the field's value is `"See <url> for install instructions"`, not a guess.
 
 ### Dev Dependencies (`devDependencies`)
 
@@ -313,7 +316,7 @@ Format: `owner/name` (e.g., `acme/deploy-aws`)
 
 Before publishing a skill:
 
-1. **skill.json is complete** — `name`, `version`, `description`, and `keywords` are set
+1. **skill.json is complete** — `name`, `version`, and `description` are set
 2. **SKILL.md exists** — HappySkills validates its presence
 3. **Version is bumped** — use `happyskills bump patch|minor|major` before publishing
 4. **Dependencies are published** — all skills in `dependencies` must be published to the registry first
@@ -369,9 +372,8 @@ Certain characters in YAML frontmatter values break the parser or skill discover
 When creating a new skill for HappySkills, ensure you produce:
 
 - [ ] `SKILL.md` — follows Claude Code spec (frontmatter + content, see `skill-authoring.md`)
-- [ ] `skill.json` — valid manifest with `name`, `version`, `description`, `keywords`
+- [ ] `skill.json` — valid manifest with `name`, `version`, `description`
 - [ ] `description` in both files — skill.json description for registry search, SKILL.md description for Claude auto-invocation (they serve different purposes and can differ)
-- [ ] Keywords include at least one canonical slug
 - [ ] Dependencies declared if the skill relies on other published skills
 - [ ] System dependencies declared for every non-POSIX binary the skill or its scripts invoke (including `git`, `node`, `python`, etc. — see § 4)
 - [ ] Skill name is lowercase-with-hyphens, matching the directory name

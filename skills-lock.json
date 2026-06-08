@@ -1,14 +1,14 @@
 {
 	"lockVersion": 2,
-	"generatedAt": "2026-05-10T12:09:08.593Z",
+	"generatedAt": "2026-06-08T05:38:32.030Z",
 	"skills": {
 		"happyskillsai/happyskills": {
-			"version": "2.0.0",
-			"ref": "refs/tags/v2.0.0",
-			"commit": "ce7b632e9c36413549682d61ad4a1220469a3cbe362b590e57e2468931a8a2c7",
-			"integrity": "sha256-085608bf93fb3773b41a4fc2d2bf35734174d5dd89e3f955f8d8b0be3fdf545c",
-			"base_commit": "ce7b632e9c36413549682d61ad4a1220469a3cbe362b590e57e2468931a8a2c7",
-			"base_integrity": "sha256-085608bf93fb3773b41a4fc2d2bf35734174d5dd89e3f955f8d8b0be3fdf545c",
+			"version": "2.5.3",
+			"ref": "refs/tags/v2.5.3",
+			"commit": "743fc13dd4a4d65396a48dc1659d2cd010f0f579e5a3f3e6643aaa5c1ca116fe",
+			"integrity": "sha256-ea6a4dc1d91fc8ffec48e05677e5f1f1349f3314bc465683299f029d30232d78",
+			"base_commit": "743fc13dd4a4d65396a48dc1659d2cd010f0f579e5a3f3e6643aaa5c1ca116fe",
+			"base_integrity": "sha256-ea6a4dc1d91fc8ffec48e05677e5f1f1349f3314bc465683299f029d30232d78",
 			"requested_by": [
 				"__root__"
 			],
@@ -16,6 +16,7 @@
 				"happyskillsai/happyskills-design": "^0.1.0",
 				"happyskillsai/happyskills-publish": "^0.1.0",
 				"happyskillsai/happyskills-sync": "^0.1.0",
+				"happyskillsai/happyskills-search": "^0.1.0",
 				"happyskillsai/happyskills-help": "^0.1.0"
 			},
 			"type": "skill"
@@ -59,12 +60,12 @@
 			"type": "skill"
 		},
 		"nicolasdao/tiny-gemini": {
-			"version": "2.0.0",
-			"ref": "refs/tags/v2.0.0",
-			"commit": "385891105c56ea8fcad2439f802f44081d6a5444356591565b311e1c37eb2faf",
-			"integrity": "sha256-328098d9a11c1a8c1d3ea5c03cff29c72053792171a4f6f427131ab541cbbaed",
-			"base_commit": "385891105c56ea8fcad2439f802f44081d6a5444356591565b311e1c37eb2faf",
-			"base_integrity": "sha256-328098d9a11c1a8c1d3ea5c03cff29c72053792171a4f6f427131ab541cbbaed",
+			"version": "2.0.2",
+			"ref": "refs/tags/v2.0.2",
+			"commit": "8b1a100696ca49890879acb5b12861a4fc83d64be37589ef1b03a2c817570245",
+			"integrity": "sha256-e63caf2dcbb75db551f4ac2b59bcca030440387243e13fe02a14fa4e80235af9",
+			"base_commit": "8b1a100696ca49890879acb5b12861a4fc83d64be37589ef1b03a2c817570245",
+			"base_integrity": "sha256-e63caf2dcbb75db551f4ac2b59bcca030440387243e13fe02a14fa4e80235af9",
 			"requested_by": [
 				"__root__"
 			],
@@ -76,12 +77,12 @@
 			}
 		},
 		"happyskillsai/happyskills-design": {
-			"version": "0.2.1",
-			"ref": "refs/tags/v0.2.1",
-			"commit": "6533f944ce0a72e513109bdb76fc6f49db46fa553d07986a9191cff4c7d94f19",
-			"integrity": "sha256-2275cd1377993925e8635dc7a61056316c7c2c1452ec874b93df5854671e48de",
-			"base_commit": "6533f944ce0a72e513109bdb76fc6f49db46fa553d07986a9191cff4c7d94f19",
-			"base_integrity": "sha256-2275cd1377993925e8635dc7a61056316c7c2c1452ec874b93df5854671e48de",
+			"version": "0.10.2",
+			"ref": "refs/tags/v0.10.2",
+			"commit": "c4cb1be549f24b9a28b9b08dde980a49bb55f76041d36d0b922aef2f8f7fbb0e",
+			"integrity": "sha256-4a8877b9226195533beb2b411ff4db132101c2f665a8951683c4874a992635af",
+			"base_commit": "c4cb1be549f24b9a28b9b08dde980a49bb55f76041d36d0b922aef2f8f7fbb0e",
+			"base_integrity": "sha256-4a8877b9226195533beb2b411ff4db132101c2f665a8951683c4874a992635af",
 			"requested_by": [
 				"happyskillsai/happyskills"
 			],
@@ -89,12 +90,12 @@
 			"type": "skill"
 		},
 		"happyskillsai/happyskills-publish": {
-			"version": "0.1.1",
-			"ref": "refs/tags/v0.1.1",
-			"commit": "961fc468197f12101d919f7e23bdcd2add0708fae7bfc568f892df7b59f09a71",
-			"integrity": "sha256-5161a96ec4d6286cc953c9fb317df79f0c77f89e43186fc5b1890a5b668d3fbe",
-			"base_commit": "961fc468197f12101d919f7e23bdcd2add0708fae7bfc568f892df7b59f09a71",
-			"base_integrity": "sha256-5161a96ec4d6286cc953c9fb317df79f0c77f89e43186fc5b1890a5b668d3fbe",
+			"version": "0.5.5",
+			"ref": "refs/tags/v0.5.5",
+			"commit": "1f1dcc2b0c675f7134441fb4cf692edc3e8363e3da90121cdce7308cd890159b",
+			"integrity": "sha256-ecb087313c507f96eec3af70984164ecfcaf5ebe8ef5d701589691ec6f1db13c",
+			"base_commit": "1f1dcc2b0c675f7134441fb4cf692edc3e8363e3da90121cdce7308cd890159b",
+			"base_integrity": "sha256-ecb087313c507f96eec3af70984164ecfcaf5ebe8ef5d701589691ec6f1db13c",
 			"requested_by": [
 				"happyskillsai/happyskills"
 			],
@@ -102,12 +103,12 @@
 			"type": "skill"
 		},
 		"happyskillsai/happyskills-sync": {
-			"version": "0.1.1",
-			"ref": "refs/tags/v0.1.1",
-			"commit": "75788b03f55a2d6152391142a7c1cb03521b2c32e0cbd21225f4c4577ebb2097",
-			"integrity": "sha256-db5e271fe0dac3fa6e02facbdfd5f4ed1c0048d3692ca1d036848f7ef585db51",
-			"base_commit": "75788b03f55a2d6152391142a7c1cb03521b2c32e0cbd21225f4c4577ebb2097",
-			"base_integrity": "sha256-db5e271fe0dac3fa6e02facbdfd5f4ed1c0048d3692ca1d036848f7ef585db51",
+			"version": "0.5.5",
+			"ref": "refs/tags/v0.5.5",
+			"commit": "af54b740e186ef2b9f418f8bb22388cf437040cbe27d1bdc94cff806a8d1656d",
+			"integrity": "sha256-14e17c6dc9b29be99a0167e4486c0c649172d5d2d31486792e47c53d48e746a5",
+			"base_commit": "af54b740e186ef2b9f418f8bb22388cf437040cbe27d1bdc94cff806a8d1656d",
+			"base_integrity": "sha256-14e17c6dc9b29be99a0167e4486c0c649172d5d2d31486792e47c53d48e746a5",
 			"requested_by": [
 				"happyskillsai/happyskills"
 			],
@@ -115,12 +116,12 @@
 			"type": "skill"
 		},
 		"happyskillsai/happyskills-help": {
-			"version": "0.2.1",
-			"ref": "refs/tags/v0.2.1",
-			"commit": "1619dcee3600e023b8d4af44843641df5a3cee8b9b7d3e2a24d00be24e467d82",
-			"integrity": "sha256-966fff7df8ef08c446f27070f401a3b747f1da2df1b8f1fde4fc9bfc064aa033",
-			"base_commit": "1619dcee3600e023b8d4af44843641df5a3cee8b9b7d3e2a24d00be24e467d82",
-			"base_integrity": "sha256-966fff7df8ef08c446f27070f401a3b747f1da2df1b8f1fde4fc9bfc064aa033",
+			"version": "0.8.0",
+			"ref": "refs/tags/v0.8.0",
+			"commit": "8ed3c8e1ce6ddfc58250eb4a749aaeaa7a80c7ba4fee82b1c2debe4a7a637583",
+			"integrity": "sha256-0258677732d87119fc3f2533a477841210b6e8a3604c8eea72c750a0a7bece7b",
+			"base_commit": "8ed3c8e1ce6ddfc58250eb4a749aaeaa7a80c7ba4fee82b1c2debe4a7a637583",
+			"base_integrity": "sha256-0258677732d87119fc3f2533a477841210b6e8a3604c8eea72c750a0a7bece7b",
 			"requested_by": [
 				"happyskillsai/happyskills"
 			],
@@ -141,24 +142,24 @@
 			"type": "skill"
 		},
 		"nicolasdao/tiny-gemini-image": {
-			"version": "0.1.0",
-			"ref": "refs/tags/v0.1.0",
-			"commit": "80a969c43caa5f0fc193a304a6aaca039aad897e9e83049a4fe761a50b473811",
-			"integrity": "sha256-a2d8f84ab01261488b288689fb56e8e68c546ce0b96948f40dcd86af9a3b3efb",
-			"base_commit": "80a969c43caa5f0fc193a304a6aaca039aad897e9e83049a4fe761a50b473811",
-			"base_integrity": "sha256-a2d8f84ab01261488b288689fb56e8e68c546ce0b96948f40dcd86af9a3b3efb",
+			"version": "0.1.2",
+			"ref": "refs/tags/v0.1.2",
+			"commit": "6cd5a3ba73918ef293ee3397442c621e1ac94a34c9904d677503d04827e91e57",
+			"integrity": "sha256-831f425fd0ea986ff30db788898e2d23a3733dfc668523939ab0759bf4e62871",
+			"base_commit": "6cd5a3ba73918ef293ee3397442c621e1ac94a34c9904d677503d04827e91e57",
+			"base_integrity": "sha256-831f425fd0ea986ff30db788898e2d23a3733dfc668523939ab0759bf4e62871",
 			"requested_by": [
 				"__root__"
 			],
 			"dependencies": {}
 		},
 		"nicolasdao/tiny-gemini-tts": {
-			"version": "0.1.0",
-			"ref": "refs/tags/v0.1.0",
-			"commit": "49f426b02abba037c4ac5010e4067d8b02ec771ff049931eb13153bf9cf9e416",
-			"integrity": "sha256-af05197c8c87d5293b209f2a4617dcb1d745b4f666bbe5ed5829dace06f392f7",
-			"base_commit": "49f426b02abba037c4ac5010e4067d8b02ec771ff049931eb13153bf9cf9e416",
-			"base_integrity": "sha256-af05197c8c87d5293b209f2a4617dcb1d745b4f666bbe5ed5829dace06f392f7",
+			"version": "0.1.2",
+			"ref": "refs/tags/v0.1.2",
+			"commit": "d9695bdb78088be204436b30d41e5cb6e1bd9c32eda92a1f4a2573744fff3ada",
+			"integrity": "sha256-0dd728b792f3b51c6ef43c3c4370330abe8aeae845f6364c41c983027c4cab54",
+			"base_commit": "d9695bdb78088be204436b30d41e5cb6e1bd9c32eda92a1f4a2573744fff3ada",
+			"base_integrity": "sha256-0dd728b792f3b51c6ef43c3c4370330abe8aeae845f6364c41c983027c4cab54",
 			"requested_by": [
 				"__root__"
 			],
@@ -177,16 +178,29 @@
 			"dependencies": {}
 		},
 		"nicolasdao/tiny-gemini-models": {
-			"version": "0.1.0",
-			"ref": "refs/tags/v0.1.0",
-			"commit": "5d79ac349d1e39d6777d73838221789ae9c6dfd749832146a32bad7999be53f2",
-			"integrity": "sha256-d472844a46ba18b5ab04eb9910f02c3a9e1afa02ea491429f0e4a5fbd7d66b63",
-			"base_commit": "5d79ac349d1e39d6777d73838221789ae9c6dfd749832146a32bad7999be53f2",
-			"base_integrity": "sha256-d472844a46ba18b5ab04eb9910f02c3a9e1afa02ea491429f0e4a5fbd7d66b63",
+			"version": "0.1.2",
+			"ref": "refs/tags/v0.1.2",
+			"commit": "3a197142ecdebc9f1a274224e183c74a2442a2939b9edca9a5c39e267defb87e",
+			"integrity": "sha256-14b3dcd487da5050b12d01264e4d7372b483a0fcee3e41b8f42b9269d6aff87e",
+			"base_commit": "3a197142ecdebc9f1a274224e183c74a2442a2939b9edca9a5c39e267defb87e",
+			"base_integrity": "sha256-14b3dcd487da5050b12d01264e4d7372b483a0fcee3e41b8f42b9269d6aff87e",
 			"requested_by": [
 				"__root__"
 			],
 			"dependencies": {}
+		},
+		"happyskillsai/happyskills-search": {
+			"version": "0.3.2",
+			"ref": "refs/tags/v0.3.2",
+			"commit": "8c00c051abf5b37cd427cae8c911937473d8d376060469d14dd7072952b3e34f",
+			"integrity": "sha256-7fced0c5770b10e8b1b5d1cf026b20a52a642c4bf8db6b357f0cd1519134cdf3",
+			"base_commit": "8c00c051abf5b37cd427cae8c911937473d8d376060469d14dd7072952b3e34f",
+			"base_integrity": "sha256-7fced0c5770b10e8b1b5d1cf026b20a52a642c4bf8db6b357f0cd1519134cdf3",
+			"requested_by": [
+				"happyskillsai/happyskills"
+			],
+			"dependencies": {},
+			"type": "skill"
 		}
 	}
 }

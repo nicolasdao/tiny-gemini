@@ -1,7 +1,6 @@
 ---
 name: tiny-gemini
 description: tiny-gemini — Ask Gemini for text or send raw API calls via the npx CLI. Use when asking questions, summarizing files, extracting structured data, web-grounded answers, or raw API access. Not for images, audio, deep research, or model lookup.
-user-invocable: false
 allowed-tools: Bash, Read
 ---
 

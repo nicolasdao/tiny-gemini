@@ -1,6 +1,6 @@
 {
 	"name": "tiny-gemini-tts",
-	"version": "0.1.0",
+	"version": "0.1.2",
 	"description": "Teaches AI agents to use the tiny-gemini CLI tts command for Gemini text-to-speech via the npx CLI. Suite member of nicolasdao/tiny-gemini.",
 	"keywords": [
 		"ai",

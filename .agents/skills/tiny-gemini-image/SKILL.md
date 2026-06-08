@@ -1,7 +1,6 @@
 ---
 name: tiny-gemini-image
 description: tiny-gemini — Generate, edit, and analyze images via the Gemini image models in the npx CLI. Use when creating images, editing photos, generating icons, patterns, or diagrams, or describing pictures. Not for text generation, audio, or research.
-user-invocable: false
 allowed-tools: Bash, Read
 ---
 

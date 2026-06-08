@@ -5,6 +5,22 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-06-08
+
+### Fixed
+
+- Correct the multi-speaker `raw` example to lowercase `response_modalities: ["audio"]` — the Interactions API rejects the uppercase `["AUDIO"]` form.
+
+### Changed
+
+- Use title-case voice names (default now `Kore`), note that `speech_config` is an array even for a single speaker, and drop the inaccurate "deprecated" framing for `gemini-2.5-flash-preview-tts` (still active Preview).
+
+## [0.1.1] - 2026-05-10
+
+### Fixed
+
+- Removed `user-invocable: false` from the SKILL.md frontmatter so the skill can be invoked manually by the user via `/tiny-gemini-tts`.
+
 ## [0.1.0] - 2026-05-10
 
 ### Added

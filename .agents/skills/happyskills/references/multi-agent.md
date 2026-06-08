@@ -28,7 +28,7 @@ The lock file (`skills-lock.json`) exclusively tracks the canonical location. It
 ## How It Works
 
 1. **Canonical location** — HappySkills downloads, extracts, and writes physical skill files exclusively to `.agents/skills/` (project) or `~/.agents/skills/` (global). No agent directory ever receives physical files directly.
-2. **Auto-detection** — At install time, HappySkills scans your home directory for AI agent config folders (e.g., `~/.claude/`, `~/.cursor/`, `~/.windsurf/`).
+2. **Detection** — HappySkills checks for the existence of `.<agent>/skills/` in the relevant scope (project root for project installs, home dir for global installs). The `.<agent>/skills/` subfolder is the unambiguous signal — it is only ever created by the CLI itself, never by the agent. This is deliberately tighter than checking for the bare `.<agent>/` folder, which agents create for their own settings, history, and sessions regardless of skill configuration.
 3. **Symlink linking** — For each detected agent, HappySkills creates a symlink from that agent's skills directory to the canonical copy in `.agents/skills/`. This means one physical copy serves all agents, and updates propagate instantly.
 4. **Uninstall cleanup** — When you uninstall a skill, HappySkills removes the physical files from `.agents/skills/` and cleans up all symlinks from every agent directory.
 
@@ -38,18 +38,56 @@ The lock file (`skills-lock.json`) exclusively tracks the canonical location. It
 
 HappySkills supports 8 AI coding agents out of the box:
 
-| Agent | ID | Skills Directory | Detection | Storage |
+| Agent | ID | Project Detection | Home Detection | Storage |
 |---|---|---|---|---|
-| Claude Code | `claude` | `.claude/skills/` | `~/.claude/` | Symlinks to `.agents/skills/` |
-| Cursor | `cursor` | `.cursor/skills/` | `~/.cursor/` | Symlinks to `.agents/skills/` |
-| Windsurf | `windsurf` | `.windsurf/skills/` | `~/.windsurf/` | Symlinks to `.agents/skills/` |
-| Codex (OpenAI) | `codex` | `.codex/skills/` | `~/.codex/` | Symlinks to `.agents/skills/` |
-| GitHub Copilot | `copilot` | `.github/skills/` | `~/.github/copilot/` | Symlinks to `.agents/skills/` |
-| Aider | `aider` | `.aider/skills/` | `~/.aider/` | Symlinks to `.agents/skills/` |
-| Cline | `cline` | `.cline/skills/` | `~/.cline/` | Symlinks to `.agents/skills/` |
-| Roo Code | `roo` | `.roo/skills/` | `~/.roo/` | Symlinks to `.agents/skills/` |
+| Claude Code | `claude` | `<project>/.claude/skills/` | `~/.claude/skills/` | Symlinks to `.agents/skills/` |
+| Cursor | `cursor` | `<project>/.cursor/skills/` | `~/.cursor/skills/` | Symlinks to `.agents/skills/` |
+| Windsurf | `windsurf` | `<project>/.windsurf/skills/` | `~/.windsurf/skills/` | Symlinks to `.agents/skills/` |
+| Codex (OpenAI) | `codex` | `<project>/.codex/skills/` | `~/.codex/skills/` | Symlinks to `.agents/skills/` |
+| GitHub Copilot | `copilot` | `<project>/.github/skills/` | `~/.github/skills/` | Symlinks to `.agents/skills/` |
+| Aider | `aider` | `<project>/.aider/skills/` | `~/.aider/skills/` | Symlinks to `.agents/skills/` |
+| Cline | `cline` | `<project>/.cline/skills/` | `~/.cline/skills/` | Symlinks to `.agents/skills/` |
+| Roo Code | `roo` | `<project>/.roo/skills/` | `~/.roo/skills/` | Symlinks to `.agents/skills/` |
 
-All agents are equal — each receives a symlink from the canonical `.agents/skills/` directory. No agent stores physical files.
+All agents are equal — each receives a symlink from the canonical `.agents/skills/` directory. No agent stores physical files. Detection looks for `<agent>/skills/`, not the bare `.<agent>/` folder, because `.<agent>/skills/` is the only path that's exclusively a HappySkills artifact.
+
+---
+
+## Per-Project Agent Configuration (`agents` command)
+
+When the user wants to **configure which agents are linked for a single project** — e.g., "add Codex to this project so I can try it out" — use the `agents` command. This is the right tool when the decision is project-scoped, not machine-wide. The existence of `.<agent>/skills/` in the project root IS the project-level configuration; the command just creates and tears down those folders deliberately and mirrors any installed skills as symlinks.
+
+```bash
+# Show every supported agent + status here (configured / # of linked skills)
+npx happyskills agents --json
+npx happyskills agents list --json
+
+# Add an agent to this project — creates .<agent>/skills/ and mirrors every
+# currently-enabled installed skill into it as symlinks
+npx happyskills agents add codex --json
+npx happyskills agents add codex,cursor --json    # comma list
+npx happyskills agents add codex cursor --json    # space list
+
+# Remove an agent's skills folder from this project. Physical files in
+# .agents/skills/ are untouched. The agent's other state (settings, history,
+# sessions) is left alone.
+npx happyskills agents remove codex --json
+
+# Operate on the global scope (~/.<agent>/skills/) instead of project-local
+npx happyskills agents add codex -g --json
+```
+
+**Disabled-state respect** — `agents add` only mirrors skills that are currently enabled (i.e., symlinks present in at least one other configured agent in the same scope). Skills the user previously disabled stay disabled. The response lists which skills were skipped and points at `enable`.
+
+**When to use `agents` vs `config agents` vs `--agents` flag:**
+
+| Surface | Scope | Use it when |
+|---|---|---|
+| `happyskills agents add\|remove\|list` | This project only | "I want Codex enabled here, but not on every project" — the project's `.<agent>/skills/` folders become the truth |
+| `happyskills config agents <ids>` | User-global default | "Across all my projects, always link to Claude + Cursor unless the project says otherwise" |
+| `--agents` flag | One command only | One-off override on a single install/uninstall |
+
+The project-physical configuration **wins** over the user-global `config agents` default (see priority order below). That's the mechanic that makes the project-scoped decision stick across subsequent `install`/`update` calls.
 
 ---
 
@@ -85,11 +123,14 @@ export HAPPYSKILLS_AGENTS=claude,cursor   # Claude + Cursor only
 
 Add to `.zshrc` or `.bashrc` for persistence.
 
-**Priority order:**
-1. `--agents` flag (highest — per-command override)
+**Priority order (5 tiers, top wins):**
+1. `--agents` flag (per-command override)
 2. `HAPPYSKILLS_AGENTS` environment variable
-3. Config file (`~/.config/happyskills/config.json`)
-4. Auto-detection (default — scan home directory)
+3. **Project-physical** — any `.<agent>/skills/` that exists in the project root (project scope only). Managed via `happyskills agents add|remove` (above).
+4. Config file (`~/.config/happyskills/config.json`)
+5. Home-physical fallback — auto-detect from `~/.<agent>/skills/`
+
+Tier 3 is the load-bearing change: once `.codex/skills/` exists in this project (because the user ran `happyskills agents add codex`), every subsequent `install`/`update` in this project includes Codex, regardless of the user-global `config agents` default.
 
 ---
 
@@ -103,6 +144,9 @@ Add to `.zshrc` or `.bashrc` for persistence.
 | `setup` | Links the happyskills skill to detected agents |
 | `enable` | Creates symlinks for specified skills in all detected agent folders |
 | `disable` | Removes symlinks for specified skills from all agent folders |
+| `agents add` | Creates `.<agent>/skills/` for the given agents and mirrors every enabled installed skill into it. Does not accept `--agents` itself — the agent ids ARE the positional arguments. |
+| `agents remove` | Removes the CLI-managed symlinks from `.<agent>/skills/`. Folder is deleted if empty. The parent `.<agent>/` is never touched. |
+| `agents list` | Read-only — shows which agents are configured in the current scope and how many skills are linked into each. |
 
 ---
 

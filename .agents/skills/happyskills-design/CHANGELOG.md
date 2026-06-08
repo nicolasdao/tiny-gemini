@@ -1,5 +1,168 @@
 # Changelog
 
+## [0.10.2] - 2026-06-06
+
+### Changed
+- Restructured `capabilities` into per-workflow clusters (`create-skill`, `review-skill`, `improve-skill`, `manage-kits`) with richer intents; the review/improve/kit capabilities carry intents but no CLI command, so `happyskills resolve` routes intents like "audit my skill" here even without a command (spec 260606-01). Additive metadata; no behavior change.
+
+## [0.10.1] - 2026-06-06
+
+### Added
+- Declared the `author-skill` capability in `skill.json` (owns the `init` command + design/audit/update intents) so `happyskills schema` and `happyskills resolve` can route authoring intents to this skill (spec 260606-01). Additive metadata — older CLIs ignore it; no behavior change.
+
+## [0.10.0] - 2026-06-03
+
+### Added
+- **Kit editing — design now owns mutating an existing kit, not just creating one.** A kit is a skill (`type: "kit"`) whose content is its `dependencies` list, so changing what a kit bundles is content authoring and belongs here. Added `SKILL.md` Section 6 "Kit Workflows (Create and Update)" with a new `6b — Update a kit` summary, and a full **Kit Update Workflow** in `references/workflows.md` (disambiguate edit-bundle vs upgrade-installed vs publish → identify the `_kit-` target and its `list` bucket → divergence pre-flight → surgical `skill.json` `dependencies` edit → README sync → validate → route to publish). New `SKILL.md` Section 1 routing-table rows ("add a skill to my kit", "remove a skill from my kit", "edit my kit", "swap a skill in my kit", …) and a disambiguation rule resolving the three-way "update my kit" ambiguity.
+
+### Changed
+- **`description` rewritten to cover kits (242 chars).** `Design, audit, and update skill content` → `Design, audit, and update skills and kits`, with `editing a kit` added to the triggers and `upgrading` added to the `Not for` clause (cedes "upgrade my kit" to core at the routing layer). Stays under the 250-char soft cap.
+- **Skill Update Workflow (Section 3) pre-flight brought to full status-enum parity.** Both `SKILL.md` Section 3 and `references/workflows.md` Phase 1 now route the complete `status` enum — added handling for `not_found` (a draft scaffolded by `init`, never published: no lock entry, no remote baseline → proceed), `drift` (BLOCK → sync repair), `ahead` (proceed), and `conflicts` (route to sync).
+
+### Fixed
+- **Stale cross-reference in `references/cli-reference.md`** — `init` was documented as used by "the Kit Creation Workflow (SKILL.md Section 5)"; corrected to "Kit Workflows — Create (SKILL.md Section 6)".
+
+## [0.9.8] - 2026-06-02
+
+### Removed
+- **Dropped all guidance that populates `skill.json` `keywords`.** Removed the "Suggest keywords" step from Post-Init Enrichment (`references/workflows.md`) and the canonical-slug doctrine from `references/happyskills-conventions.md` — the §3 "Keyword System" section, its slug table, the recommended-fields row, and the publishing/authoring checklist items — replaced with a short "Keywords (deprecated)" note. Also removed the keyword mentions in the Update, Audit, and Kit workflows, and in `SKILL.md` (authoring step 8/10, audit step 11). `keywords` is a deprecated, unused field — not read by search, ranking, or the platform taxonomy — so authoring spends no effort on it. Discovery is driven by the platform-owned taxonomy derived from `description` + `SKILL.md`.
+
+## [0.9.7] - 2026-06-01
+
+### Changed
+- **`references/cli-reference.md` aligned to the canonical six-key envelope** (list payloads under `data.results`, exit status on `meta.exit_code`). Section 8 adds envelope hygiene: surface `warnings[]` and stop on an unrecognised `next_step.action` / `error.code`.
+
+## [0.9.6] - 2026-06-01
+
+### Changed
+- **Attribution Prompt `license` options reworked and hoisted into SKILL.md.** The `license` AskUserQuestion (Post-Init Enrichment step 7b and Kit Enrichment step 1b in `references/workflows.md`) now presents `MIT` → `Apache-2.0` → `UNLICENSED` → `Show me more`. `UNLICENSED` (proprietary, all-rights-reserved) is promoted out of the "Show me more" sub-table into a top-level option so users keeping a skill private see it without a second hop. `BSD-3-Clause` moves down into the "Show me more" catalog (and replaces `UNLICENSED` in the second-prompt shortlist) — it is near-redundant with MIT, whereas Apache-2.0 (explicit patent grant) earns the slot on a distinct axis. Option descriptions reworded for clarity (MIT noted as "most common"; UNLICENSED spelled out as "not open source, keep private and closed").
+- **The four license options + their order are now enumerated directly in `SKILL.md` Section 9 (Constraints).** Previously the literal option list lived only in `references/workflows.md` — a load-on-demand file. An agent running the authoring workflow without opening that file reconstructed the prompt from training priors (typically `MIT / Apache-2.0 / Type-something`), silently dropping `BSD-3-Clause`, `Show me more`, and the discovery path. Hoisting the list into the Constraints section (the same safeguarding move as `[0.7.1]`, applied one indirection-level deeper) removes the room to improvise.
+
+### Added
+- **Explicit guardrail against conflating "Show me more" with the auto-injected "Other".** Both `workflows.md` call sites and the `SKILL.md` constraint now state that AskUserQuestion adds a free-text "Other" / "Type something" option automatically, that the agent must NOT add one itself, and that "Other" is NOT a substitute for "Show me more" (which opens the full SPDX catalog for users who don't know the identifier they want). Also forbids tagging any license option "Recommended", since order is not endorsement and a Recommended tag would re-introduce the silent-MIT bias `[0.7.1]` removed.
+
+### Rationale
+Field report: the `license` prompt consistently rendered as `MIT / Apache-2.0 / Type something` instead of the documented four-option list, and the `UNLICENSED` and `Show me more` paths never appeared. Root cause was a partial recurrence of the `[0.7.1]` failure mode — `[0.7.1]` removed the third indirection hop but left the decisive content (the literal options) one hop deep in `references/workflows.md`, so an agent that didn't open that file improvised the prompt from priors. The fix mirrors `[0.7.1]`'s proven pattern (enumerate the load-bearing detail in the Constraints section so it cannot be missed) and additionally surfaces `UNLICENSED` at the top level so the "keep this private" intent is one click, not two.
+
+## [0.9.5] - 2026-05-28
+
+### Changed
+- **Section 8 (Validate Error Handling)** updated for the canonical six-key response envelope (spec 260525-cli-default-json § 4). Failed validation now returns `ok === false` with `error.code === 'VALIDATION_FAILED'` and `next_step.action === 'fix_validation_errors'`. Per-rule failures are read from `error.validation_errors[]` (the new closed-schema location, alongside `data.errors[]` which remains backward-compatible). No procedural changes — the recommendations-driven fix loop is unchanged.
+
+## [0.9.4] - 2026-05-25
+
+### Changed
+- **Kit format docs updated to README.md (per `happyskills@0.52.0+`).** Kits no longer ship a frontmatter-less `SKILL.md`; they ship a plain `README.md`. The absence of `SKILL.md` is what keeps a kit invisible to every agent runtime (Claude Code, Codex, Gemini, etc.) — no missing-frontmatter trick required, no warnings emitted by Codex/Gemini. Updated in: `SKILL.md` Section 6 key behaviors; `references/workflows.md` Kit Creation Workflow step 9 (now "Write kit README.md", with an explicit "delete any SKILL.md left over from a pre-0.52.0 scaffold" note); `references/happyskills-conventions.md` kit definition + key differences; `references/cli-reference.md` `init --kit` description + `files_created` example. Behavioural change on the CLI side: `init --kit` writes `README.md`, `validate` requires `README.md` for kits and rejects any `SKILL.md` found inside a kit directory.
+
+## [0.9.3] - 2026-05-25
+
+### Changed
+- **Section 2 step "Optional final step" + `references/workflows.md` step 12** clarified to name the just-scaffolded skill as a **draft** (per `happyskills@0.51.0+`: `data.drafts[]`, not `data.external[]`) and to spell out that the publish skill ships drafts via `release` in a single step — no `convert` detour. Pre-empts the failure mode reported in spec 260522-02 where the design skill correctly routed to the publish skill but downstream user-facing language still surfaced "external" / "convert" jargon.
+
+## [0.9.2] - 2026-05-24
+
+### Changed
+- **`references/workflows.md` step 9 rewritten** to reflect the post-260524-02 constellation. Step 9 previously conflated "discovery skill" and "concierge" into one role and named `happyskills-help` as that combined role. After `happyskills-search@0.1.0` was extracted from help, the two roles are distinct: the **discovery skill** owns marketplace search + version/changelog lookup + install-on-recommendation; the **concierge** (optional) owns explain-the-constellation Q&A. Step 9 now describes both and explains they can be combined or split, with HappySkills as the example of the split form (`happyskills-search` + `happyskills-help`).
+- **Step 8 wording** in `references/workflows.md` aligned: opt-in satellites are surfaced through a "discovery skill" (not "concierge skill"), since install-on-recommendation lives on the discovery side after the split.
+
+## [0.9.1] - 2026-05-24
+
+### Changed
+- **SKILL.md `description` rewritten.** `Design and audit Claude Code skills` → `Design, audit, and update skill content`. "Claude Code skills" replaced with "skill content" — HappySkills targets 8 agent platforms, not just Claude Code, and the skill's own SKILL.md framing is that it "operates on skill content." Added `decomposing a mega-skill` to the trigger list — a Section 5 capability that wasn't previously surfaced in the description and therefore wasn't reachable via auto-invocation.
+- **`references/workflows.md` step 9.** "Release now" branch rewritten to describe the `release` primitive (atomic snapshot + validate + bump + changelog + publish, ahead-state recognition, structured `next_step` envelope on failure). Aligns design's prose with the publish skill's v0.4.0 framing.
+
+## [0.9.0] - 2026-05-19
+
+### Added
+- **`references/happyskills-conventions.md` § 4 — new "Confidence Gate" subsection** under System Dependencies. Per-`(tool, platform)` self-assessment: high-confidence ubiquitous tools (`git`, `node`, `python`, `docker`, `curl`, `jq`, major cloud CLIs) may be written directly from training; any uncertainty MUST be resolved via `WebSearch` against official docs *before* writing the command, with a docs-pointer fallback (`"See <url> for install instructions"`) when web tools are unavailable or docs are ambiguous. Explicit forbidden shortcuts enumerated: guessing Homebrew formula names, guessing apt/yum package names by analogy, guessing `winget` `Vendor.Product` IDs, and extrapolating one verified platform to the other two.
+
+### Changed
+- **`references/happyskills-conventions.md` § 4 — tightened the "all three platforms" rule.** All three platform keys (`darwin`, `linux`, `win32`) are now MUST-be-present (a missing key is a validation failure, not a TBD). Each value MUST be exactly one of: (1) a verified install command, (2) `"See <official-docs-url> for install instructions"`, or (3) `"Not supported on <platform>"`. Empty strings, `null`, `"TBD"`, and `"Install manually"` are explicitly rejected. Guessing a command to fill a slot is rejected — use option 2 instead.
+- **`references/workflows.md` — Post-Init Enrichment step 5 rewritten with explicit sub-steps a/b/c.** (a) Discover: unchanged detection procedure. (b) Verify per platform (Confidence Gate): for every `(tool, platform)` pair, agents MUST apply the Confidence Gate and run `WebSearch` for any uncertain pair before writing the command; never extrapolate one verified platform to the others. (c) Report verified-vs-deferred to the user: a transparency summary after population, listing pairs resolved from training, pairs resolved via `WebSearch` (with source URLs), pairs deferred to docs pointers (with URLs), and pairs marked Not supported (with reasons).
+
+### Rationale
+Field-report symptom: when authors used `happyskills-design` to populate `systemDependencies` for niche or vendor-specific CLIs, the agent confidently filled all three platform install commands by pattern-matching package-name conventions — and frequently got the Homebrew formula, the apt package, or the `winget` `Vendor.Product` ID wrong. The previous § 4 wording ("If the install command is known, include it; if unknown, write a message") relied on the LLM's self-knowledge of *what it knows* — the exact failure mode this update closes. The Confidence Gate makes the self-assessment explicit (per pair, not per tool), routes uncertainty to `WebSearch` against official docs, and provides a non-guessing fallback (docs pointer) so the file is always populated with verifiable content. Step 5c surfaces the verified-vs-deferred breakdown to the user, so over-confident self-assessments get caught at review time rather than at the user's install time.
+
+## [0.8.0] - 2026-05-14
+
+### Changed
+- **Design pattern renamed: Suite Pattern → Constellation Pattern.** Coordinated rewrite across `SKILL.md`, `references/workflows.md`, `references/skill-authoring.md`, and the canonical reference. The umbrella name moves; "satellite skills" stays. Auto-invocation behaviour is unchanged (the skill's frontmatter `description` is verb-led and never referenced the pattern name).
+- **`references/suite-pattern.md` → `references/constellation-pattern.md`** (file rename + body rewrite). Every internal linker — `SKILL.md`, `references/workflows.md`, `references/skill-authoring.md` — updated to the new path. "Suite Decomposition Workflow" → "Constellation Decomposition Workflow" throughout.
+- **Naming-note prose tightened.** Removed the defensive "(analogous to a constellation being made of a family of stars)" parenthetical in `constellation-pattern.md` — the metaphor stands on its own.
+
+### Rationale
+The "Suite" metaphor was a flat-collection image (Office Suite, hotel suite) that never captured the core/satellite relationship the pattern actually describes. "Constellation" is coherent with the existing sub-pattern name — a constellation has structure and orbiting bodies, which is exactly the architectural claim. Internal-terminology refactor; no capability change, no breaking change to invocation or routing. Pre-alpha, so the rename ships before external surfaces accumulate the old name.
+
+## [0.7.1] - 2026-05-13
+
+### Changed
+- **`references/workflows.md` — renamed `Optional Fields Prompt` to `Attribution Prompt (MANDATORY)`** and removed it from the Common Procedures section. The word "Optional" in the procedure name pattern-matched as skippable to LLM agents, and the three-hop indirection (SKILL.md → Post-Init Enrichment → Common Procedures) meant the agent often never loaded the third file and silently picked defaults instead of asking.
+- **`references/workflows.md` — inlined the three prompts (authors, license, repository) directly into `Post-Init Enrichment` step 7 and `Kit Enrichment` step 1.** Each inlined block opens with: "NEVER pick defaults on the user's behalf. NEVER skip a field. NEVER assume MIT. Silently defaulting is a workflow failure, not a shortcut." The third hop is eliminated — every call site now contains the full procedure with explicit MANDATORY wording, matching the discipline already applied to system dependencies (step 5) and validation (step 11).
+- **`SKILL.md` Section 2 step 10 — enumerated `authors, license, repository` by name** in the Post-Init Enrichment cross-reference. Previously the parenthetical listed only "skill.json description, keywords, dependencies, CHANGELOG, optional publish," so the agent's mental model of "what Post-Init does" didn't include attribution fields. Out of sight, out of mind.
+
+### Added
+- **`SKILL.md` Section 9 (Constraints) — new NEVER rule** banning silent license defaults: "NEVER pick a license on the user's behalf during enrichment. MIT is not a default. The Attribution Prompt is MANDATORY — three separate AskUserQuestion calls for `authors`, `license`, then `repository`, in that order. Silently defaulting to MIT (or any other choice) skips a critical user decision and is treated as a workflow failure, not a shortcut."
+
+### Rationale
+Field report from a user: every authoring session with `happyskills-design@0.7.0` skipped the authors/license/repository prompts and silently defaulted to MIT, despite the procedure being fully documented in `references/workflows.md`. Root cause was procedural/architectural, not missing content: (1) the procedure's name `Optional Fields Prompt` told agents it was skippable; (2) authors/license/repository were never enumerated in the SKILL.md routing description, so they fell out of the agent's working model; (3) the procedure was 3 hops deep behind voluntary reference loads, so an agent in flow would proceed from a partial mental model rather than reading the third file; (4) step 7's wording was a single-line cross-reference, lacking the MANDATORY framing that protects steps 5 and 11. The fix mirrors the safeguarding pattern already proven on system-deps and validation: name the procedure as mandatory, enumerate the fields at the call site, eliminate the indirection that allowed silent skipping, and add an explicit Constraints-section anti-pattern that the agent cannot miss on routing-table scan.
+
+## [0.7.0] - 2026-05-13
+
+### Added
+- **`SKILL.md` — new "STOP — pre-flight for NEW skills" block at the very top, before Section 1.** Hard guardrail that mandates running `npx happyskills init <name> --json` BEFORE writing any file when the task is to design / create / scaffold / init a new skill. Explicitly forbids manual directory creation, manual `skill.json` authoring, and skipping `init` because the project uses a non-default skills location (`.agents/skills/`, `.cursor/skills/`, etc.) — instructs to run `init` in `.claude/skills/` first and relocate afterward. Pre-flight scope limited to NEW skills; updates/audits/decomposition of existing skills are unaffected.
+- **`SKILL.md` Section 9 (Constraints) — new top-most NEVER rule** mirroring the pre-flight: NEVER manually create a skill directory, write `skill.json`, or write any file for a NEW skill before running `init`. Names the consequence (non-managed skill that breaks `validate`/`list`/`publish`/`sync`) and the only exception (editing files inside an existing skill whose directory was previously created by `init`).
+
+### Rationale
+Session learning: the design skill's existing "Scaffold if needed — If no skill directory exists yet, run `npx happyskills init`" was step 3 of a 10-step list in Section 2, softened by "if needed," and not echoed in the Constraints section. An agent following the workflow rationalized skipping `init` because the project kept its skills in `.agents/skills/` instead of the default `.claude/skills/` — assumed `init` would fail or scaffold in the wrong place, and manually scaffolded the files instead. The result was a structurally valid but non-managed skill that cannot be `validate`d, `list`ed, `publish`ed, or `sync`ed. The two reinforcing additions (procedural STOP at the top + absolute NEVER in Constraints) close the gap: a fresh agent reading the skill cannot reach Section 2 without seeing the pre-flight, and the constraint catches drift if an agent attempts to bypass anyway. Non-default skill locations are explicitly addressed so the previous rationalization path is closed.
+
+## [0.6.0] - 2026-05-12
+
+### Added
+- **`references/skill-authoring.md` §5 — new "When to drop the Domain — the two-function lens" subsection.** Establishes that the Domain slot does two distinct jobs — *brand anchor* (suite identity) and *topical hard-filter* (narrows the LLM's routing prior for polysemous verbs like `Map`, `Clone`, `Build`, `Fetch`, `Sync`, `Run`) — and provides a five-row decision rule for when to use each form, when to skip the Domain entirely, and how to calibrate per-skill rather than per-suite. Includes a worked-examples table covering six real skills (suite members, single-purpose standalone, multi-purpose standalone, topically-named).
+- **`references/skill-authoring.md` §5 — three new anti-pattern table rows.** (1) Fabricated Domain prefix (inventing a brand-like word for the slot — `WebClone —` when no product called WebClone exists). (2) Same Domain across siblings with different scopes (forcing a multi-purpose skill to share a narrower sibling's Domain). (3) Casing mismatch between Domain and skill name (CamelCase Domain on a kebab-case skill family).
+
+### Changed
+- **`references/skill-authoring.md` §5 — Domain row in the five-slot grammar table** marked optional and reworded. Previously framed as "namespace prefix" with "product or suite name" as the only valid content. Now framed as "scope declaration" with two valid content forms — a real product/suite name (CamelCase brand) OR a real topical category (kebab-case) — and explicit conditions for skipping the slot.
+- **`references/skill-authoring.md` §5 — composition recipe step 1.** Replaced "Write the suite/product name. Mechanical." with a decision rule that distinguishes suite member, polysemous-verb standalone, anchoring verb-object, multi-purpose, and topically-named cases. Points at the new subsection for the full decision logic.
+- **`references/skill-authoring.md` §5 — "Common mistakes" entry on missing namespace prefix** now conditional: only a mistake when the verb is polysemous AND the verb-object phrase doesn't already anchor the topic. If the verb-object phrase anchors (`Map a website`, `Render a video`), skipping the Domain is correct, not a mistake.
+- **`references/suite-pattern.md` §3 — Domain row and §3.1 composition step 1 mirrored** to acknowledge the broader-scope-satellite edge case. Both link to the canonical treatment in `skill-authoring.md`. Suite-pattern stays consistent with the authoring spec.
+
+### Rationale
+A session-learning experience exposed that the framework treated the Domain slot as mandatory ("Write the suite/product name. Mechanical."), without acknowledging it has two functions, can be a kebab-case topical anchor, and may correctly be dropped on multi-purpose or topical-named skills. The author fabricated `WebClone —` on a paired skill suite because the spec said the slot was mechanical and required. The five-row decision rule, the per-skill calibration principle, and the three new anti-patterns close the gap — a new author following the spec today will not make the same mistake.
+
+## [0.5.0] - 2026-05-12
+
+### Added
+- **Drift handling in Section 3 (Skill Update Workflow) pre-flight.** Step 2's divergence check now has a `drift` branch: BLOCK edits, narrate the state in plain English ("The skill on disk doesn't match what was installed — lock says version X, the on-disk `skill.json` says Y"), and route to `happyskills-sync` Section 2.5 (Drift Repair). Modifying a drifted skill bakes more changes onto an already-broken baseline and makes eventual repair harder.
+- New constraint: **NEVER edit a skill whose status is `drift`** — route to sync's repair workflow first.
+
+### Rationale
+The CLI (`happyskills@0.44.0`) introduced lock-vs-disk drift detection. If a user asks to update a drifted skill's content, the design skill would otherwise proceed and pile new edits onto an inconsistent baseline — the eventual `publish` would either fail (because Section 3 step 2 in publish now blocks drift) or, worse, succeed at a structurally broken state and create a confusing release. This release closes the prevention path on the design surface.
+
+## [0.4.0] - 2026-05-11
+
+### Added
+- **`references/skill-authoring.md` §9 Best Practice #14 — "Translate tool output for the user, don't transcribe it."** New authoring rule: skills that wrap a CLI command and surface its JSON output must prescribe the user-facing phrasing, not just the agent behavior. Every status value, response key, or aggregate field the agent will present to the user needs an explicit plain-English opening sentence the agent should use verbatim. Without this, under uncertainty an LLM agent defaults to enumerating the JSON's vocabulary — producing a wall of jargon. The fix is structural: add a "Plain-English meaning (use as your opening sentence)" column to every status-value table, and frame the section with an explicit "lead with the plain-English meaning" rule. References `happyskills-sync` SKILL.md Section 2 as the reference implementation. Applies to **every** skill that interprets command output for a user — `validate`, `status`, `check`, `pull`, `diff`, `publish`, anything that returns a status field or result code.
+- **`references/skill-authoring.md` §10 Anti-Patterns** — new row matching #14: "Skill describes CLI status values or result codes without prescribing the plain-English opening sentence the agent should use."
+
+### Rationale
+Generalizes the framework lesson from the `happyskills-sync` v0.3.0 / `happyskills-publish` v0.2.0 release. The pattern of "skills prescribe *what to do* but not *how to narrate the result*" is suite-agnostic — any skill that wraps a CLI command is exposed to it. Promoting it from a per-skill fix to an authoring-level Best Practice prevents the same gap from recurring in future skills.
+
+## [0.3.0] - 2026-05-11
+
+### Added
+- **`references/suite-pattern.md` §2.4 — The Canonical-Command Escape Hatch.** A scoped softening of the load-bearing orthogonality rule: when two suite members would both attract the same user question, both may route to the same canonical CLI command. Same question → same command from multiple skills is safe; same question → different commands is not. Includes when-to-apply table, worked example (the `check` registry-update query), and explicit "what this is not" guardrails.
+- **`references/suite-pattern.md` §5 — Three-layer Orthogonality Test.** Extended the test to walk three layers of the orthogonality surface: L1 front matter (description), L2 Section 1 routing tables, L3 command names + output vocabulary (status values, response keys, aggregate field names). L1 cleanliness is necessary but not sufficient — sub-verb collisions hide at L2/L3.
+- **`references/suite-pattern.md` §6 — The Limits of Static Validation.** Documents the distinction between *literal* collisions (keyword-checkable) and *semantic* collisions (same meaning, different words — hard to catch statically). Recommends a Confirm-Intent preamble as an optional runtime safety net for high-risk members.
+- **`references/suite-pattern.md` §7 — three new anti-pattern rows.** (1) Two commands emitting the same status value for related-but-different states. (2) L1-clean descriptions that still collide at L2/L3. (3) Two members routing the same user question to different commands (the escape hatch does NOT cover this case).
+- **`references/suite-pattern.md` §8 — Case Study: The `check`/`status` Collision.** Full retrospective of the first production failure: the symptoms, the three-layer root-cause walkthrough, the asymmetric fix, and the five framework lessons that drove §§2.4, 5, 6, and the new §7 anti-pattern rows.
+
+### Changed
+- **`references/skill-authoring.md` §5** — "Why the Negative slot is effectively required in a suite" subsection now cross-references the new §2.4 (escape hatch), §5 (three-layer test), §6 (static-validation limits), and §8 (case study) in suite-pattern.md, in addition to the existing §2 reference.
+
+### Rationale
+First production failure of the HappySkills suite (agent routed "which skills are out of date?" to sync's `status` instead of core's `check`) revealed the Suite Pattern framework was auditing front-matter only — collisions at routing-table and output-vocabulary layers slipped through. These refinements close those gaps and document the escape hatch we adopted as a scoped exception to the load-bearing rule.
+
 ## [0.2.1] - 2026-05-07
 
 ### Changed

@@ -4,10 +4,83 @@ Detailed CLI syntax and JSON response shapes for `bump`, `validate`, `publish`, 
 
 ## Envelopes
 
-- Success: `{ "data": { ... } }`
-- Error: `{ "error": { "code": "...", "message": "...", "exit_code": N } }`
+Every `--json` response is the canonical six-key envelope `{ ok, data, error, next_step, warnings, meta }`:
 
-Error codes: `ERROR` (1), `USAGE_ERROR` (2), `AUTH_REQUIRED` (3), `NETWORK_ERROR` (4), `INTERACTIVE_REQUIRED` (1), `API_ERROR` (1), `DIVERGED` (handle per Section 3 of SKILL.md), `NOT_FOUND` (1), `FORBIDDEN` (1), `CONFIRMATION_REQUIRED` (1).
+- `ok` — `true` on success, `false` on failure.
+- `data` — **always an object** (never null, never a bare array; a top-level array payload is wrapped as `data.results`).
+- `error` — `{}` on success, else `{ code, message, details? }`. The exit/HTTP status is in **`meta.exit_code`**, never inside `error`.
+- `next_step` — `{}` when none, else a closed-enum `{ kind, action, instructions, context }`; dispatch on `next_step.action`.
+- `warnings` — array of non-fatal advisories; surface them to the user.
+- `meta` — includes `command`, `cli_version`, `exit_code`, `envelope_schema_version`.
+
+The per-command examples below show only the `data` payload — assume the six-key wrapper around each.
+
+Error codes: `INTERNAL_ERROR` (1), `USAGE_ERROR` (2), `AUTH_REQUIRED` (3), `NETWORK_ERROR` (4), `INTERACTIVE_REQUIRED` (1), `DIVERGED` (route to `happyskills-sync` to pull; the `release` primitive emits `next_step.action: pull_rebase_first` automatically), `NOT_FOUND` (1), `FORBIDDEN` (1), `CONFIRMATION_REQUIRED` (1), `VALIDATION_FAILED` (1 — release/publish; emits `next_step.action: fix_validation_errors`), `MISSING_CHANGELOG_ENTRY` (1 — release; emits `next_step.action: provide_changelog`), `MISSING_VERSION` (2 — release with `--no-bump` on clean state), `INVALID_BUMP` (2), `BUMP_DISAGREEMENT` (2), `WORKSPACE_UNRESOLVED` (2), `DRIFT_DETECTED` (1 — release; emits `next_step.action: reconcile_first`).
+
+---
+
+## release
+
+The atomic ship pipeline. Wraps snapshot + validate + bump (when needed) + changelog verification + publish + lock update. On failure restores the snapshot and emits a structured `next_step` envelope. This is the canonical happy path — bare `publish` is the lower-level CLI command it wraps.
+
+```bash
+# Skill already bumped (ahead state) — release recognizes and publishes
+npx happyskills release my-skill --workspace <slug> --json
+
+# Apply a bump first
+npx happyskills release my-skill --workspace <slug> --bump patch --json
+
+# First publish — specify visibility
+npx happyskills release my-skill --workspace <slug> --bump patch --private --json
+
+# Validate + plan only, no mutation
+npx happyskills release my-skill --workspace <slug> --dry-run --json
+```
+
+**Flags:**
+
+| Flag | Description |
+|---|---|
+| `<skill-name>` | Positional. The skill to release. |
+| `--workspace <slug>` | Target workspace. |
+| `--bump <type\|version>` | `patch` / `minor` / `major` / explicit semver. Omit if `skill.json` is already `ahead`. |
+| `--no-bump` | Refuse to bump; require disk to be already ahead. |
+| `--changelog-from <file>` | Read CHANGELOG entry from file and prepend to CHANGELOG.md. |
+| `--public` / `--private` | Visibility on first publish only. |
+| `--dry-run` | Validate + plan, do not mutate. Snapshot is captured and then restored. |
+
+**JSON shape — success:**
+
+```json
+{
+  "data": {
+    "published": true,
+    "skill": "owner/name",
+    "version": "1.0.1",
+    "workspace": "acme",
+    "commit": "abc123...",
+    "ref": "refs/tags/v1.0.1",
+    "ahead_recognized": true,
+    "bump_applied": false,
+    "warnings": [],
+    "snapshot_id_preserved": false
+  }
+}
+```
+
+**JSON shape — failure with `next_step`:**
+
+```json
+{
+  "error": { "code": "MISSING_CHANGELOG_ENTRY", "message": "..." },
+  "next_step": {
+    "action": "provide_changelog",
+    "context": { "target_version": "1.0.1", "current_top_entry": "1.0.0" }
+  }
+}
+```
+
+Possible `next_step.action` values: `fix_validation_errors`, `specify_bump_type`, `provide_changelog`, `pull_rebase_first`, `specify_workspace`, `reconcile_first`, `resolve_bump_disagreement`.
 
 ---
 
@@ -17,6 +90,8 @@ Error codes: `ERROR` (1), `USAGE_ERROR` (2), `AUTH_REQUIRED` (3), `NETWORK_ERROR
 npx happyskills bump patch my-skill --json                     # patch/minor/major
 npx happyskills bump 2.0.0 my-skill --json                     # explicit version
 ```
+
+`bump` modifies `skill.json`'s `version` field ONLY — the lock file is NOT touched. The skill enters the `ahead` state (reported by `list`/`status`/`check`) until the next publish, which catches the lock up atomically with registry acceptance. Spec 260523-02 § 8.6.
 
 **Flags:**
 
@@ -82,7 +157,7 @@ npx happyskills publish my-skill --workspace <slug> --bump patch --json
 | `<skill-name>` | Positional. The skill to publish. |
 | `--workspace <slug>` | **Required**. Workspace to publish into. |
 | `--public` | First-publish only. Make the skill public in the catalog. NEVER default. |
-| `--bump <patch\|minor\|major>` | Auto-bump version before publishing. (Use Release Workflow instead for full ceremony.) |
+| `--bump <patch\|minor\|major>` | Auto-bump version before publishing. (Prefer `release` instead — it adds snapshot, validate, changelog verification, and structured failure envelopes around the same call.) |
 
 **JSON shape:**
 
@@ -92,7 +167,7 @@ npx happyskills publish my-skill --workspace <slug> --bump patch --json
 
 `bumped_from`: present if `--bump` was used; otherwise null.
 
-**Pre-flight checks (MANDATORY — see Section 3 of SKILL.md):** managed check, divergence check (route to sync if not clean), validation, workspace resolution.
+**Pre-flight checks:** the `release` primitive (Section 3 of SKILL.md) wraps these atomically — snapshot, validate, ahead/clean/drift classification (drift routes via `reconcile_first`; ahead is recognized and published directly), changelog verification, workspace resolution, publish, snapshot cleanup. Bare `publish` is for explicit "just push what's already bumped" invocations.
 
 **NEVER pipe `publish` (or any `--json` command that emits progress lines) through a strict JSON parser** — the CLI prints non-JSON status text to stdout before the JSON envelope. Strict parsers report a parse error, masking whether the underlying operation succeeded.
 
@@ -178,9 +253,9 @@ npx happyskills delete owner/name --json -y
 **JSON shape — errors:**
 
 ```json
-{ "error": { "code": "NOT_FOUND", "message": "...", "exit_code": 1 } }
-{ "error": { "code": "FORBIDDEN", "message": "...", "exit_code": 1 } }
-{ "error": { "code": "CONFIRMATION_REQUIRED", "message": "...", "exit_code": 1 } }
+{ "error": { "code": "NOT_FOUND", "message": "..." } }
+{ "error": { "code": "FORBIDDEN", "message": "..." } }
+{ "error": { "code": "CONFIRMATION_REQUIRED", "message": "..." } }
 ```
 
 Confirm via AskUserQuestion before running — this is irreversible.
@@ -223,8 +298,8 @@ npx happyskills visibility owner/name public --json            # public/private/
 **JSON shape — errors:**
 
 ```json
-{ "error": { "code": "NOT_FOUND", "message": "...", "exit_code": 1 } }
-{ "error": { "code": "FORBIDDEN", "message": "...", "exit_code": 1 } }
+{ "error": { "code": "NOT_FOUND", "message": "..." } }
+{ "error": { "code": "FORBIDDEN", "message": "..." } }
 ```
 
 Confirm via AskUserQuestion before changing visibility to `public` — it makes the skill visible to all users in the public catalog.
@@ -249,13 +324,19 @@ Used by the Workspace Resolution procedure ([workflows.md § Workspace Resolutio
 
 ---
 
-## list (used internally for managed-check)
+## list (used internally for first-publish classification)
 
 ```bash
 npx happyskills list --json
 ```
 
-Used by the publish pre-flight to check if the skill is managed (`data.skills`) or external (`data.external`). `list` is owned by `happyskills` (core) — call it as a one-off here but route the user to core for general "what's installed" queries.
+Used by Section 3's first-publish classification step to bucket the target skill:
+
+- `data.skills["<ws>/<name>"]` → already managed; normal release path.
+- `data.drafts[]` (entry with `name === <skill-name>`) → scaffolded by `init`, never published. **First publish via `release` directly — no `convert`.** `release` claims the workspace atomically.
+- `data.external[]` (entry with `name === <skill-name>`) → genuinely foreign (no HappySkills-shaped `skill.json`). Route to Section 7 (`convert`) first.
+
+`list` is owned by `happyskills` (core) — call it as a one-off for this classification but route the user to core for general "what's installed" queries.
 
 ---
 
@@ -275,4 +356,4 @@ Used to detect whether a publish is a first publish (returns error → first pub
 npx happyskills status <workspace>/<skill-name> --json
 ```
 
-Used by the publish pre-flight (Section 3 of SKILL.md, step 2) to check divergence. If status is anything other than `clean` or `modified`, route the user to `happyskills-sync` to resolve. `status` is owned by `happyskills-sync` — call it as a one-off here but route the user to sync for general divergence diagnostics.
+Used inside `release` to classify the lock-vs-disk state before publish. Status values: `clean` / `modified` (safe to publish), `ahead` (author already bumped — release publishes the disk version), `outdated` / `diverged` / `conflicts` (route via `next_step.action: pull_rebase_first`), `drift` (genuine inconsistency — route via `next_step.action: reconcile_first`). `status` itself is owned by `happyskills-sync` — call it as a one-off here, route the user there for general diagnostics.

@@ -1,0 +1,26 @@
+{
+	"snapshot_id": "snap_2026-06-08T051736262Z_c4d14a8753f6",
+	"timestamp": "2026-06-08T05:17:36.266Z",
+	"skill_state_hash": "sha256-c4d14a8753f635854d99088bb42159c537d75a296494b8e72c533fdc88d00068",
+	"workspace": "nicolasdao",
+	"skill": "tiny-gemini",
+	"dir_integrity": "sha256-7fe0899011b2dee2a4e71b726dcb7e9edbec564ed245ddcc199d7fba2de59b38",
+	"note": "pre-release: tiny-gemini",
+	"lock_entry": {
+		"version": "2.0.0",
+		"ref": "refs/tags/v2.0.0",
+		"commit": "385891105c56ea8fcad2439f802f44081d6a5444356591565b311e1c37eb2faf",
+		"integrity": "sha256-328098d9a11c1a8c1d3ea5c03cff29c72053792171a4f6f427131ab541cbbaed",
+		"base_commit": "385891105c56ea8fcad2439f802f44081d6a5444356591565b311e1c37eb2faf",
+		"base_integrity": "sha256-328098d9a11c1a8c1d3ea5c03cff29c72053792171a4f6f427131ab541cbbaed",
+		"requested_by": [
+			"__root__"
+		],
+		"dependencies": {
+			"nicolasdao/tiny-gemini-image": "^0.1.0",
+			"nicolasdao/tiny-gemini-tts": "^0.1.0",
+			"nicolasdao/tiny-gemini-research": "^0.1.0",
+			"nicolasdao/tiny-gemini-models": "^0.1.0"
+		}
+	}
+}

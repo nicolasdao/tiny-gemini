@@ -1,6 +1,6 @@
 {
 	"name": "tiny-gemini-models",
-	"version": "0.1.0",
+	"version": "0.1.2",
 	"description": "Teaches AI agents to use the tiny-gemini CLI models command for offline Gemini model registry, pricing, and deprecation lookup. Suite member of nicolasdao/tiny-gemini.",
 	"keywords": [
 		"ai",

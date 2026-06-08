@@ -4,10 +4,18 @@ Detailed CLI syntax and JSON response shapes for the lifecycle, auth, setup, and
 
 ## Envelopes
 
-- Success: `{ "data": { ... } }`
-- Error: `{ "error": { "code": "...", "message": "...", "exit_code": N } }`
+Every `--json` response is the canonical six-key envelope `{ ok, data, error, next_step, warnings, meta }`:
 
-Error codes: `ERROR` (1), `USAGE_ERROR` (2), `AUTH_REQUIRED` (3), `NETWORK_ERROR` (4), `INTERACTIVE_REQUIRED` (1), `API_ERROR` (1).
+- `ok` — `true` on success, `false` on failure.
+- `data` — **always an object** (never null, never a bare array; a top-level array payload is wrapped as `data.results`).
+- `error` — `{}` on success, else `{ code, message, details? }`. The exit/HTTP status is in **`meta.exit_code`**, never inside `error`.
+- `next_step` — `{}` when none, else a closed-enum `{ kind, action, instructions, context }`; dispatch on `next_step.action`.
+- `warnings` — array of non-fatal advisories; surface them to the user.
+- `meta` — includes `command`, `cli_version`, `exit_code`, `envelope_schema_version`.
+
+The per-command examples below show only the `data` payload — assume the six-key wrapper around each.
+
+Error codes: `INTERNAL_ERROR` (1), `USAGE_ERROR` (2), `AUTH_REQUIRED` (3), `NETWORK_ERROR` (4), `INTERACTIVE_REQUIRED` (1).
 
 ---
 
@@ -19,7 +27,8 @@ npx happyskills install owner/name@1.2.0 -y --json            # specific version
 npx happyskills install owner/name@latest -y --json            # absolute latest
 npx happyskills install owner/name -g -y --json                # globally
 npx happyskills install owner/name --force -y --json           # ignore conflicts
-npx happyskills install owner/name --fresh -y --json           # ignore lock file
+npx happyskills install owner/name@1.2.0 --fresh -y --json     # wipe local & reinstall at the exact version (hardened — see below)
+npx happyskills install owner/name@1.2.0 --fresh --force-discard-local -y --json  # accept that local edits will be discarded
 npx happyskills install owner/name --agents claude,cursor -y --json  # target specific agents
 npx happyskills install owner/a owner/b owner/c -y --json      # batch — one call
 npx happyskills install -y --json                              # from manifest/lock
@@ -34,10 +43,10 @@ npx happyskills install -y --json                              # from manifest/l
 **JSON shape — multiple skills:**
 
 ```json
-{ "data": [{ "skill": "owner/a", "version": "1.0.0", "installed": [...], ... }, ...] }
+{ "data": { "results": [{ "skill": "owner/a", "version": "1.0.0", "installed": [...], ... }, ...] } }
 ```
 
-**Partial failures:** `{ "data": [...], "errors": [{ "skill": "owner/x", "error": "..." }] }`
+**Partial failures:** failed installs appear as entries in `data.results` carrying an `error` field — there is **no** top-level `errors` key (success and failure rows are merged into `data.results`).
 
 **JSON shape — no argument (from manifest):**
 
@@ -46,6 +55,16 @@ npx happyskills install -y --json                              # from manifest/l
 ```
 
 `linked_agents`: array of agent IDs receiving symlinks. Agent IDs: `claude`, `cursor`, `windsurf`, `codex`, `copilot`, `aider`, `cline`, `roo`. Empty/absent if no secondary agents detected.
+
+### `--fresh` hardening (spec 260523-02 § 8.5)
+
+`install <skill>@<version> --fresh` previously had a silent-fallback failure mode: when `<version>` was not on the registry, the CLI quietly installed the latest published version and wiped local content. That footgun is closed:
+
+1. **Pre-flight version check.** Before any disk mutation, the CLI calls the registry to confirm `<version>` exists. If not (or registry unreachable), it hard-fails with `error.code = "VERSION_NOT_FOUND"` and exits with `USAGE_ERROR` (2). No file is touched.
+2. **Snapshot before wiping.** When the skill directory exists, the CLI captures a snapshot (under `.happyskills/snapshots/...`) and exposes its ID in the success response as `data.snapshot_id`. The user can restore it later with `npx happyskills snapshot restore <snapshot_id> --json`.
+3. **Local-edit refusal.** If the skill directory has local edits (integrity hash differs from `base_integrity`), the CLI refuses unless `--force-discard-local` is passed, emitting `error.code = "LOCAL_EDITS_PRESENT"`.
+
+Operators (LLMs) should rarely pass `--force-discard-local` — only when the user has explicitly authorized discarding local work. The plain `--fresh` flow with no flags is the safe default.
 
 ---
 
@@ -57,7 +76,7 @@ npx happyskills uninstall owner/a owner/b owner/c -y --json    # multiple
 npx happyskills uninstall owner/name -g -y --json               # global
 ```
 
-Accepts one or more skills. If a skill is not installed, a warning is printed and the remaining skills continue. JSON output: single object for one skill, array for multiple. Partial failures include an `errors` array alongside `data`.
+Accepts one or more skills. If a skill is not installed, a warning is printed and the remaining skills continue. JSON output: a single object under `data` for one skill, and `data.results` (an array) for multiple. Partial failures appear as entries in `data.results` carrying an `error` field — there is no top-level `errors` key.
 
 **JSON shape — single:**
 
@@ -68,7 +87,7 @@ Accepts one or more skills. If a skill is not installed, a warning is printed an
 **JSON shape — multiple:**
 
 ```json
-{ "data": [{ "skill": "owner/a", "removed": [...], "orphans_pruned": [...] }, ...] }
+{ "data": { "results": [{ "skill": "owner/a", "removed": [...], "orphans_pruned": [...] }, ...] } }
 ```
 
 ---
@@ -86,7 +105,15 @@ npx happyskills list -g --json    # global
 {
   "data": {
     "skills": {
-      "owner/name": { "version": "1.0.0", "source": "direct|dep", "status": "installed|missing", "type": "skill|kit", "enabled": true }
+      "owner/name": {
+        "version": "1.0.0",
+        "source": "direct|dep",
+        "status": "installed|ahead|drift|missing",
+        "type": "skill|kit",
+        "enabled": true,
+        "drift": { "reason": "regression|missing_skill_json|missing_dir", "lock_version": "1.0.0", "disk_version": "0.9.0" },
+        "ahead": { "lock_version": "1.0.0", "disk_version": "1.1.0", "has_changelog_entry": true, "changelog_version": "1.1.0" }
+      }
     },
     "external": [{ "name": "skill-name", "description": "..." }]
   }
@@ -96,6 +123,9 @@ npx happyskills list -g --json    # global
 - `source`: `direct` = explicitly installed, `dep` = transitive dependency.
 - `type`: `"skill"` or `"kit"`. Kits shown with `[kit]` badge.
 - `enabled`: `true` if the skill has symlinks in agent folders, `false` if disabled. Only applies to managed skills.
+- `status`: one of `installed` (lock and disk agree), `ahead` (disk version > lock version — normal authoring, NOT drift), `drift` (genuine inconsistency — see `drift.reason`), `missing` (directory gone).
+- `drift`: present only when `status === "drift"`. Spec 260523-02 § 10.5: the previous `version_mismatch` reason is split into `ahead` (top-level status, no drift object) and `regression` (drift reason — disk semver-LESS than lock).
+- `ahead`: present only when `status === "ahead"`. The author bumped locally and hasn't published yet. Route to `happyskills-publish` to ship.
 - `external`: skills found on disk but not in lock file.
 
 ---
@@ -112,13 +142,18 @@ npx happyskills check owner/name --json              # specific skill
 ```json
 {
   "data": {
-    "results": [{ "skill": "owner/name", "installed": "1.0.0", "latest": "1.1.0", "status": "up-to-date|outdated|conflicts|no-access|unknown|error", "via": "parent/skill-or-kit"|null }],
+    "results": [{ "skill": "owner/name", "installed": "1.0.0", "latest": "1.1.0", "status": "up-to-date|outdated|ahead|conflicts|drift|no-access|unknown|error", "via": "parent/skill-or-kit"|null, "drift": {...}|null, "ahead": {...}|null }],
     "outdated_count": 2,
     "up_to_date_count": 3,
-    "conflicts_count": 0
+    "conflicts_count": 0,
+    "drift_count": 0,
+    "ahead_count": 1
   }
 }
 ```
+
+- `ahead` status: author bumped locally — route to `happyskills-publish` to ship.
+- `drift` status: genuine inconsistency in the local install record — route to `happyskills-sync` Section 2.5 (which wraps `reconcile`).
 
 `via`: `null` for directly installed skills, or the name of the parent skill/kit that pulled this in as a dependency.
 
@@ -171,6 +206,60 @@ npx happyskills update --all -g -y --json
     "forced": true
   }
 }
+```
+
+---
+
+## snapshot
+
+Capture and restore skill state. The safety net for every non-trivial mutation. Snapshots live under `.happyskills/snapshots/<workspace>/<skill>/<snapshot_id>/` and contain a full directory copy plus the lock entry. Default retention is 10 per skill; older snapshots are auto-pruned on create.
+
+```bash
+# Capture
+npx happyskills snapshot create owner/name --note "pre-experiment" --json
+
+# List
+npx happyskills snapshot list owner/name --json
+
+# Restore (atomic — directory is swapped via rename)
+npx happyskills snapshot restore <snapshot_id> --json
+
+# Delete
+npx happyskills snapshot delete <snapshot_id> --json
+
+# Manual prune
+npx happyskills snapshot prune owner/name --keep 5 --json
+```
+
+**JSON shape — create:**
+
+```json
+{ "data": { "snapshot_id": "snap_20260523T103045Z_abc123", "path": ".happyskills/snapshots/...", "timestamp": "2026-05-23T10:30:45.000Z", "skill_state_hash": "sha256-...", "note": "pre-experiment", "pruned": [] } }
+```
+
+**JSON shape — list:**
+
+```json
+{ "data": { "workspace": "owner", "skill": "name", "snapshots": [{ "snapshot_id": "...", "timestamp": "...", "skill_state_hash": "...", "note": "...", "path": "..." }] } }
+```
+
+**JSON shape — restore:**
+
+```json
+{ "data": { "restored": true, "snapshot_id": "...", "workspace": "owner", "skill": "name", "path": "...", "version": "1.0.0" } }
+```
+
+`install --fresh`, `release`, and `pull --rebase` all snapshot first internally and expose the `snapshot_id` in their response. Manual `snapshot create` is for ad-hoc safety captures before risky operations.
+
+---
+
+## reconcile (owned by `happyskills-sync`)
+
+`reconcile` is the deterministic command for repairing GENUINE drift (regression / missing_skill_json / missing_dir). It no-ops on `ahead` (which is not drift). Owned and documented by `happyskills-sync` Section 2.5 — invoke it from sync, not from core. Listed here so the routing is discoverable:
+
+```bash
+npx happyskills reconcile owner/name --json
+npx happyskills reconcile owner/name --apply restore_from_lock_version --json
 ```
 
 ---
@@ -277,6 +366,91 @@ happyskills self-update --json
 
 ---
 
+## agents
+
+Configure which agentic clients (Claude Code, Cursor, Codex, Windsurf, …) receive the skills installed in this project. Filesystem-based — the existence of `.<agent>/skills/` IS the project-level configuration. Use this when the decision is project-scoped (e.g., trying out Codex on one repo without changing the user-global default).
+
+```bash
+# List — show every supported agent + its status in the current scope
+npx happyskills agents --json
+npx happyskills agents list --json
+
+# Add one or many agents (comma- or space-separated agent ids)
+npx happyskills agents add codex --json
+npx happyskills agents add codex,cursor --json
+npx happyskills agents add codex cursor --json
+
+# Remove
+npx happyskills agents remove codex --json
+
+# Global scope (~/.<agent>/skills/ instead of project-local)
+npx happyskills agents add codex -g --json
+```
+
+Agent ids: `claude`, `cursor`, `windsurf`, `codex`, `copilot`, `aider`, `cline`, `roo`.
+
+**Semantics:**
+
+- `add` creates `<scope>/<agent>/skills/` and symlinks every currently-enabled installed skill (from `skills-lock.json`) into it. Skills that are currently disabled (no symlinks in any other configured agent) are skipped — they stay disabled. Kits are not mirrored (not agent-invocable).
+- `remove` deletes the CLI-managed symlinks. If the `skills/` folder ends up empty, it is removed too. The parent `.<agent>/` (which the agent uses for settings, history, sessions) is never touched.
+- `list` is read-only.
+
+**JSON shape — list:**
+
+```json
+{
+  "data": {
+    "scope": "project|global",
+    "agents": [
+      { "id": "claude", "display_name": "Claude Code", "skills_dir": "/abs/path/.claude/skills", "configured": true, "linked_skills": 5 }
+    ]
+  }
+}
+```
+
+**JSON shape — add:**
+
+```json
+{
+  "data": {
+    "added": [
+      { "agent_id": "codex", "status": "configured", "linked": ["acme/deploy-aws"], "skipped_disabled": ["acme/legacy"] }
+    ],
+    "global": false
+  }
+}
+```
+
+**JSON shape — remove:**
+
+```json
+{
+  "data": {
+    "removed": [
+      { "agent_id": "codex", "status": "removed|not_configured", "unlinked": ["acme/deploy-aws"], "removed_folder": true }
+    ],
+    "global": false
+  }
+}
+```
+
+**Presentation:**
+- `list` → table with ID | Agent | Configured | Linked | Folder. Mention the scope (project vs global).
+- `add` → "Configured <agent> in this project (<path>). Linked N skill(s): …" Surface any `skipped_disabled` plainly and point at `happyskills enable <skill>`.
+- `remove` → "Disconnected <agent> from this project." If the folder was kept (non-empty for some reason), say so.
+
+**Resolution priority for downstream `install`/`update`/etc.** (project scope shown; global is symmetric):
+
+1. `--agents` flag
+2. `HAPPYSKILLS_AGENTS` env var
+3. **Project-physical** — any `.<agent>/skills/` in the project root
+4. `~/.config/happyskills/config.json` agents value
+5. Home-physical fallback — auto-detect from `~/.<agent>/skills/`
+
+Tier 3 is what makes `agents add` decisions stick across subsequent commands without needing a flag.
+
+---
+
 ## config
 
 **View all config:**
@@ -324,8 +498,7 @@ npx happyskills config agents --list --json           # full agent table
 | `AUTH_REQUIRED` | Trigger auth flow, then retry the original command |
 | `USAGE_ERROR` | Show correct command syntax. Common: missing skill name, wrong format (must be `owner/name`). |
 | `NETWORK_ERROR` | "Cannot reach the HappySkills API. Check your internet connection." |
-| `API_ERROR` | Show the server's error message verbatim. |
-| `DIVERGED` (or API error containing "diverged") | Route to `happyskills-sync` ("say 'why can't I publish' and sync will diagnose"). |
-| `ERROR` | Show the error message. Suggest possible fixes based on context. |
+| `INTERNAL_ERROR` | Show the error message verbatim and suggest possible fixes based on context. |
+| `DIVERGED` | Route to `happyskills-sync` ("say 'why can't I publish' and sync will diagnose"). |
 
 If a command fails with `AUTH_REQUIRED` (exit code 3), automatically trigger the auth flow from Section 2 of SKILL.md and retry once.

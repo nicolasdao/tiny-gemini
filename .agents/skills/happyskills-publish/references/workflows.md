@@ -89,18 +89,25 @@ Resolve the target workspace for publishing by running `npx happyskills whoami -
 
 ### First-Time Publish
 
-Use this procedure when publishing a skill for the first time (Post-Convert, Post-Fork enrichment, or any first-time scenario). For releasing updates to already-published skills, use the Skill Release Workflow instead.
+Use this procedure when publishing a skill for the first time. There are two valid first-time paths, and they look almost identical to the user:
+
+- **Draft path** (most common — skill scaffolded by `happyskills init`): the skill appears under `data.drafts[]` in `npx happyskills list --json`. **Use `release` directly** — it atomically claims the workspace, validates, and publishes. There is no separate "claim" or "convert" step. Do NOT mention "external", "convert", "claim", or "lock file" to the user — call it a publish, because that's what it is.
+- **Convert path** (rare — skill is genuinely foreign, e.g. hand-rolled `.claude/skills/<name>/SKILL.md` cloned from GitHub): the skill appears under `data.external[]`. Run `convert` first (Section 7 of SKILL.md), then Post-Convert Enrichment, then this First-Time Publish procedure.
+
+For releasing updates to already-published skills, use the `release` primitive (Section 3 of SKILL.md) — it wraps the whole pipeline atomically.
 
 1. **Authenticate** — Run the auth flow (Section 2 of SKILL.md).
-2. **Resolve workspace** — Run the **Workspace Resolution** procedure above.
+2. **Resolve workspace** — Run the **Workspace Resolution** procedure above. `release` will accept the resolved slug via `--workspace`.
 3. **Visibility** — Ask with exactly these options in this order:
    1. **"Private (Recommended)"** — MUST be the FIRST option. Description: "Only visible to members of your workspace."
    2. **"Public"** — MUST be the SECOND option. Description: "Visible in the public catalog to all users."
 
    NEVER present "Public" as the first or default option.
-4. **Publish** — Run the appropriate command (ALWAYS include `--workspace`):
-   - Private: `npx happyskills publish <skill-name> --workspace <slug> --json`
-   - Public: `npx happyskills publish <skill-name> --workspace <slug> --public --json`
+4. **Publish via release** — Run the appropriate command (ALWAYS include `--workspace`):
+   - Private (default): `npx happyskills release <skill-name> --workspace <slug> --json`
+   - Public: `npx happyskills release <skill-name> --workspace <slug> --public --json`
+
+   For a draft (no lock entry), `release` treats the disk version as the ahead-equivalent and publishes it directly — no bump is needed on first publish, no `--bump` flag required. If `release` returns `next_step.action: provide_changelog` (CHANGELOG.md missing or stale for the version on disk), write the entry per Section 3 step 3 and re-invoke. The bare `publish` command works too (and is what `release` delegates to internally), but `release` is the canonical entry point because it snapshots first and returns structured `next_step` envelopes on any failure.
 
 ---
 
@@ -113,14 +120,13 @@ After `happyskills convert` succeeds, the skill has a basic `skill.json` (name, 
 1. **Read the SKILL.md** — Understand what the skill does, its domain, and target audience.
 2. **MANDATORY — Ensure SKILL.md frontmatter has `name` and `description`** — Check if the SKILL.md has a YAML frontmatter block (`---`). If NOT, you MUST add one. If it exists but is missing `name` or `description`, you MUST add the missing fields. The `description` is the #1 factor for Claude auto-invocation quality — without it, the skill will silently fail to trigger. Write a description following the canonical format from spec 260501-mega-skill-refactor: `<Namespace> — <verb-led action>. Use when <specific trigger context>. Not for <where to redirect>.` Target 80-180 chars (250 soft cap, 1024 hard cap). Use em-dash, not colon, for the namespace separator. Use only safe characters (no semicolons, colons, or other forbidden YAML characters per the current validator). Route the user to `happyskills-design` ("say 'review my SKILL.md description' and design will help shape it") for the full format guide. Ask the user to confirm the description before writing it. This step is NON-NEGOTIABLE.
 3. **Write skill.json `description`** — A concise summary (under 200 chars) optimized for registry search. This is different from the SKILL.md `description` which targets Claude auto-invocation.
-4. **Suggest `keywords`** — Based on the skill's content, propose canonical slugs (e.g., `deployment`, `testing`, `api`) plus any relevant custom keywords. Use AskUserQuestion to confirm.
-5. **Detect system dependencies (MANDATORY scan, not best-effort)** — Scan SKILL.md and every file under `scripts/` for command invocations, extract the unique binaries called, subtract the POSIX baseline, and declare **every remaining binary** in `systemDependencies` — including ubiquitous tools like `git`, `node`, `npm`, `npx`, `python`, `python3`, `pip`, `curl`, and `jq`. **Do NOT skip a tool because "it's always installed"** — the skill's host may be a Docker container, CI runner, or sandbox where it is not.
-6. **Detect skill dependencies** — If the SKILL.md references other published HappySkills skills, suggest adding them to `dependencies`.
-7. **Prompt for optional fields** — Run the **Optional Fields Prompt** procedure (Common Procedures above).
-8. **Confirm invocation model** — Check whether the SKILL.md has `disable-model-invocation: true`. If it does, run the **Invocation Model Confirmation** procedure. For existing skills, the action is "remove the flag."
-9. **Initialize CHANGELOG.md** — If none exists, create one with the initial version entry.
-10. **Run validation (MANDATORY)** — Run `npx happyskills validate <skill-name> --json`. If `data.valid` is `false`, fix all errors before proceeding to publish — see Section 11 of SKILL.md.
-11. **Publish to the registry** — Run the **First-Time Publish** procedure above.
+4. **Detect system dependencies (MANDATORY scan, not best-effort)** — Scan SKILL.md and every file under `scripts/` for command invocations, extract the unique binaries called, subtract the POSIX baseline, and declare **every remaining binary** in `systemDependencies` — including ubiquitous tools like `git`, `node`, `npm`, `npx`, `python`, `python3`, `pip`, `curl`, and `jq`. **Do NOT skip a tool because "it's always installed"** — the skill's host may be a Docker container, CI runner, or sandbox where it is not.
+5. **Detect skill dependencies** — If the SKILL.md references other published HappySkills skills, suggest adding them to `dependencies`.
+6. **Prompt for optional fields** — Run the **Optional Fields Prompt** procedure (Common Procedures above).
+7. **Confirm invocation model** — Check whether the SKILL.md has `disable-model-invocation: true`. If it does, run the **Invocation Model Confirmation** procedure. For existing skills, the action is "remove the flag."
+8. **Initialize CHANGELOG.md** — If none exists, create one with the initial version entry.
+9. **Run validation (MANDATORY)** — Run `npx happyskills validate <skill-name> --json`. If `data.valid` is `false`, fix all errors before proceeding to publish — see Section 11 of SKILL.md.
+10. **Publish to the registry** — Run the **First-Time Publish** procedure above.
 
 ---
 
@@ -131,34 +137,31 @@ After `happyskills fork` succeeds, the forked skill has its version reset to `0.
 1. **Read the forked SKILL.md** — Understand what the original skill does.
 2. **MANDATORY — Ensure SKILL.md frontmatter has `name` and `description`** — Check that the forked SKILL.md has a YAML frontmatter block (`---`) with both `name` and `description`. If either is missing or empty, you MUST add them. The fork may serve a different purpose than the original, so ask the user what they plan to change and write a description following the canonical format from spec 260501-mega-skill-refactor: `<Namespace> — <verb-led action>. Use when <specific trigger context>. Not for <where to redirect>.` Target 80-180 chars (250 soft cap, 1024 hard cap). Use em-dash, not colon, for the namespace separator. Use only safe characters. Route the user to `happyskills-design` for the full format guide if needed. NON-NEGOTIABLE.
 3. **Write skill.json `description`** — A concise summary (under 200 chars) optimized for registry search.
-4. **Suggest `keywords`** — Propose canonical slugs based on the skill's content. Use AskUserQuestion to confirm.
-5. **Re-evaluate dependencies (MANDATORY scan, not best-effort)** — The original skill's dependencies were cleared. Scan SKILL.md and every file under `scripts/` for command invocations and declare every remaining binary in `systemDependencies`. Re-add any HappySkills skill dependencies referenced by the SKILL.md.
-6. **Prompt for optional fields** — Run the **Optional Fields Prompt** procedure.
-7. **Confirm invocation model** — Check whether the forked SKILL.md has `disable-model-invocation: true`. If it does, run the **Invocation Model Confirmation** procedure. For forked skills, the action is "remove the flag."
-8. **Initialize CHANGELOG.md** — Create one with a `0.1.0` entry noting it was forked from the original (include `forked_from` info).
-9. **Run validation** — Run `npx happyskills validate <skill-name> --json`. If `data.valid` is `false`, fix all errors. Present warnings to the user. This ensures the forked skill is in a valid state before the user starts modifying it.
+4. **Re-evaluate dependencies (MANDATORY scan, not best-effort)** — The original skill's dependencies were cleared. Scan SKILL.md and every file under `scripts/` for command invocations and declare every remaining binary in `systemDependencies`. Re-add any HappySkills skill dependencies referenced by the SKILL.md.
+5. **Prompt for optional fields** — Run the **Optional Fields Prompt** procedure.
+6. **Confirm invocation model** — Check whether the forked SKILL.md has `disable-model-invocation: true`. If it does, run the **Invocation Model Confirmation** procedure. For forked skills, the action is "remove the flag."
+7. **Initialize CHANGELOG.md** — Create one with a `0.1.0` entry noting it was forked from the original (include `forked_from` info).
+8. **Run validation** — Run `npx happyskills validate <skill-name> --json`. If `data.valid` is `false`, fix all errors. Present warnings to the user. This ensures the forked skill is in a valid state before the user starts modifying it.
 
 ---
 
-## Skill Release Workflow
+## Releasing an update — call `release`
 
-When the user wants to release/ship a skill update, run this end-to-end pipeline. This is different from a bare `publish` command — release is the intelligent, full-lifecycle process.
+SKILL.md Section 3 is the canonical entry point. The `release` primitive atomically performs snapshot + validate + bump (when needed) + changelog verification + publish + lock update + snapshot-cleanup. On any failure it restores the snapshot and returns a structured `next_step` envelope. Do NOT re-implement the multi-step pipeline by chaining `bump` + `publish` manually — the primitive exists to remove that orchestration surface.
 
-**Always invoke this workflow when releasing — including when releasing the `happyskills` skill family itself.** Do not improvise an ad-hoc release by hand-editing `skill.json` to bump the version, hand-writing a CHANGELOG entry, and then calling `publish` directly. Each of those steps has a dedicated tool (`bump`, `validate`, `publish`) and the workflow orders them correctly (validate before bump, re-validate after CHANGELOG edits, publish last). When you skip the workflow you skip the safeguards — most commonly you'll discover a validation failure *after* bumping, leaving the version and changelog in a state needing a follow-up patch release to clean up. The constraint at SKILL.md "NEVER modify files directly for CLI package management operations" applies here: bumping a version IS a package management operation.
+```bash
+# Skill already bumped (ahead state) → release recognizes and publishes
+npx happyskills release <skill-name> --workspace <slug> --json
 
-**1. Identify the skill and read current state**
+# Needs a bump too
+npx happyskills release <skill-name> --workspace <slug> --bump <patch|minor|major> --json
+```
 
-- Locate the skill directory and read its `skill.json` to get the current version.
-- Read the existing `CHANGELOG.md` (if any) to understand what's already been documented.
+Read `next_step` per SKILL.md Section 3 and dispatch.
 
-**2. Analyze changes**
+### Bump-type reference (when proposing one to the user)
 
-Review what changed since the last release. Use multiple sources:
-- Conversation context (what the LLM did in this session)
-- `git diff` and `git log` within the skill directory (if in a git repo)
-- File modification timestamps
-
-Classify each change:
+When asking the user which `--bump` level to use, classify the changes you observe (conversation context + `git diff` + `git log`):
 
 | Change Type | Bump | Examples |
 |---|---|---|
@@ -166,68 +169,24 @@ Classify each change:
 | New features, new sections, new capabilities | `minor` | Added new command support, added authoring mode |
 | Breaking changes | `major` | Changed invocation model, restructured frontmatter, removed features, renamed skill |
 
-**3. Propose bump type and confirm**
+### CHANGELOG.md format
 
-Present the inferred bump type with reasoning. Use AskUserQuestion to let the user confirm or override:
-- "Based on the changes (added X, fixed Y), I recommend a **minor** bump (1.0.0 → 1.1.0). Does that look right?"
-
-**4. Pre-release validation (MANDATORY)**
-
-Before bumping, run `npx happyskills validate <skill-name> --json` to verify the skill is publish-ready. This checks all rules deterministically: SKILL.md existence, frontmatter fields (name, description, optional fields), line count, skill.json fields (name, version, description, keywords, dependencies, systemDependencies), cross-file name consistency, and executable code detection.
-
-- If `data.valid` is `false` → fix all errors before proceeding (Section 11 of SKILL.md).
-- If `data.valid` is `true` but there are warnings → present them to the user. Warnings are advisory.
-- Additionally review content quality manually: the SKILL.md `description` should follow the canonical format (`<Namespace> — <verb-led action>. Use when <context>. Not for <redirect>.`), be specific (not a placeholder), and stay within the target length (80-180 chars). If validate emitted a `soft_cap` warning (description above 250 chars), the skill is likely a mega-skill — route the user to `happyskills-design` for the audit/decompose decision before releasing.
-
-**If validation fixes modified skill files** (e.g., refactoring SKILL.md to reduce line count, rewriting the description, extracting content to references), those fixes are additional changes that MUST be handled:
-- **Record what changed** — Note which files were modified and what was done.
-- **Re-evaluate the bump type** — Return to step 3 and reconsider. The original bump type typically still applies since validation fixes are corrective; however, if the fix involved significant structural refactoring, consider whether the bump should be elevated.
-- **Include fixes in CHANGELOG** — In step 6, document both the original changes AND the validation fixes (typically under `### Fixed` or `### Changed`).
-- **Re-run validation** — After fixing, always re-run `npx happyskills validate` to confirm the fix resolved the error without introducing new ones. Repeat this cycle until validation passes cleanly.
-
-**5. Bump the version**
-
-```bash
-npx happyskills bump <patch|minor|major> <skill-name> --json
-```
-
-Parse the response to get the new version number.
-
-**6. Update CHANGELOG.md**
-
-Write a new entry at the top of the changelog (below the `# Changelog` heading), following the Keep a Changelog format:
+If `release` returns `next_step.action: provide_changelog`, write a new entry at the top of `CHANGELOG.md` (below the `# Changelog` heading) using Keep a Changelog format. Only include groups that have entries.
 
 ```markdown
 ## [X.Y.Z] - YYYY-MM-DD
 
 ### Added
-- New feature descriptions
+- New capability X
 
 ### Changed
-- Modifications to existing features
+- Modified behavior of Y
 
 ### Fixed
-- Bug fix descriptions
+- Resolved Z
 
 ### Removed
-- Removed feature descriptions
+- Dropped W
 ```
 
-Only include the groups that have entries. If `CHANGELOG.md` does not exist, create it with the `# Changelog` heading and the new entry.
-
-**7. Resolve workspace and publish**
-
-First, run the **Workspace Resolution** procedure above.
-
-Show a summary of what will be published:
-- Skill name and workspace
-- Version: old → new
-- Changes (from changelog entry)
-
-Use AskUserQuestion for final confirmation. Do NOT ask about visibility — this is an update to an existing skill, so the server preserves the existing visibility automatically. Then run (ALWAYS include `--workspace`):
-
-```bash
-npx happyskills publish <skill-name> --workspace <slug> --json
-```
-
-Parse and present the result: "Published owner/name@X.Y.Z to the registry."
+If `CHANGELOG.md` does not exist, create it with the `# Changelog` heading and the new entry, then re-invoke `release`.

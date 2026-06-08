@@ -197,7 +197,7 @@ The `description` field is the **#1 factor** in auto-invocation quality. Claude 
 
 | Slot | Role | What goes here |
 |---|---|---|
-| **Domain** | Namespace prefix that lets the LLM drop the skill from consideration when the prompt is in an unrelated area. Acts as a hard filter at the front of the description. | The product or suite name (`HappySkills`, `Stripe`, `Figma`). One token. Followed by an em-dash. |
+| **Domain** *(optional — see "When to drop the Domain" below)* | Scope declaration — narrows the routing surface to the topic the skill wants to serve. Serves either as a *brand anchor* (humans + LLM recognize the product) or as a *topical hard-filter* (the LLM fast-skips when the prompt is in an unrelated area). | EITHER a real product/constellation name (`HappySkills`, `Stripe`, `Figma` — CamelCase brand) OR a real topical category (`site-cloning`, `image-gen` — kebab-case matching the family's casing). One token. Followed by an em-dash. **Skip the Domain entirely** when the verb-object phrase already anchors the topic, when the skill is intentionally multi-purpose, or when the skill name itself is topical — see "When to drop the Domain" below. |
 | **Verb(s)** | The action(s) this skill performs. The primary routing signal. | One primary verb, optionally paired with closely related verbs. Imperative mood (`Install`, `Publish`, `Sync`). |
 | **Object** | What the verb acts on. The other half of the routing signal — same verb, different object often means a different skill. | The concrete thing the verb operates on (`AI agent skills`, `workspace members`, `local skills with the remote registry`). Be specific; vague objects (`things`, `data`, `items`) cause routing collisions with siblings. |
 | **Triggers** | Concrete user-intent phrases the LLM should recognize as belonging here. Introduced by `Use when`. | 3–5 short phrases naming concrete user intents (`adding a skill to a project`, `signing in`, `resolving merge conflicts`). Use the user's vocabulary, not the implementation's. |
@@ -209,11 +209,11 @@ The `description` field is the **#1 factor** in auto-invocation quality. Claude 
 
 Each slot constrains the next:
 
-1. **Domain.** Write the suite/product name. Mechanical. One token, capitalized, followed by an em-dash.
-2. **Verb(s).** Pick the *one* primary verb that names the dominant action. If you need three verbs, you probably have two skills (apply the Suite Pattern — see [suite-pattern.md](suite-pattern.md)). Pair only verbs that are genuinely the same intent at different granularity (`install and update`).
+1. **Domain.** Decide what routing surface this skill should serve, then choose accordingly. A brand name for members of a named product/constellation. A kebab-case topical category for standalone skills with polysemous verbs (`Map`, `Clone`, `Build`, `Fetch`, `Sync`, `Run`) whose verb-object phrase doesn't already anchor the topic. **Skip the Domain entirely** when the verb-object phrase already anchors the topic, when the skill is intentionally multi-purpose, or when the skill name itself screams the topic. See "When to drop the Domain" below for the full decision rule and worked examples.
+2. **Verb(s).** Pick the *one* primary verb that names the dominant action. If you need three verbs, you probably have two skills (apply the Constellation Pattern — see [constellation-pattern.md](constellation-pattern.md)). Pair only verbs that are genuinely the same intent at different granularity (`install and update`).
 3. **Object.** Name what the verb acts on, with specificity. If two siblings share a verb, the object is what makes routing orthogonal. `Update AI agent skills` (lifecycle) vs `Update skill content based on session learnings` (authoring) are routable; `Update skills` vs `Update skills` are not.
 4. **Triggers.** List concrete user phrases that should fire this skill. Test each one: would a sibling's description plausibly also match this phrase? If yes, either tighten the trigger or add a Negative clause.
-5. **Negative.** Name the closest sibling's territory and redirect to it. Skip this only if the skill has no near-neighbors (rare — most skills in a suite have at least one sibling).
+5. **Negative.** Name the closest sibling's territory and redirect to it. Skip this only if the skill has no near-neighbors (rare — most skills in a constellation have at least one sibling).
 
 ### Annotated example — HappySkills core (234 chars)
 
@@ -236,9 +236,47 @@ description: HappySkills — Install and update AI agent skills. Use when adding
 | ❌ Bad | `HappySkills — Manage skills and workspaces. Use when working with HappySkills.` | Vague verb (`manage`), vague object (`skills and workspaces`), tautological trigger (`working with HappySkills`), no Negative. Will fire on prompts owned by every sibling. |
 | ✅ Good | The 234-char example above. | Specific verbs, concrete object, user-vocabulary triggers, Negative redirects to the concierge sibling. |
 
-### Why the Negative slot is effectively required in a suite
+### When to drop the Domain — the two-function lens
 
-When sibling skills own related verbs (e.g., `publish` lives in `happyskills-publish`, `design` in `happyskills-design`), the LLM needs explicit redirection to avoid firing the wrong skill on overlapping prompts. The `Not for X` clause is empirically supported — Vertex AI uses contrastive specificity in its tool-use guidelines, and academic research on tool selection (MetaTool, arXiv:2310.03128) confirms negative disambiguators improve accuracy on confusable siblings. In a suite, every member except the most peripheral has a near-neighbor — so the Negative slot is required, not optional. See [suite-pattern.md § 2 Orthogonal Verb Ownership](suite-pattern.md) for the full rule, the failure mode when orthogonality is violated, and the orthogonality test you should run before publishing a multi-member suite.
+The Domain slot does two distinct jobs. Knowing which one matters for your skill tells you what to put in the slot — or whether to skip it.
+
+| Function | What it does | Who it serves |
+|---|---|---|
+| A. **Brand anchor** | Tells humans + the LLM that this skill belongs to a named product/constellation | Constellation members (`HappySkills —`, `Tiny-Gemini —`, `Stripe —`) |
+| B. **Topical hard-filter** | Narrows the LLM's routing prior to a topic *before* the verb is read | Skills whose verb is polysemous (`Map`, `Clone`, `Build`, `Fetch`, `Sync`, `Run`) and whose verb-object phrase doesn't already anchor the topic |
+
+**Function B matters even outside constellations.** Polysemous verbs like `Map` (data structure? geography? site-mapping?) and `Clone` (git? object? website?) appear in many unrelated contexts. A leading topical token narrows the prior so the LLM fast-skips the skill on unrelated prompts.
+
+**But the verb-object phrase often does function B for free.** `Map a website` already anchors to web territory. `Render a video` anchors to video. `Tokenize a code file` anchors to compiler territory. Adding a Domain on top is redundant and consumes character budget that could buy sharper Triggers.
+
+**Decision rule:**
+
+| Situation | Domain |
+|---|---|
+| Skill is a member of a named product/constellation | Brand name (CamelCase or kebab-case, matching the constellation's existing convention) |
+| Standalone skill, polysemous verb, verb-object phrase does NOT anchor on its own | Real topical category (kebab-case, e.g. `site-cloning —`) |
+| Standalone skill, verb-object phrase already anchors the topic | Skip the Domain |
+| Skill is intentionally multi-purpose (broad routing surface is the goal) | Skip the Domain — narrowing would degrade routing |
+| Skill name itself screams the topic (`deploy-aws`, `eslint-fix`, `web-crawler`) | Skip the Domain — the name does the work |
+
+**The principle:** the Domain is a *scope declaration* — the routing surface this skill is electing to serve. It is NOT a category label every skill must have. A skill with no near-neighbors and a self-anchoring verb-object phrase loses nothing by skipping the Domain.
+
+**Calibrate per-skill, not per-constellation.** Two skills shipped together can — and sometimes should — make different Domain choices because their routing surfaces differ. Example: a `web-crawler` / `web-cloner` pair. `web-cloner` is single-purpose (only fires on cloning prompts) → `site-cloning —` narrows it correctly. `web-crawler` is multi-purpose (also serves SBOM audits, CMS migration prep, inventory) → using `site-cloning —` would narrow it to a scope it doesn't actually serve. Different scopes → different Domain choices.
+
+**Worked examples:**
+
+| Skill | Domain | Reasoning |
+|---|---|---|
+| `happyskills` (constellation core) | `HappySkills —` | Brand anchor — member of a named constellation |
+| `tiny-gemini-image` | `tiny-gemini —` | Brand anchor (kebab-case matches the constellation's existing convention) |
+| `web-cloner` (single-purpose) | `site-cloning —` | Polysemous verb `Clone`; scope is narrow → topical anchor narrows correctly |
+| `web-crawler` (multi-purpose) | *(none)* | Verb-object `Map a website` already anchors, and the skill serves multiple topics (cloning prep, SBOM audit, CMS migration, inventory) — narrowing would lose use cases |
+| `deploy-aws` | *(none)* | Name already screams the topic |
+| `eslint-fix` | *(none)* | Name already screams the topic |
+
+### Why the Negative slot is effectively required in a constellation
+
+When sibling skills own related verbs (e.g., `publish` lives in `happyskills-publish`, `design` in `happyskills-design`), the LLM needs explicit redirection to avoid firing the wrong skill on overlapping prompts. The `Not for X` clause is empirically supported — Vertex AI uses contrastive specificity in its tool-use guidelines, and academic research on tool selection (MetaTool, arXiv:2310.03128) confirms negative disambiguators improve accuracy on confusable siblings. In a constellation, every member except the most peripheral has a near-neighbor — so the Negative slot is required, not optional. See [constellation-pattern.md § 2 Orthogonal Verb Ownership](constellation-pattern.md) for the full rule and the failure mode when orthogonality is violated, [§ 2.4 Canonical-Command Escape Hatch](constellation-pattern.md) for the scoped softening when description-level orthogonality is unachievable, [§ 5 Orthogonality Test](constellation-pattern.md) for the three-layer test (front matter + routing tables + output vocabulary) you should run before publishing a multi-member constellation, [§ 6 Limits of Static Validation](constellation-pattern.md) for the kinds of collisions keyword tests cannot catch, and [§ 8 Case Study](constellation-pattern.md) for the worked example that grounded all of these refinements.
 
 ### Length budget
 
@@ -273,6 +311,9 @@ Why this works:
 | Description as keyword list (`Gmail send compose write draft message recipient deliver outbound`) | Keyword stuffing degrades semantic signal — see spec § 4.4 |
 | Padding to hit a length target | Wastes context budget; Anthropic explicitly warns about truncation under context pressure |
 | **Tense and synonym matrices** (`extracting, analyzing, parsing, or pulling style guides`) | **Retired** per spec § 4.1 — no frontier lab recommends this, no benchmark validates it. LLMs handle tense and voice variation natively. The dominant failure mode is *semantic overlap between sibling tools* (MetaTool, arXiv:2310.03128), which is solved by adding **specificity** (negative disambiguators, `Use when` clauses), not synonyms. Empirically (EasyTool, arXiv:2401.06201), rewriting verbose descriptions into concise, structured, unambiguous forms produced +20-30% absolute gains in tool-selection accuracy. |
+| **Fabricated Domain prefix** (inventing a brand-like word for the slot — e.g. `WebClone —` when no product called "WebClone" exists) | Adds noise without signal. Conflates *routing surface* with *naming*. The LLM has no reason to recognize the token, and humans reading the description are misled into thinking a product by that name exists. The slot is not mandatory; an invented token is worse than no token. | Replace with a real brand name, a real kebab-case topical category, or drop the Domain entirely. See "When to drop the Domain". |
+| **Same Domain across siblings with different scopes** (paired skills shipped together forced to share one Domain even when their routing surfaces differ) | Narrows a multi-purpose skill's routing surface to the narrower sibling's scope. The multi-purpose skill then fails to auto-invoke on the topics it was meant to serve. | Calibrate the Domain per-skill, not per-pair. One skill may keep the Domain; the other may drop it or use a different one. See the `web-crawler` / `web-cloner` worked example in "When to drop the Domain". |
+| **Casing mismatch between Domain and skill name** (`WebClone —` on `web-crawler` / `web-cloner`; `Tiny_Gemini —` on `tiny-gemini-image`) | Reads as a fake brand to humans and adds an unrecognized token to the LLM's routing input. Convention: match the family's casing — CamelCase Domains pair with CamelCase brand families, kebab-case Domains pair with kebab-case families. | If skills are kebab-case-named (`web-crawler`, `web-cloner`), use `site-cloning —`, not `SiteCloning —`. |
 
 ### Disambiguation playbook (for confusable siblings)
 
@@ -289,7 +330,7 @@ Do **not** add synonyms or tense variants. They consume budget without empirical
 ### Common mistakes
 
 - Too vague: `description: Technical coding tool` → Claude won't know when to use it.
-- Missing namespace prefix: skips the hard-filter benefit; the model can't fast-skip the skill in unrelated domains.
+- Missing namespace prefix WHEN the verb is polysemous AND the verb-object phrase doesn't anchor the topic on its own: skips the topical hard-filter benefit; the LLM can't fast-skip the skill in unrelated domains. (If the verb-object phrase DOES already anchor the topic — `Map a website`, `Render a video` — skipping the Domain is correct, not a mistake. See "When to drop the Domain".)
 - No negative disambiguator when sibling skills exist: cross-skill verb collisions go unflagged.
 - Wrong scope: description says "deploy" but skill also handles monitoring — split into focused skills, not a mega-skill description.
 - Forbidden YAML characters in the description: the validator (`cli/src/validation/skill_md_rules.js`) hard-rejects `;`, `:`, `#`, `{`, `}`, `[`, `]`, `'`, `"`, `!`, `&`, `*`, `%`, `|`, `>` even when YAML-quoted, because the check runs on the decoded string. Use em-dashes, periods, and commas as separators.
@@ -314,15 +355,15 @@ The description is the **only** signal the LLM sees at session startup. When it 
 
 **The user safety net:** If the skill name appears in the user's request (e.g., "use HappySkills to republish my skill"), the LLM will match on the `name` field regardless of description content. This is near-100% reliable. But users rarely prefix requests with the skill name — they expect the agent to route automatically.
 
-**Resolution strategies — the Suite Pattern is canonical:**
+**Resolution strategies — the Constellation Pattern is canonical:**
 
-The canonical answer to a mega-skill is the **Suite Pattern**: decompose the skill into a slim core entry point plus focused satellite skills, bundled via the core's `skill.json` dependencies. Each satellite owns one orthogonal verb cluster with its own 1024-char budget; the core handles lifecycle. Read [suite-pattern.md](suite-pattern.md) for the full operational reference (load-bearing orthogonality rule, five-slot grammar, orthogonality test, anti-patterns), and follow the **Suite Decomposition Workflow** in [workflows.md](workflows.md) for the 8-phase procedure.
+The canonical answer to a mega-skill is the **Constellation Pattern**: decompose the skill into a slim core entry point plus focused satellite skills, bundled via the core's `skill.json` dependencies. Each satellite owns one orthogonal verb cluster with its own 1024-char budget; the core handles lifecycle. Read [constellation-pattern.md](constellation-pattern.md) for the full operational reference (load-bearing orthogonality rule, five-slot grammar, orthogonality test, anti-patterns), and follow the **Constellation Decomposition Workflow** in [workflows.md](workflows.md) for the 8-phase procedure.
 
 The three resolution strategies, in order of when each applies:
 
 **Strategy 1 — Compress the description (first line of defense, only when slightly over).** Apply the AUDIT/LOSSLESS/LOSSY procedure from the SKILL.md error handling section. The key principle: **LLMs can infer synonyms from a strong anchor word.** If "Enable, disable" is in the description, the LLM will match "toggle", "turn on", "deactivate" without those words being present. Synonym clusters can be aggressively trimmed without losing trigger coverage. Only UNIQUE phrases (the sole trigger for a capability) and IDENTITY phrases (what the skill is) must be preserved. Compression buys time but does not solve the underlying scaling problem — once the API surface grows again, you will be back over the cap.
 
-**Strategy 2 — Suite Pattern (canonical, recommended once decomposition is justified).** Apply the full Suite Pattern: extract focused satellite skills from the mega-skill, give each a five-slot description with orthogonal verb ownership, and bundle them via the core's `skill.json` dependencies. Each member gets its own 1024-char budget; the suite ships as one product via one install command. Example decomposition for a CLI automation skill:
+**Strategy 2 — Constellation Pattern (canonical, recommended once decomposition is justified).** Apply the full Constellation Pattern: extract focused satellite skills from the mega-skill, give each a five-slot description with orthogonal verb ownership, and bundle them via the core's `skill.json` dependencies. Each member gets its own 1024-char budget; the constellation ships as one product via one install command. Example decomposition for a CLI automation skill:
 
 | Skill | Covers | Bundled? |
 |---|---|---|
@@ -331,21 +372,21 @@ The three resolution strategies, in order of when each applies:
 | `my-tool-author` | Skill design, review, audit, improvement | Yes — auto-installed with core |
 | `my-tool-collab` | Workspace, members, groups, permissions, access | Opt-in — surfaced through concierge |
 
-Run the **Suite Decomposition Workflow** in [workflows.md](workflows.md) for the 8-phase procedure (confirm symptom → map verb space → propose suite → draft five-slot descriptions → run orthogonality test → generate files → validate → release coordination).
+Run the **Constellation Decomposition Workflow** in [workflows.md](workflows.md) for the 8-phase procedure (confirm symptom → map verb space → propose constellation → draft five-slot descriptions → run orthogonality test → generate files → validate → release coordination).
 
-**Strategy 3 — Hybrid umbrella + satellites (a Suite Pattern variant).** A specific shape of the Suite Pattern: one main skill for the most common operations plus one or two satellites for genuinely distinct domains. Use this when most intents cluster around a single core use case with only 1–2 outlier domains. Same orthogonality rules apply.
+**Strategy 3 — Hybrid umbrella + satellites (a Constellation Pattern variant).** A specific shape of the Constellation Pattern: one main skill for the most common operations plus one or two satellites for genuinely distinct domains. Use this when most intents cluster around a single core use case with only 1–2 outlier domains. Same orthogonality rules apply.
 
 **When to recommend each strategy:**
 
 | Situation | Strategy |
 |---|---|
 | Description is 250-400 chars and still has synonym redundancy | Compress (Strategy 1), then re-evaluate |
-| Description is above the 250-char soft cap and new features keep coming | **Suite Pattern (Strategy 2)** |
-| Skill covers genuinely distinct user personas or intent domains | **Suite Pattern (Strategy 2)** |
-| Most intents cluster around a core use case with 1–2 outlier domains | Hybrid (Strategy 3) — a Suite Pattern variant |
-| Skill description names ≥ 4 distinct primary verbs | **Suite Pattern (Strategy 2)** |
+| Description is above the 250-char soft cap and new features keep coming | **Constellation Pattern (Strategy 2)** |
+| Skill covers genuinely distinct user personas or intent domains | **Constellation Pattern (Strategy 2)** |
+| Most intents cluster around a core use case with 1–2 outlier domains | Hybrid (Strategy 3) — a Constellation Pattern variant |
+| Skill description names ≥ 4 distinct primary verbs | **Constellation Pattern (Strategy 2)** |
 
-**When auditing or updating a skill**, proactively check for mega-skill symptoms. **If the description is above 250 characters, flag it to the user and offer to apply the Suite Decomposition Workflow.** The Suite Pattern is the canonical answer once a skill crosses 250 chars — compression alone will not keep up as the API surface grows.
+**When auditing or updating a skill**, proactively check for mega-skill symptoms. **If the description is above 250 characters, flag it to the user and offer to apply the Constellation Decomposition Workflow.** The Constellation Pattern is the canonical answer once a skill crosses 250 chars — compression alone will not keep up as the API surface grows.
 
 ---
 
@@ -629,7 +670,7 @@ Use ultrathink to analyze the architectural trade-offs...
    - **"User-only (/slash command)"** — Only you can trigger it. Claude won't know it exists. Use for deployments, releases, or destructive operations.
    Default to auto-invoke. Only set the flag if the user picks "User-only".
 6. **Use `user-invocable: false` for background knowledge** — Architectural context, conventions, domain knowledge.
-7. **Split large domains into a skill suite** — Three focused 150-line skills > one 500-line skill.
+7. **Split large domains into a skill constellation** — Three focused 150-line skills > one 500-line skill.
 8. **Name supporting files clearly** — `json-shapes.md`, `api-reference.md`, not `stuff.md`.
 9. **Organize supporting files by content type** — Use `references/` for docs, `scripts/` for code, `assets/`/`templates/` for static resources. Only create custom directories when content genuinely doesn't fit these standard categories.
 10. **Use conditional file references** — "Read `references/errors.md` if the API returns non-200" is better than "see references/ for details."
@@ -641,10 +682,7 @@ Use ultrathink to analyze the architectural trade-offs...
     - **Reference data** (tables, option lists): Define once, reference everywhere else.
     - **Exceptions**: Single-line cross-references ("see Section X") are not duplication. Short contextual reminders (1-2 lines restating a critical rule in a workflow step) are acceptable when they reinforce a safety constraint — but the authoritative definition must still live in one place.
     - **When NOT to extract**: If two blocks look similar but have meaningful contextual differences (different actions, different assumptions about starting state), keep them separate. False deduplication that hides genuine nuances is worse than the repetition it eliminates.
-
----
-
-## 10. Anti-Patterns to Avoid
+14. **Translate tool output for the user — don't transcribe it.** Skills that wrap a CLI command and surface its JSON output **must prescribe the user-facing phrasing, not just the agent behavior.** A "Status Values" table that lists `Status | Meaning | Action` is a *behavior* prescription. To also be a *communication* prescription, every status value, response key, or aggregate field the agent will present to the user needs an explicit plain-English opening sentence the agent should use verbatim. Without this, under uncertainty an LLM agent defaults to enumerating the JSON's vocabulary (`status: diverged`, `base_commit`, `merge_parents` …) — producing a wall of jargon for the user. The fix is structural: add a "Plain-English meaning (use as your opening sentence)" column to every status-value table, and frame the section with an explicit rule ("Lead with the plain-English meaning; quote JSON values only if the user asks"). See `happyskills-sync` SKILL.md Section 2 for the reference implementation. This rule applies to **every** skill that interprets command output for a user — `validate`, `status`, `check`, `pull`, `diff`, `publish`, anything that returns a status field or a result code.
 
 | Anti-Pattern | Problem | Fix |
 |---|---|---|
@@ -663,6 +701,7 @@ Use ultrathink to analyze the architectural trade-offs...
 | Custom directories for content that fits standard folders | Misleading structure — suggests a distinct content type when there isn't one | Use `references/` for docs, `scripts/` for code, `assets/` for static resources. Only create custom dirs for genuinely distinct content categories |
 | Deeply nested reference chains (A → B → C → D) | Agent may lose context traversing multiple hops | Keep references one level deep from SKILL.md. Subdirectories are fine, but avoid chains of files referencing other files |
 | Same procedure or rule copy-pasted across multiple files | Content drifts out of sync when one copy is updated but others are forgotten | Extract to a single location (Common Procedures section or authoritative reference file) and reference it from each workflow. See Best Practice #13 |
+| Skill describes CLI status values or result codes without prescribing the plain-English opening sentence the agent should use | Under uncertainty, the agent transcribes the JSON vocabulary (`status: diverged`, `base_commit`, `merge_parents`) into prose — producing a wall of jargon for the user | Add a "Plain-English meaning (use as your opening sentence)" column to every status-value table, and frame the section with "Lead with the plain-English meaning; quote JSON values only if the user asks." See Best Practice #14 and `happyskills-sync` SKILL.md Section 2 for the reference implementation |
 
 ---
 
@@ -761,7 +800,7 @@ Map user intent → CLI commands:
 
 ---
 
-### Pattern 5 — Skill Suite (Multiple Focused Skills)
+### Pattern 5 — Skill Constellation (Multiple Focused Skills)
 
 Instead of one large skill:
 

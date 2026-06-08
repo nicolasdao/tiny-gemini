@@ -1,7 +1,6 @@
 ---
 name: tiny-gemini-models
 description: tiny-gemini — Look up Gemini model IDs, pricing, and deprecations from the offline registry in the npx CLI. Use when asking which models exist, what they cost, what is deprecated, or which model to choose. Not for calling a model.
-user-invocable: false
 allowed-tools: Bash, Read
 ---
 

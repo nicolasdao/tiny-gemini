@@ -110,7 +110,7 @@ If the count is large (> 20), show the newest 10 and offer to show more: "Showin
 | Situation | Behavior |
 |---|---|
 | Skill has 0 published versions | The CLI returns `{ "data": { "skill": "...", "count": 0, "versions": [] } }`. Tell the user "No versions published yet for `<owner/name>`." Don't run `changelog` as a follow-up — there's nothing to read. |
-| Skill doesn't exist | The API returns 404. The CLI surfaces this as an error in `{ "error": ... }`. Tell the user "I can't find `<owner/name>` in the registry. Want me to search for similar skills?" and offer to run `search`. |
+| Skill doesn't exist | The CLI returns `ok: false` with `error.code` set (e.g. `NOT_FOUND`). Tell the user "I can't find `<owner/name>` in the registry. Want me to search for similar skills?" and offer to run `search`. |
 | User isn't authenticated and skill is private | The API returns 401 / 403. Run the auth flow from SKILL.md Section 7 (`npx happyskills login --json --browser`), then retry. |
 | User passed a short name ("foo" not "owner/foo") | The CLI exits with a usage error. Don't retry — ask the user for the full `owner/name`. |
 

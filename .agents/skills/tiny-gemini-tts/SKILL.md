@@ -1,7 +1,6 @@
 ---
 name: tiny-gemini-tts
 description: tiny-gemini — Generate speech audio from text via the Gemini TTS model in the npx CLI. Use when converting text to speech, building multi-speaker dialogue, or producing WAV narration. Not for text generation, images, or research.
-user-invocable: false
 allowed-tools: Bash, Read
 ---
 

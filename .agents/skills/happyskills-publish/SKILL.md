@@ -1,13 +1,13 @@
 ---
 name: happyskills-publish
-description: HappySkills — Publish skills to the registry. Use when shipping a new version, bumping a version, validating, converting an external skill, forking, deleting from the registry, or changing visibility. Not for designing or syncing skills.
+description: HappySkills — Publish skills to the registry. Use when shipping a release, bumping a version, validating, converting an external skill, forking, unpublishing, or changing visibility. Not for designing or syncing skills.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 argument-hint: "[your publish request]"
 ---
 
 # HappySkills Publish
 
-You ship skills to the registry. You own version bumps, validation, the publish flow (with mandatory pre-flight checks), the full release workflow (analyze changes + bump + changelog + publish), and registry-management actions (convert external skills, fork managed skills, delete, change visibility).
+You ship skills to the registry. You own the atomic `release` primitive (snapshot + validate + bump + changelog + publish, with structured failure envelopes), standalone bump and validate, and registry-management actions (convert external skills, fork managed skills, delete, change visibility).
 
 The user's request is: `$ARGUMENTS`
 
@@ -17,21 +17,21 @@ The user's request is: `$ARGUMENTS`
 
 | User Intent | Action |
 |---|---|
-| "publish my skill", "push to registry", "release skill", "ship this update" | Publish with pre-flight (Section 3) |
-| "release a skill", "release my skill", "ship my changes", "publish my skill update", "update and publish skill", "push skill changes" | Skill Release Workflow (Section 4 — full pipeline) |
+| "publish my skill", "push to registry", "release skill", "ship this update", "release a skill", "ship my changes", "publish my skill update", "update and publish skill", "push skill changes", "publish the skill I just made" | Release (Section 3 — atomic `release` primitive) |
 | "bump version", "increment version", "patch bump", "minor bump", "major bump" | `bump` (Section 5) |
 | "validate", "check my skill", "is my skill valid", "lint my skill", "verify my skill" | `validate` (Section 6) |
-| "convert", "make managed", "register external skill" | `convert` + Post-Convert Enrichment (Section 7) |
+| "convert", "import a foreign skill", "I cloned this skill from elsewhere, register it" | `convert` + Post-Convert Enrichment (Section 7) |
 | "fork", "copy skill", "clone skill" | `fork` + Post-Fork Enrichment (Section 8) |
 | "delete skill from registry", "remove from registry", "permanently delete" | `delete` (Section 9 — destructive, confirm) |
 | "visibility", "change visibility", "make public", "make private", "set visibility" | `visibility` (Section 10) |
 
 **Disambiguation rules:**
 
-- "Publish" alone → Section 3 (with pre-flight). If the user says "release" or hints at a multi-step ship (analyzing changes, writing changelog), use Section 4 (full Release Workflow) instead.
+- "Publish" or "release" → Section 3 (`release` primitive). It handles snapshot + validate + bump + changelog verification + publish + lock update atomically. No separate "full Release Workflow" exists anymore — `release` IS the workflow.
+- **A skill scaffolded by `happyskills init` is not "external" — it is a draft.** `npx happyskills list --json` lists drafts under `data.drafts[]` (separate from `data.external[]`). Drafts publish directly through Section 3 (`release`) on first publish — DO NOT route them through `convert`. `release` handles the workspace claim atomically as part of the first publish. Only route to `convert` (Section 7) when the user has a hand-rolled foreign skill (no `skill.json`, or one with a foreign shape) that appears under `data.external[]`.
 - "Update" with a skill name and a version → it's `update` (CLI lifecycle command, owned by core). Route the user: "say 'upgrade owner/X' and core will handle it." But "update this skill based on what we did" is content modification — route to `happyskills-design`.
 - "Delete" alone → could mean uninstall (core) or registry delete. Ask which: "Do you want to uninstall locally (just remove from this project), or delete from the registry (irreversible)?"
-- "Convert" alone → `convert` (Section 7). Always followed by Post-Convert Enrichment.
+- "Convert" alone → `convert` (Section 7). Always followed by Post-Convert Enrichment. Only applies to genuinely foreign skills under `data.external[]`.
 - "Fork" alone → `fork` (Section 8). Always followed by Post-Fork Enrichment.
 - "Why can't I publish" / "publish rejected" / "diverged" → divergence issue. Route to `happyskills-sync`: "say 'why can't I publish' and sync will diagnose."
 
@@ -59,80 +59,55 @@ If a command fails with exit code 3 (`AUTH_REQUIRED`), trigger the auth flow and
 
 ---
 
-## Section 3 — Publish (with Mandatory Pre-Flight)
+## Section 3 — Release (canonical happy path)
 
-Before running `npx happyskills publish`, run these pre-flight checks **in order**:
+When the user wants to ship a skill update — bare publish, full release with bump + changelog, or just push an already-bumped skill — invoke the `release` primitive. It atomically snapshots, validates, applies the bump (or recognizes the `ahead` state and skips re-bumping), verifies the CHANGELOG, resolves the workspace, and publishes. On any failure it restores the snapshot and returns a structured `next_step` envelope you read and route on.
 
-1. **Check if the skill is managed** — Run `npx happyskills list --json` and check `data.skills` (managed) vs `data.external` (external). If external, tell the user the skill needs to be converted first, and offer to run `convert` (Section 7). Do not attempt to publish an unconverted skill.
+**First-publish classification (run before any other branching).** If the user has just scaffolded a skill (or it's unclear whether the target is already managed), run `npx happyskills list --json` once and check where the target appears:
 
-2. **Check divergence state (MANDATORY)** — Run `npx happyskills status <workspace>/<skill-name> --json`. Check `status`:
-   - `clean` or `modified` → safe to proceed.
-   - `outdated` → remote has advanced. Route to `happyskills-sync` ("say 'pull remote changes for X'") then return here.
-   - `diverged` → both local and remote changed. Route to sync to merge. If conflicts, sync guides resolution. Then return here.
-   - `conflicts` → unresolved markers. Route to sync to resolve. Then return here.
+- Under `data.skills` (managed) → already published before; this is a normal release. Proceed with the steps below.
+- Under `data.drafts` (scaffolded, never published) → this is a first publish. Proceed with the steps below using `release` — it claims the workspace atomically. **Do NOT mention "convert", "external", or "claim" to the user.** Narrate it as a publish, because that's what it is.
+- Under `data.external` (genuinely foreign, no HappySkills-shaped `skill.json`) → route to Section 7 (`convert`) first; this is the only case where conversion is the correct path.
 
-3. **Run validation (MANDATORY)** — Run `npx happyskills validate <skill-name> --json`. If `data.valid` is `false`, follow the Validate Error Handling procedure (Section 11). Do NOT publish a skill that fails validation. Warnings are advisory — present but do not block. **If you had to fix validation errors** (modified any skill files), those fixes are new changes that must be versioned and documented before publishing — go to Section 4 (Release Workflow) instead of bare publish.
-
-4. **Resolve target workspace (MANDATORY)** — Run the **Workspace Resolution** procedure ([references/workflows.md § Workspace Resolution](references/workflows.md)). You **MUST** pass `--workspace <slug>` in every publish command — never run publish without it.
-
-5. **Read `CHANGELOG.md` and `skill.json`** in the skill's directory.
-
-6. **Review changes since the last CHANGELOG entry** — have there been modifications?
-
-7. **If the version is already bumped and CHANGELOG covers the current changes AND no validation fixes were applied in step 3** → proceed to publish (step 9). Otherwise → run the Skill Release Workflow (Section 4) which handles bump + changelog + publish.
-
-8. **(Reserved — handled by Section 4 if reached.)**
-
-9. **Confirm with AskUserQuestion** before publishing. Show the skill name, version, and target workspace. To detect a **first publish**, run `npx happyskills check <workspace>/<skill-name> --json`. If the response contains an error (skill not found in the registry), this is a first publish — ask about visibility using exactly these options in this order:
-   1. **"Private (Recommended)"** — MUST be the FIRST option. Description: "Only visible to members of your workspace."
-   2. **"Public"** — MUST be the SECOND option. Description: "Visible in the public catalog to all users."
-
-   NEVER present "Public" as the first or default option for a first-time publish. NEVER use the lock file `commit` field to detect first publish — locally developed skills always have `commit: null` even after publishing. If `happyskills check` returns version data (skill exists in the registry), do NOT ask about visibility — the existing visibility is preserved automatically by the server.
+1. **Confirm intent** with AskUserQuestion: present skill name, target workspace, and (if known) intended bump type. Get confirmation before proceeding.
+2. **Invoke release**:
 
 ```bash
-# ALWAYS include --workspace
-npx happyskills publish my-skill --workspace <slug> --json
+# Most common: skill.json is already bumped (ahead state) — release recognizes
+# it and publishes the disk version directly.
+npx happyskills release <skill-name> --workspace <slug> --json
 
-# Publish as public on first publish
-npx happyskills publish my-skill --workspace <slug> --public --json
+# Need a bump first:
+npx happyskills release <skill-name> --workspace <slug> --bump <patch|minor|major> --json
 
-# Auto-bump before publishing (use Section 4 instead for full release workflow)
-npx happyskills publish my-skill --workspace <slug> --bump patch --json
+# First publish — specify visibility (Private is recommended for first ships):
+npx happyskills release <skill-name> --workspace <slug> --bump patch --private --json
 ```
 
-Show the published skill name, version, and ref.
+3. **Read the canonical envelope** (`ok`, `data`, `error`, `next_step`, `warnings`, `meta`) and dispatch on `next_step.action`:
+   - **`ok === true` AND `next_step` is empty (`{}`) AND `data.published === true`** → release complete. Surface the result: skill, version, workspace, commit. Note `data.ahead_recognized` when true (the disk version was published as-is without a re-bump).
+   - **`error.code: VALIDATION_FAILED` / `next_step.action: fix_validation_errors`** → surface `error.validation_errors`; follow Section 11 (Validate Error Handling); after fixes, re-invoke step 2.
+   - **`next_step.action: specify_bump_type`** → AskUserQuestion with `next_step.context.options` (`patch` / `minor` / `major`); re-invoke with `--bump <choice>`.
+   - **`next_step.action: provide_changelog`** → CHANGELOG.md is missing a `## [<next_step.context.target_version>]` entry. Write one (read recent diff + commit messages to draft it); re-invoke step 2.
+   - **`next_step.action: reconcile_first`** → genuine drift. The safe follow-up command is in `next_step.context.commands[0]` (first command is always the safe default per spec § 7). Route to `happyskills-sync`: *"Say 'fix drift on X' and sync will guide the repair."* (Sync's §2.5 wraps `reconcile`.) Do NOT bypass.
+   - **`next_step.action: pull_rebase_first`** → registry has advanced; the safe follow-up is in `next_step.context.commands[0]`. Route to `happyskills-sync`: *"Say 'pull remote changes for X' and sync will integrate them, then re-run publish."*
+   - **`next_step.action: specify_workspace`** → present `next_step.context.candidates` via AskUserQuestion, then re-invoke with `--workspace <slug>`.
+   - **`next_step.action: resolve_bump_disagreement`** → `--bump` would produce a version different from `next_step.context.disk_version`. Surface both to the user via AskUserQuestion and ask which is intended.
+   - **Unrecognised `next_step.action` or `error.code`** (forward-compat: newer CLI, older skill) → surface `next_step.instructions` (or `error.message`) verbatim and **stop; do not improvise**.
+   - **`warnings[]` non-empty** → surface each entry to the user (non-fatal advisories), even on success.
 
-**NEVER pipe `publish` (or any `--json` command that emits progress lines) through a strict JSON parser.** The CLI prints non-JSON status text such as `Preparing to publish...` to stdout *before* the JSON envelope. Strict parsers like `python3 -m json.tool` or `jq -e .` choke on that prefix and report a parse error, **masking whether the underlying operation succeeded**. Run `publish` without piping (let stdout flow to the terminal so you can read the `Published owner/name@version` line and the JSON together), or capture the full output and parse only the JSON line.
+**First-publish visibility — non-negotiable.** When release reports a first publish (or the operator detected one via `npx happyskills check`), AskUserQuestion with these EXACT options in this order:
 
-**If publish returns a DIVERGED error** (someone published between your status check and your publish — TOCTOU): route to `happyskills-sync` to pull and re-merge, then re-run publish.
+1. **"Private (Recommended)"** — FIRST. "Only visible to members of your workspace."
+2. **"Public"** — SECOND. "Visible in the public catalog to all users."
 
-**Merge commits:** When the lock entry contains `merge_parents` (set by a prior `pull` that auto-merged without conflicts), `publish` automatically sends them as `parent_shas`. The server creates a merge commit with two parents. Transparent — no extra flags needed. After successful publish, both `merge_parents` and `conflict_files` are cleared from the lock.
+NEVER present "Public" as first or default on a first publish. On subsequent publishes, do NOT ask — the server preserves existing visibility automatically.
 
----
+**Parsing tip.** Don't pipe release/publish through strict JSON parsers; the CLI prints progress text to stdout before the envelope. Either let stdout stream to the terminal or capture full output and parse only the trailing JSON object.
 
-## Section 4 — Skill Release Workflow
+### Granular alternatives
 
-When the user wants to release/ship a skill update, run the full pipeline. This is different from a bare `publish` — it analyzes changes, infers semver bump, updates changelog, and publishes.
-
-**Always invoke this workflow when releasing — including when releasing the `happyskills` skill family itself.** Do not improvise an ad-hoc release by hand-editing `skill.json` to bump the version, hand-writing a CHANGELOG entry, and then calling `publish` directly. Each of those steps has a dedicated tool (`bump`, `validate`, `publish`) and the workflow orders them correctly (validate before bump, re-validate after CHANGELOG edits, publish last). Skipping the workflow skips the safeguards — most commonly you'll discover a validation failure *after* bumping, leaving the version and changelog needing a follow-up patch release to clean up.
-
-**Quick steps** (full procedure with all guardrails: [references/workflows.md § Skill Release Workflow](references/workflows.md)):
-
-1. **Identify the skill and read current state** — locate directory, read `skill.json` (current version), read `CHANGELOG.md`.
-2. **Analyze changes** — review session context + `git diff` + `git log` within the skill directory + file mtimes. Classify each change:
-
-   | Change Type | Bump | Examples |
-   |---|---|---|
-   | Bug fixes, typos, corrections | `patch` | Fixed typo in description, fixed broken command |
-   | New features, new sections, new capabilities | `minor` | Added new command support, added authoring mode |
-   | Breaking changes | `major` | Changed invocation model, restructured frontmatter, removed features, renamed skill |
-
-3. **Propose bump type and confirm** — present inferred bump with reasoning, use AskUserQuestion to confirm or override.
-4. **Pre-release validation (MANDATORY)** — run `npx happyskills validate <skill-name> --json`. If errors → fix per Section 11. If validation fixes modified files → re-run validate, re-evaluate bump, document fixes in changelog.
-5. **Bump the version** — `npx happyskills bump <patch|minor|major> <skill-name> --json`. Parse the new version.
-6. **Update CHANGELOG.md** — write a new entry at the top following Keep a Changelog format. Only include groups (`### Added`, `### Changed`, `### Fixed`, `### Removed`) that have entries.
-7. **Resolve workspace** — run Workspace Resolution ([references/workflows.md](references/workflows.md)).
-8. **Confirm and publish** — show summary (skill, workspace, version old → new, changes), AskUserQuestion for final confirmation, then `npx happyskills publish <skill-name> --workspace <slug> --json`. Do NOT ask about visibility on updates — the server preserves existing visibility automatically.
+`release` is the default. If the user explicitly wants to invoke only one step — "just validate", "just bump", "just publish what's already bumped" — route to the standalone sections (5, 6, or use bare `publish` from step 2 of this section). For "I already bumped and wrote the CHANGELOG, just push", use `release` with `--no-bump` — it still snapshots, validates, and routes failures structurally, but trusts the disk version.
 
 ---
 
@@ -145,7 +120,7 @@ npx happyskills bump major my-skill --json
 npx happyskills bump 2.0.0 my-skill --json    # explicit version
 ```
 
-Show old → new version. Use `bump` from within the Release Workflow (Section 4) when shipping; standalone `bump` is for cases where the user just wants to increment without publishing yet.
+Show old → new version. `bump` only modifies `skill.json`'s `version` field — the lock file is NOT touched. The skill enters the `ahead` state until the next publish, which catches the lock up atomically with registry acceptance. Standalone `bump` is for cases where the user wants to increment without publishing yet; for the full ship pipeline (validate + bump + changelog + publish), use `release` (Section 3) instead.
 
 ---
 
@@ -162,9 +137,11 @@ If `data.valid` is `false`, present each error with file/field/message, follow S
 
 ---
 
-## Section 7 — Convert (External → Managed)
+## Section 7 — Convert (Foreign skill → Managed)
 
-Convert an existing external skill into a HappySkills-managed skill.
+Convert a genuinely foreign skill into a HappySkills-managed skill. **Use only when the skill came from outside the HappySkills toolchain** — typically a hand-rolled `.claude/skills/<name>/SKILL.md` cloned from GitHub or copied from another project, with no `skill.json` or a foreign-shaped one. These appear under `data.external[]` in `npx happyskills list --json`.
+
+**Do NOT run `convert` on a skill scaffolded by `happyskills init`.** Those skills already have a HappySkills-shaped `skill.json` and show up under `data.drafts[]`, not `data.external[]`. They publish directly through Section 3 (`release`) on first publish — `release` claims the workspace atomically as part of the first push, without an intermediate `convert` step. Routing a draft through `convert` is the legacy detour that introduced the "external skill" jargon to users who had just created their skill with the official tool. The fix is to send drafts straight to `release`.
 
 ```bash
 # Authenticated — auto-resolves workspace and checks registry for conflicts
@@ -180,7 +157,7 @@ npx happyskills convert skill-name --workspace myorg --version 1.0.0 -y --json
 npx happyskills convert skill-name -g -y --json
 ```
 
-After successful conversion, **always run Post-Convert Enrichment** ([references/workflows.md § Post-Convert Enrichment](references/workflows.md)). This enriches `skill.json` with description, keywords, dependencies, system dependencies, optional fields, and CHANGELOG, then publishes. Do NOT alter SKILL.md content during enrichment — that's the user's original work.
+After successful conversion, **always run Post-Convert Enrichment** ([references/workflows.md § Post-Convert Enrichment](references/workflows.md)). This enriches `skill.json` with description, dependencies, system dependencies, optional fields, and CHANGELOG, then publishes. Do NOT alter SKILL.md content during enrichment — that's the user's original work.
 
 ---
 
@@ -195,7 +172,7 @@ npx happyskills fork owner/name --json
 npx happyskills fork owner/name --workspace myorg --json
 ```
 
-After successful fork, **always run Post-Fork Enrichment** ([references/workflows.md § Post-Fork Enrichment](references/workflows.md)). This sets up the forked skill's metadata (description, keywords, re-evaluates dependencies, CHANGELOG with `forked_from` info).
+After successful fork, **always run Post-Fork Enrichment** ([references/workflows.md § Post-Fork Enrichment](references/workflows.md)). This sets up the forked skill's metadata (description, re-evaluates dependencies, CHANGELOG with `forked_from` info).
 
 ---
 
@@ -248,10 +225,14 @@ For long-form description issues (above 250 chars under the new spec), consider 
 - **ALWAYS** run pre-flight checks (Section 3) before any publish — never bypass them.
 - **NEVER** run `npx happyskills login --password` — exposes credentials in the LLM context. Use the browser flow only.
 - **NEVER** fabricate CLI flags or subcommands not documented in this skill or [references/cli-reference.md](references/cli-reference.md).
-- **NEVER** modify `skill.json` directly to bump the version — use `npx happyskills bump`. The constraint at "NEVER modify files directly for CLI package management" applies here: bumping is a package management operation.
+- **The lock file represents the registry view; `skill.json`'s version is authoring intent.** Either `npx happyskills bump <patch|minor|major|explicit-version> <skill-name> --json` or a direct `Edit` of `skill.json`'s `"version"` field is acceptable — both produce the same coherent `ahead` state (disk version > lock version), and `ahead` is a valid precondition for publish (not drift to repair). Prefer `bump` for its ergonomic value: it validates the resulting manifest, applies semver arithmetic for `patch`/`minor`/`major` shorthands, and warns if the target version already exists on the registry. Use `Edit` if you have a specific version string in mind and want to set it explicitly, or if you are editing multiple manifest fields in one pass. Either way, the lock catches up at publish time, atomically with registry acceptance — do not attempt to keep the lock in sync manually.
 - **NEVER** modify SKILL.md content during convert/fork enrichment — only enrich `skill.json` and supplementary files.
 - **NEVER** publish a skill that fails validation. If validation fails, follow Section 11 to fix, then re-validate.
+- **NEVER** publish a skill that reports GENUINE drift — `drift.reason == "regression"` (disk version semver-LESS than lock — suspicious downgrade), `drift.reason == "missing_skill_json"`, or `drift.reason == "missing_dir"`. For those cases the published record would not reflect a coherent local state. Route to `happyskills-sync` Section 2.5 (Drift Repair), which wraps `reconcile`. `--force` does not bypass genuine drift — it only bypasses the registry divergence check. The disk-version-GREATER-than-lock-version case is NOT drift; it is the normal `ahead` state, which `release` (Section 3) recognizes and publishes directly.
 - **NEVER** present "Public" as the first or default visibility option on first publish. Private MUST be first.
 - **NEVER** invoke `pull`, `diff`, `status`, or any other sync/install/design action. Route the user to the appropriate skill.
 - **ALWAYS** run `npx happyskills` from the **project root** (the directory containing `.claude/`).
-- **PREFER** the Release Workflow (Section 4) over bare `publish` (Section 3) when there are unbumped or undocumented changes.
+- **PREFER** `release` (Section 3) over bare `publish` whenever shipping a skill update. `release` is the atomic snapshot + validate + bump + changelog + publish pipeline; bare `publish` is the lower-level CLI command it wraps. Reach for bare `publish` only when explicitly invoked ("just publish what's already bumped") or when an existing flow (Convert / Fork enrichment) ends in a publish step.
+- **NEVER** narrate "external skill", "convert", "claim the workspace", or "lock file" to the user when publishing a draft (a freshly-scaffolded skill under `data.drafts[]`). These are internal mechanics; the user asked to publish, so report a publish. The Section 3 classification step exists to keep the narration honest: a draft is *not* an external skill, and `release` handles the first-publish path natively without a `convert` detour. Speak in the user's vocabulary: "Publishing X to workspace Y..." → "✓ Published Y/X@version". Reserve "convert" / "external" wording for the genuine `data.external[]` case routed to Section 7.
+- **NEVER** recommend or invoke `npx happyskills install <skill>@<version> --fresh` as part of drift repair, or in any flow where `<version>` may not be present in the registry. The CLI silently falls back to the latest published version when `<version>` is missing and overwrites every file in the skill directory with the registry's content. There is no error in the JSON envelope — it reports success at the fallback version. Recovery requires manually reconstructing the lost edits. Use local reconciliation instead (`Edit` + `bump` for version drift; `git checkout` for missing files; non-destructive `install` without `--fresh` for missing-version restoration). The full safe recipes are in `happyskills-sync` Section 2.5. This rule supersedes any older guidance that recommended `install --fresh` for drift cases.
+- **ALWAYS** snapshot before any operation that mutates skill files in non-trivial ways. "Non-trivial mutation" includes: running `publish`, running `pull`, running `install --fresh`, executing a drift repair recipe (sync §2.5 Case B–E), or any operation that wipes-and-reinstalls or rewrites multiple files. Single-field edits like `bump` (which only modifies `skill.json`'s version) or a manual `Edit` of `skill.json`'s version field are themselves trivially reversible by reading and rewriting the same field, so snapshotting is not required for those — but it is harmless if you do. If git tracks the skill directory: run `git stash` or note the current HEAD. Otherwise: copy the skill directory to `/tmp/hs-snapshot-<skill>-<timestamp>/`. After successful operation, the snapshot can be discarded. If the operation fails OR produces an unwanted result, restore from snapshot before doing anything else. This invariant turns every non-trivial mutation into a safe-to-attempt operation; without it, a single bad command can destroy work that cannot be recovered.

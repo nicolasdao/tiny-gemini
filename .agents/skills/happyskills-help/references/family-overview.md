@@ -48,14 +48,15 @@ HappySkills ships as a **family of focused skills**, one per task domain. Most u
 |---|---|---|
 | `happyskills` (core) | Install, list, update, uninstall installed skills. Auth (login/logout/whoami). Setup, self-update, config. The lifecycle layer. | **Yes** |
 | `happyskills-design` | Design new skills, scaffold, review, audit, update existing skills based on session learnings. The skill-authoring layer. | **Yes** (auto-installed with core) |
-| `happyskills-publish` | Publish skills to the registry. Bump versions, validate, run the full release workflow, convert external skills, fork, delete, change visibility. | **Yes** (auto-installed with core) |
+| `happyskills-publish` | Publish skills to the registry. Atomic `release` pipeline (snapshot + validate + bump + changelog + publish — also handles first publish of drafts in one step with no `convert` detour), standalone bump, validate, convert foreign skills, fork, delete, change visibility. | **Yes** (auto-installed with core) |
 | `happyskills-sync` | Sync local skills with the remote registry — status, pull, diff, merge-conflict resolution, publish-after-merge intelligence. | **Yes** (auto-installed with core) |
-| `happyskills-help` (concierge — this skill) | Search the registry, recommend skills, and answer questions about HappySkills itself. The front door. | **Yes** (auto-installed with core) |
+| `happyskills-search` | Find skills for your project, list versions, browse changelogs, and recommend the right skills based on what you actually need. The discovery layer. | **Yes** (auto-installed with core) |
+| `happyskills-help` (concierge — this skill) | Explain HappySkills, route to the right family-member skill, and help you sign in. The front door for Q&A. | **Yes** (auto-installed with core) |
 | `happyskills-collab` | Workspace membership (people), groups, and skill access permissions. | **Opt-in** — install when you need it |
 
 **Why a family instead of one big skill?** The original `happyskills` was a single 57-intent monolith. Past a certain size, large descriptions degrade auto-invocation reliability — capabilities get added but new features can't fit in the description, and the LLM stops firing on them. Decomposition keeps each skill's API surface tight, predictable, and growable.
 
-**The Suite Pattern.** HappySkills is built using the **Suite Pattern** — a novel architectural pattern that uses the package manager's own dependency mechanism to bundle a coordinated family of skills (one core + satellites) while preserving routing precision per skill via the **five-slot description grammar** (Domain / Verb(s) / Object / Triggers / Negative) and the load-bearing **orthogonal verb ownership** rule (every `<verb, object>` pair has exactly one owner). HappySkills is the first AI-skill ecosystem to ship this pattern end-to-end. If a user is facing the mega-skill problem in their own skills, route them to `happyskills-design` ("say 'decompose this mega-skill'" or "'audit this skill'") — the design skill implements the full Suite Decomposition Workflow. For the canonical reference, see `docs/cli-skill.md` in the HappySkills repo.
+**The Constellation Pattern.** HappySkills is built using the **Constellation Pattern** — a novel architectural pattern that uses the package manager's own dependency mechanism to bundle a coordinated family of skills (one core + satellites) while preserving routing precision per skill via the **five-slot description grammar** (Domain / Verb(s) / Object / Triggers / Negative) and the load-bearing **orthogonal verb ownership** rule (every `<verb, object>` pair has exactly one owner). HappySkills is the first AI-skill ecosystem to ship this pattern end-to-end. If a user is facing the mega-skill problem in their own skills, route them to `happyskills-design` ("say 'decompose this mega-skill'" or "'audit this skill'") — the design skill implements the full Constellation Decomposition Workflow. For the canonical reference, see `docs/cli-skill.md` in the HappySkills repo.
 
 ---
 
@@ -63,12 +64,14 @@ HappySkills ships as a **family of focused skills**, one per task domain. Most u
 
 You don't pick a skill — you describe what you want, and the right family member auto-fires:
 
-- "Find me a skill for X" → me (concierge)
+- "Find me a skill for X" → search
+- "What versions of acme/foo exist" → search
 - "Install acme/X" → core
 - "Audit this skill" → design
 - "Publish my skill" → publish
 - "What changed on the remote?" → sync
-- "How do I invite someone to my workspace?" → me (concierge), and I will offer to install collab if you don't have it
+- "What is HappySkills" → me (concierge)
+- "How do I invite someone to my workspace?" → me (concierge); I'll point you at search to install collab
 
 If you ever want to be explicit, you can prefix with `/skill-name` (e.g., `/happyskills-design audit my SKILL.md`).
 
@@ -119,7 +122,7 @@ By default, HappySkills auto-detects which agents are installed on your system a
 | How to publish for the first time | Talk to `happyskills-publish` ("publish my skill") |
 | How to fix divergence / merge conflicts | Talk to `happyskills-sync` ("why can't I publish?") |
 | What command does X | [references/feature-map.md](feature-map.md) for the verb → command mapping |
-| Smart skill discovery (search the registry) | [references/smart-search.md](smart-search.md) |
+| Smart skill discovery (search the registry) | Talk to `happyskills-search` ("find me a skill for X") |
 | Web app | https://happyskills.ai/ |
 | API | https://api.happyskills.ai/ |
 
