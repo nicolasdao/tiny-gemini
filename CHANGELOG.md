@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-06-08
+
 ### Changed
 
 - **Default image model is now the GA `gemini-3.1-flash-image`** (was the preview `gemini-3.1-flash-image-preview`). Google deprecated both preview image models on 2026-05-28 with a **2026-06-25 shutdown**; the GA models (`gemini-3.1-flash-image`, `gemini-3-pro-image`, launched 2026-05-28) are drop-in replacements at the same pricing. The deprecated preview IDs are now in the sunset list so explicit `--model` use gets a warning (and a hard error after 2026-06-25)
