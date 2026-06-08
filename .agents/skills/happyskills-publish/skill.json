@@ -1,0 +1,50 @@
+{
+	"name": "happyskills-publish",
+	"version": "0.1.1",
+	"type": "skill",
+	"description": "HappySkills publishing — bump, validate, publish, release-workflow, convert external skills, fork managed skills, delete, and change visibility.",
+	"keywords": [
+		"happyskills",
+		"publish",
+		"release",
+		"bump",
+		"validate",
+		"convert",
+		"fork",
+		"registry",
+		"ai"
+	],
+	"dependencies": {},
+	"systemDependencies": {
+		"node": {
+			"description": "Node.js runtime (for npx happyskills)",
+			"version": ">=18.0.0",
+			"check": "node --version",
+			"install": {
+				"darwin": "brew install node",
+				"linux": "Use nvm: https://github.com/nvm-sh/nvm",
+				"win32": "winget install OpenJS.NodeJS"
+			}
+		},
+		"npm": {
+			"description": "npm package manager (ships with Node.js, used to invoke npx happyskills)",
+			"version": ">=9.0.0",
+			"check": "npm --version",
+			"install": {
+				"darwin": "Ships with Node.js — install via brew install node",
+				"linux": "Ships with Node.js — install via nvm",
+				"win32": "Ships with Node.js — install via winget install OpenJS.NodeJS"
+			}
+		},
+		"git": {
+			"description": "Git version control (used by Release Workflow to analyze changes via git diff/log)",
+			"version": ">=2.20.0",
+			"check": "git --version",
+			"install": {
+				"darwin": "brew install git",
+				"linux": "apt install git",
+				"win32": "winget install Git.Git"
+			}
+		}
+	}
+}
