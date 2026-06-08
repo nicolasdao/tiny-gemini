@@ -16,7 +16,7 @@ const NAME = 'tiny-gemini';
 
 const MODELS = {
 	text: 'gemini-3-flash-preview',
-	image: 'gemini-3.1-flash-image-preview',
+	image: 'gemini-3.1-flash-image',
 	tts: 'gemini-3.1-flash-tts-preview',
 	research: 'deep-research-preview-04-2026',
 };
@@ -25,12 +25,21 @@ const MODELS = {
 // New schema becomes default 2026-05-26; legacy removed 2026-06-08.
 const API_REVISION = '2026-05-20';
 
-// Models scheduled for shutdown on 2026-10-16. After that date, refuse them.
-const SHUTDOWN_DATE = '2026-10-16';
+// Background-task statuses that mean "stop polling, it won't complete".
+// `requires_action` is handled separately (it needs a tool result we can't give).
+const TERMINAL_FAILURE_STATES = new Set(['failed', 'cancelled', 'incomplete', 'budget_exceeded', 'expired']);
+
+// Models with announced shutdown dates. Each maps to its GA replacement and the
+// date the API stops serving it. After that date, the CLI refuses the model.
+// Dates differ per model (the 2.5 text family sunsets 2026-10-16, the preview
+// image models 2026-06-25), so each entry carries its own date.
 const SUNSET_MODELS = {
-	'gemini-2.5-pro': 'gemini-3.1-pro-preview',
-	'gemini-2.5-flash': 'gemini-3-flash-preview',
-	'gemini-2.5-flash-lite': 'gemini-3.1-flash-lite',
+	'gemini-2.5-pro': { replacement: 'gemini-3.1-pro-preview', shutdown: '2026-10-16' },
+	'gemini-2.5-flash': { replacement: 'gemini-3.5-flash', shutdown: '2026-10-16' },
+	'gemini-2.5-flash-lite': { replacement: 'gemini-3.1-flash-lite', shutdown: '2026-10-16' },
+	'gemini-3.1-flash-image-preview': { replacement: 'gemini-3.1-flash-image', shutdown: '2026-06-25' },
+	'gemini-3-pro-image-preview': { replacement: 'gemini-3-pro-image', shutdown: '2026-06-25' },
+	'gemini-2.5-flash-image': { replacement: 'gemini-3.1-flash-image', shutdown: '2026-10-02' },
 };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -108,17 +117,14 @@ class APIError extends Error {
 	}
 }
 
-function isPastShutdown() {
-	return new Date() >= new Date(SHUTDOWN_DATE + 'T00:00:00Z');
-}
-
 function checkSunset(model) {
-	const replacement = SUNSET_MODELS[model];
-	if (!replacement) return;
-	if (isPastShutdown()) {
-		die(`${model} was shut down on ${SHUTDOWN_DATE}. Use ${replacement} instead. See https://ai.google.dev/gemini-api/docs/deprecations`);
+	const entry = SUNSET_MODELS[model];
+	if (!entry) return;
+	const { replacement, shutdown } = entry;
+	if (new Date() >= new Date(shutdown + 'T00:00:00Z')) {
+		die(`${model} was shut down on ${shutdown}. Use ${replacement} instead. See https://ai.google.dev/gemini-api/docs/deprecations`);
 	}
-	log(`Warning: ${model} is deprecated and will be removed on ${SHUTDOWN_DATE}. Use ${replacement} instead.`);
+	log(`Warning: ${model} is deprecated and will be removed on ${shutdown}. Use ${replacement} instead.`);
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -302,7 +308,7 @@ OPTIONS
   --style <style>      Style for icon/pattern/diagram presets
   --type <type>        Type for pattern/diagram presets
   --aspect-ratio <r>   Aspect ratio (e.g., 16:9, 1:1)
-  --image-size <s>     Image size (1k, 2k, 4k)
+  --image-size <s>     Image size: 512, 1K, 2K, 4K (uppercase K required)
   --model <model>      Model (default: ${MODELS.image})
 
 EXAMPLES
@@ -323,7 +329,7 @@ USAGE
   ${NAME} tts "text" [options]
 
 OPTIONS
-  --voice <voice>      Voice name (default: kore)
+  --voice <voice>      Voice name, title-case e.g. Kore, Zephyr (default: Kore)
   --language <lang>    Language code (default: en-us)
   --model <model>      Model (default: ${MODELS.tts})
 
@@ -541,8 +547,13 @@ async function pollCompletion(config, id) {
 		const data = await res.json();
 		log(`Status: ${data.status}`);
 		if (data.status === 'completed') return data;
-		if (data.status === 'failed' || data.status === 'cancelled') {
-			die(`Research ${data.status}`);
+		if (data.status === 'requires_action') {
+			die('Research stopped: requires_action (waiting for a tool result). tiny-gemini cannot satisfy this in the research flow — use the raw command for interactive tool loops.');
+		}
+		// Terminal non-success states — stop polling instead of looping forever.
+		if (TERMINAL_FAILURE_STATES.has(data.status)) {
+			const detail = data.error?.message ? `: ${data.error.message}` : '';
+			die(`Research ${data.status}${detail}`);
 		}
 		await new Promise(r => setTimeout(r, 5000));
 	}
@@ -612,8 +623,15 @@ function createWav(pcm, rate = 24000, ch = 1, bits = 16) {
 async function saveOutput(dir, hint, data, mime, config) {
 	await ensureDir(dir);
 	let buf = Buffer.from(data, 'base64');
-	if (mime === 'audio/pcm') buf = createWav(buf);
-	const path = await uniquePath(dir, sanitize(hint), mimeToExt(mime));
+	// Gemini TTS returns raw headerless PCM (24kHz/16-bit/mono). The label varies
+	// ("audio/pcm", "audio/l16", "audio/L16;rate=24000"), so match any of them and
+	// wrap as WAV, then force a .wav extension regardless of the exact label.
+	let extMime = mime;
+	if (/^audio\/(pcm|l16)/i.test(mime || '')) {
+		buf = createWav(buf);
+		extMime = 'audio/wav';
+	}
+	const path = await uniquePath(dir, sanitize(hint), mimeToExt(extMime));
 	await writeFile(path, buf);
 	log(`Saved: ${path}`);
 	if (config.preview) openFile(path);
@@ -883,7 +901,9 @@ async function handleImage(args, values, config) {
 	// with type:"image", not under generation_config.image_config.
 	const imageResponseFormat = { type: 'image' };
 	if (values['aspect-ratio']) imageResponseFormat.aspect_ratio = values['aspect-ratio'];
-	if (values['image-size']) imageResponseFormat.image_size = values['image-size'];
+	// The API requires an uppercase K suffix (e.g. "2K"); normalize a lowercase
+	// "2k" so a user following older help text doesn't get a 400.
+	if (values['image-size']) imageResponseFormat.image_size = values['image-size'].replace(/k$/i, 'K');
 	const hasImageConfig = values['aspect-ratio'] || values['image-size'];
 
 	switch (sub) {
@@ -897,7 +917,7 @@ async function handleImage(args, values, config) {
 
 			for (let i = 0; i < prompts.length; i++) {
 				log(`Generating image ${i + 1}/${prompts.length}...`);
-				const body = { model, input: prompts[i], response_modalities: ['IMAGE'] };
+				const body = { model, input: prompts[i], response_modalities: ['image'] };
 				if (hasImageConfig) body.response_format = imageResponseFormat;
 
 				if (config.jsonOutput) {
@@ -927,7 +947,7 @@ async function handleImage(args, values, config) {
 					{ type: 'text', text: prompt },
 					{ type: 'image', data: b64, mime_type: mime },
 				],
-				response_modalities: ['IMAGE'],
+				response_modalities: ['image'],
 			};
 			if (hasImageConfig) body.response_format = imageResponseFormat;
 
@@ -980,7 +1000,7 @@ async function handleImage(args, values, config) {
 
 			for (let i = 0; i < prompts.length; i++) {
 				log(`Generating step ${i + 1}/${prompts.length}...`);
-				const body = { model, input: prompts[i], response_modalities: ['IMAGE'] };
+				const body = { model, input: prompts[i], response_modalities: ['image'] };
 				if (hasImageConfig) body.response_format = imageResponseFormat;
 				const resp = await callAPI(imgConfig, body);
 				const out = extractOutputs(resp);
@@ -995,7 +1015,7 @@ async function handleImage(args, values, config) {
 			const prompt = rest.join(' ') || 'app icon';
 			const engineered = buildIconPrompt(prompt, values);
 			log('Generating icon...');
-			const body = { model, input: engineered, response_modalities: ['IMAGE'] };
+			const body = { model, input: engineered, response_modalities: ['image'] };
 			if (hasImageConfig) body.response_format = imageResponseFormat;
 			const resp = await callAPI(imgConfig, body);
 			const out = extractOutputs(resp);
@@ -1009,7 +1029,7 @@ async function handleImage(args, values, config) {
 			const prompt = rest.join(' ') || 'abstract pattern';
 			const engineered = buildPatternPrompt(prompt, values);
 			log('Generating pattern...');
-			const body = { model, input: engineered, response_modalities: ['IMAGE'] };
+			const body = { model, input: engineered, response_modalities: ['image'] };
 			if (hasImageConfig) body.response_format = imageResponseFormat;
 			const resp = await callAPI(imgConfig, body);
 			const out = extractOutputs(resp);
@@ -1023,7 +1043,7 @@ async function handleImage(args, values, config) {
 			const prompt = rest.join(' ') || 'system diagram';
 			const engineered = buildDiagramPrompt(prompt, values);
 			log('Generating diagram...');
-			const body = { model, input: engineered, response_modalities: ['IMAGE'] };
+			const body = { model, input: engineered, response_modalities: ['image'] };
 			if (hasImageConfig) body.response_format = imageResponseFormat;
 			const resp = await callAPI(imgConfig, body);
 			const out = extractOutputs(resp);
@@ -1039,15 +1059,20 @@ async function handleTTS(text, values, config) {
 	if (!text) die('No text. Usage: tiny-gemini tts "your text"');
 	const model = config.model || MODELS.tts;
 	checkSunset(model);
-	const voice = values.voice || 'kore';
+	// Documented voice names are title-case (e.g. "Kore", "Zephyr"); capitalize
+	// the first letter so a lowercase value like the old default still matches.
+	const rawVoice = values.voice || 'Kore';
+	const voice = rawVoice.charAt(0).toUpperCase() + rawVoice.slice(1);
 	const language = values.language || 'en-us';
 
 	const body = {
 		model,
 		input: text,
-		response_modalities: ['AUDIO'],
+		response_modalities: ['audio'],
 		generation_config: {
-			speech_config: { language, voice },
+			// The new Interactions schema requires speech_config to be an array,
+			// even for a single speaker (was an object pre-2026-05).
+			speech_config: [{ language, voice }],
 		},
 	};
 

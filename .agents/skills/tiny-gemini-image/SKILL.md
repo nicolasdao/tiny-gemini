@@ -36,10 +36,10 @@ This skill owns every image-related verb in the tiny-gemini CLI:
 
 | Sub-command | Default model |
 |-------------|---------------|
-| `generate`, `edit`, `story`, `icon`, `pattern`, `diagram` | `gemini-3.1-flash-image-preview` |
+| `generate`, `edit`, `story`, `icon`, `pattern`, `diagram` | `gemini-3.1-flash-image` |
 | `describe` | `gemini-3-flash-preview` (uses the text model — image as input) |
 
-Override with `--model=gemini-3-pro-image-preview` for the highest-quality image gen (better text rendering in images), or `--model=gemini-2.5-flash-image` for cheapest 1K output. Run `npx tiny-gemini models list --type=image` to see the current set.
+Override with `--model=gemini-3-pro-image` for the highest-quality image gen (better text rendering in images), or `--model=gemini-2.5-flash-image` for cheapest 1K output. Run `npx tiny-gemini models list --type=image` to see the current set.
 
 ## Quick Reference
 
@@ -101,5 +101,5 @@ Image commands need a Google Gemini API key. Setup is shared with the rest of th
 - ALWAYS use `npx tiny-gemini` (not a global install)
 - NEVER fabricate sub-commands or flags not documented above or in [references/image-commands.md](references/image-commands.md)
 - Image output token billing is **expensive** ($60-$120 per 1M output tokens for 3.x image models, ~$0.04/image for 2.5 Flash Image). Confirm before batch-generating large counts.
-- Use `gemini-3.1-flash-image-preview` (default) unless the user needs Pro-quality text rendering or the cheapest 1K-only option
+- Use `gemini-3.1-flash-image` (default) unless the user needs Pro-quality text rendering or the cheapest 1K-only option
 - Streaming (`--stream`) is supported only for `describe` (image understanding), not for image generation

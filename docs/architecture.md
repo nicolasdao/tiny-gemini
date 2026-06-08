@@ -82,7 +82,7 @@ cli.js (~1070 lines)
 ```javascript
 const MODELS = {
     text: 'gemini-3-flash-preview',
-    image: 'gemini-3.1-flash-image-preview',
+    image: 'gemini-3.1-flash-image',
     tts: 'gemini-3.1-flash-tts-preview',
     research: 'deep-research-preview-04-2026',
 };
@@ -439,7 +439,7 @@ TTS responses come as raw PCM audio. Rather than requiring ffmpeg or an audio li
 
 ### Why Per-Command Model Defaults
 
-Different tasks require different models. Text uses `gemini-3-flash-preview` (best balance of quality and cost), image generation uses `gemini-3.1-flash-image-preview` (best all-around image model, up to 4K), TTS uses the TTS-specific model, and research uses the Deep Research agent. Users can override any default with `--model`.
+Different tasks require different models. Text uses `gemini-3-flash-preview` (best balance of quality and cost), image generation uses `gemini-3.1-flash-image` (best all-around image model, up to 4K), TTS uses the TTS-specific model, and research uses the Deep Research agent. Users can override any default with `--model`.
 
 ### Why strict: false in parseArgs
 

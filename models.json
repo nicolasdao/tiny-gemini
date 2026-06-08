@@ -1,7 +1,24 @@
 {
-  "snapshot_date": "2026-05-10",
+  "snapshot_date": "2026-06-08",
   "source": "https://ai.google.dev/gemini-api/docs/models + /pricing + /deprecations",
   "models": [
+    {
+      "id": "gemini-3.5-flash",
+      "type": "text",
+      "status": "ga",
+      "context_window": 1048576,
+      "capabilities": ["text", "vision", "function_calling", "structured_output", "streaming", "google_search", "thinking", "code_execution"],
+      "pricing": {
+        "input_per_1m": 1.50,
+        "output_per_1m": 9.00,
+        "currency": "USD",
+        "notes": "GA (launched 2026-05-19). Google's most intelligent model for sustained agentic and coding tasks. Official replacement for gemini-2.5-flash."
+      },
+      "deprecated_on": null,
+      "shutdown_on": null,
+      "replacement": null,
+      "free_tier": true
+    },
     {
       "id": "gemini-3.1-pro-preview",
       "type": "text",
@@ -90,7 +107,7 @@
       },
       "deprecated_on": "2025-06-17",
       "shutdown_on": "2026-10-16",
-      "replacement": "gemini-3-flash-preview",
+      "replacement": "gemini-3.5-flash",
       "free_tier": true
     },
     {
@@ -111,17 +128,17 @@
       "free_tier": true
     },
     {
-      "id": "gemini-3.1-flash-image-preview",
+      "id": "gemini-3.1-flash-image",
       "type": "image",
-      "status": "preview",
+      "status": "ga",
       "context_window": null,
-      "capabilities": ["text_to_image", "image_editing", "512px", "1K", "2K", "4K", "14_aspect_ratios", "google_search", "thinking"],
+      "capabilities": ["text_to_image", "image_editing", "video_to_image", "512px", "1K", "2K", "4K", "14_aspect_ratios", "google_search", "thinking"],
       "pricing": {
         "input_per_1m": 0.50,
         "output_per_1m": 60.00,
         "output_text_per_1m": 3.00,
         "currency": "USD",
-        "notes": "Image output billed at $60/1M tokens (image data is token-equivalent). Up to 14 reference images. Codename: Nano Banana 2."
+        "notes": "GA (launched 2026-05-28), default image model in tiny-gemini. Image output billed at $60/1M tokens (≈$0.045/0.5K, $0.067/1K, $0.101/2K, $0.151/4K). Up to 14 reference images. Codename: Nano Banana 2."
       },
       "deprecated_on": null,
       "shutdown_on": null,
@@ -129,9 +146,9 @@
       "free_tier": false
     },
     {
-      "id": "gemini-3-pro-image-preview",
+      "id": "gemini-3-pro-image",
       "type": "image",
-      "status": "preview",
+      "status": "ga",
       "context_window": null,
       "capabilities": ["text_to_image", "image_editing", "1K", "2K", "4K", "10_aspect_ratios", "google_search", "thinking", "best_text_rendering"],
       "pricing": {
@@ -139,7 +156,7 @@
         "output_per_1m": 120.00,
         "output_text_per_1m": 12.00,
         "currency": "USD",
-        "notes": "Image output billed at $120/1M tokens. Best in-image text rendering. Codename: Nano Banana Pro."
+        "notes": "GA (launched 2026-05-28). Image output billed at $120/1M tokens (≈$0.134/1K-2K, $0.24/4K). Best in-image text rendering. Codename: Nano Banana Pro."
       },
       "deprecated_on": null,
       "shutdown_on": null,
@@ -147,20 +164,56 @@
       "free_tier": false
     },
     {
+      "id": "gemini-3.1-flash-image-preview",
+      "type": "image",
+      "status": "deprecated",
+      "context_window": null,
+      "capabilities": ["text_to_image", "image_editing", "512px", "1K", "2K", "4K", "14_aspect_ratios", "google_search", "thinking"],
+      "pricing": {
+        "input_per_1m": 0.50,
+        "output_per_1m": 60.00,
+        "output_text_per_1m": 3.00,
+        "currency": "USD",
+        "notes": "Deprecated preview. Superseded by the GA gemini-3.1-flash-image. Codename: Nano Banana 2."
+      },
+      "deprecated_on": "2026-05-28",
+      "shutdown_on": "2026-06-25",
+      "replacement": "gemini-3.1-flash-image",
+      "free_tier": false
+    },
+    {
+      "id": "gemini-3-pro-image-preview",
+      "type": "image",
+      "status": "deprecated",
+      "context_window": null,
+      "capabilities": ["text_to_image", "image_editing", "1K", "2K", "4K", "10_aspect_ratios", "google_search", "thinking", "best_text_rendering"],
+      "pricing": {
+        "input_per_1m": 2.00,
+        "output_per_1m": 120.00,
+        "output_text_per_1m": 12.00,
+        "currency": "USD",
+        "notes": "Deprecated preview. Superseded by the GA gemini-3-pro-image. Codename: Nano Banana Pro."
+      },
+      "deprecated_on": "2026-05-28",
+      "shutdown_on": "2026-06-25",
+      "replacement": "gemini-3-pro-image",
+      "free_tier": false
+    },
+    {
       "id": "gemini-2.5-flash-image",
       "type": "image",
-      "status": "ga",
+      "status": "deprecated",
       "context_window": null,
       "capabilities": ["text_to_image", "image_editing", "1K", "10_aspect_ratios"],
       "pricing": {
         "input_per_1m": 0.30,
         "output_per_image": 0.039,
         "currency": "USD",
-        "notes": "Cheapest image option. 1K only. Up to 3 input images. Codename: Nano Banana."
+        "notes": "Cheapest image option ($0.039/image, ≈$30/1M tokens). Codename: Nano Banana. Deprecated 2026-05-28; shuts down 2026-10-02."
       },
-      "deprecated_on": null,
-      "shutdown_on": null,
-      "replacement": null,
+      "deprecated_on": "2026-05-28",
+      "shutdown_on": "2026-10-02",
+      "replacement": "gemini-3.1-flash-image",
       "free_tier": true
     },
     {
@@ -183,18 +236,18 @@
     {
       "id": "gemini-2.5-flash-preview-tts",
       "type": "audio",
-      "status": "deprecated",
+      "status": "preview",
       "context_window": null,
       "capabilities": ["text_to_speech", "multi_speaker", "multi_language"],
       "pricing": {
         "input_per_1m": 0.50,
         "output_per_1m": 10.00,
         "currency": "USD",
-        "notes": "Deprecated; no shutdown date announced yet but expected to follow the 2.5 family timeline."
+        "notes": "Low-latency 2.5-family TTS. Still listed as active Preview on the models page (not on the deprecations page). gemini-3.1-flash-tts-preview is the newer, recommended option."
       },
-      "deprecated_on": "2025-05-20",
+      "deprecated_on": null,
       "shutdown_on": null,
-      "replacement": "gemini-3.1-flash-tts-preview",
+      "replacement": null,
       "free_tier": true
     },
     {

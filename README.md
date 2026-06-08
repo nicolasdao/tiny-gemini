@@ -170,7 +170,7 @@ tiny-gemini tts "Hello, how are you today?"
 tiny-gemini tts "Bonjour" --voice=kore --language=fr-fr
 ```
 
-Key options: `--voice` (default: kore), `--language` (default: en-us)
+Key options: `--voice` (default: Kore), `--language` (default: en-us)
 
 ### search
 
@@ -399,6 +399,7 @@ tiny-gemini/
     ├── commands.md            # Full command reference with request bodies
     ├── model-selection.md     # Model comparison, pricing, and decision rules
     ├── prompt-engineering.md  # Image presets, batch generation, variations
+    ├── gotchas.md             # Project-specific pitfalls and how to avoid them
     └── 20260307-gemini/       # Local snapshots of official Google docs
         ├── interactions.md
         └── image-generation.md
@@ -419,6 +420,7 @@ The following docs provide the technical depth needed to understand, extend, or 
 | [Model Selection](docs/model-selection.md) | Choosing which Gemini model to use: decision rules, capabilities, pricing, and comparison tables for text, image, and specialized models |
 | [Commands](docs/commands.md) | Full reference for every command and option, including the exact request bodies sent to the API and how responses are processed |
 | [Prompt Engineering](docs/prompt-engineering.md) | Image generation presets (icon, pattern, diagram, story), batch generation with styles/variations, and how prompt builders work |
+| [Gotchas](docs/gotchas.md) | Project-specific pitfalls: Interactions-vs-`generateContent` schema differences, lowercase modality enums, array `speech_config`, fast preview-model deprecations, JPEG image output |
 
 ## Releasing
 

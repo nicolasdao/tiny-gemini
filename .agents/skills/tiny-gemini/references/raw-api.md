@@ -49,7 +49,7 @@ Use the `id` field from the JSON output as the `model` (or `agent`) value in you
 | `model` | string | One of model/agent | Model ID (e.g., `gemini-3-flash-preview`) |
 | `agent` | string | One of model/agent | Agent ID (e.g., `deep-research-preview-04-2026`) |
 | `input` | string or Content[] | Yes | Text or multimodal content |
-| `response_modalities` | string[] | No | Output modalities, e.g., `["IMAGE"]`, `["AUDIO"]`, `["TEXT", "IMAGE"]` |
+| `response_modalities` | string[] | No | Output modalities (lowercase), e.g., `["image"]`, `["audio"]`, `["text", "image"]` |
 | `response_format` | object | No | Polymorphic. Shape depends on `type`: `text` (with optional `mime_type` + `schema`), `image` (with `aspect_ratio`, `image_size`). Replaces the older bare-schema usage. |
 | `generation_config` | object | No | Temperature, thinking, speech config. (Note: `image_config` moved to `response_format`.) |
 | `system_instruction` | string | No | System prompt |
@@ -134,10 +134,12 @@ To send function results back, use `previous_interaction_id`:
     "temperature": 0.7,
     "max_output_tokens": 500,
     "thinking_level": "low",
-    "speech_config": { "language": "en-us", "voice": "kore" }
+    "speech_config": [{ "language": "en-us", "voice": "Kore" }]
   }
 }
 ```
+
+`speech_config` is an array even for a single speaker; voice names are title-case.
 
 Thinking levels: `minimal`, `low`, `medium`, `high` (default).
 
@@ -149,9 +151,9 @@ The post-2026-05 shape places `aspect_ratio` and `image_size` inside `response_f
 
 ```json
 {
-  "model": "gemini-3.1-flash-image-preview",
+  "model": "gemini-3.1-flash-image",
   "input": "a yellow banana wearing sunglasses",
-  "response_modalities": ["IMAGE"],
+  "response_modalities": ["image"],
   "response_format": {
     "type": "image",
     "aspect_ratio": "16:9",
@@ -168,7 +170,7 @@ Aspect ratios: `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5
 {
   "model": "gemini-3.1-flash-tts-preview",
   "input": "Alice: Hello! Bob: Hi there!",
-  "response_modalities": ["AUDIO"],
+  "response_modalities": ["audio"],
   "generation_config": {
     "speech_config": [
       { "voice": "Zephyr", "speaker": "Alice", "language": "en-US" },

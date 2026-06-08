@@ -1,6 +1,6 @@
 # Image Sub-Commands Reference
 
-All image sub-commands use model `gemini-3.1-flash-image-preview` by default, except `describe` which uses `gemini-3-flash-preview`.
+All image sub-commands use model `gemini-3.1-flash-image` by default, except `describe` which uses `gemini-3-flash-preview`.
 
 ## generate (default)
 

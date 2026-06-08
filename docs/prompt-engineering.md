@@ -290,7 +290,7 @@ case 'mypreset': {
     const prompt = rest.join(' ') || 'default prompt';
     const engineered = buildMyPresetPrompt(prompt, values);
     log('Generating...');
-    const body = { model, input: engineered, response_modalities: ['IMAGE'] };
+    const body = { model, input: engineered, response_modalities: ['image'] };
     if (hasGenConfig) body.generation_config = genConfig;
     const resp = await callAPI(imgConfig, body);
     const out = extractOutputs(resp);

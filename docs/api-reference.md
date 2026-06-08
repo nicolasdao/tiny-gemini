@@ -116,7 +116,7 @@ See https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026
 | `model` | string | One of model/agent | Model ID (e.g., `gemini-3-flash-preview`) |
 | `agent` | string | One of model/agent | Agent ID (e.g., `deep-research-preview-04-2026`) |
 | `input` | string or Content[] | Yes | Text or multimodal content |
-| `response_modalities` | string[] | No | Output types: `["IMAGE"]`, `["AUDIO"]` |
+| `response_modalities` | string[] | No | Output types (lowercase): `["image"]`, `["audio"]` |
 | `generation_config` | object | No | Temperature, thinking, image config, speech config |
 | `system_instruction` | string | No | System prompt |
 | `response_format` | object | No | JSON schema for structured output |
@@ -164,11 +164,12 @@ See https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026
     "max_output_tokens": 500,
     "thinking_level": "low",
     "thinking_summaries": "auto",
-    "image_config": { "aspect_ratio": "16:9", "image_size": "2K" },
-    "speech_config": { "language": "en-us", "voice": "kore" }
+    "speech_config": [{ "language": "en-us", "voice": "Kore" }]
   }
 }
 ```
+
+**Note:** `image_config` is no longer part of `generation_config` — in the May 2026 schema, `aspect_ratio`/`image_size` live inside `response_format` with `"type": "image"` (see [Image Config](#image-config)). `speech_config` is an array even for a single speaker.
 
 #### Thinking Levels
 
@@ -190,12 +191,14 @@ See https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026
 
 #### Speech Config
 
+`speech_config` is an array of speaker entries, even for a single speaker. Voice names are title-case (e.g. `Kore`, `Zephyr`, `Puck`).
+
+Single speaker:
 ```json
 {
-  "speech_config": {
-    "language": "en-us",
-    "voice": "kore"
-  }
+  "speech_config": [
+    { "language": "en-us", "voice": "Kore" }
+  ]
 }
 ```
 
@@ -269,13 +272,13 @@ The model's text output will be valid JSON conforming to this schema.
 
 ### Response Modalities
 
-Controls what type of output the model generates:
+Controls what type of output the model generates. The Interactions API requires **lowercase** enum values (`text`, `image`, `audio`, `video`, `document`) — uppercase values are rejected with `400 The value 'IMAGE' is not supported for 'response_modalities[0]'`:
 
 | Value | Effect |
 |-------|--------|
-| `["IMAGE"]` | Generate images |
-| `["AUDIO"]` | Generate audio (TTS) |
-| `["TEXT", "IMAGE"]` | Interleaved text and images |
+| `["image"]` | Generate images |
+| `["audio"]` | Generate audio (TTS) |
+| `["text", "image"]` | Interleaved text and images |
 | *(not set)* | Text only (default) |
 
 ## Response Body
@@ -486,11 +489,11 @@ For the live registry, run `npx tiny-gemini models`. See [Model Selection](model
 
 | Model ID | Codename | Notes |
 |----------|----------|-------|
-| `gemini-3.1-flash-image-preview` | Nano Banana 2 | Default in tiny-gemini, best value, up to 4K |
-| `gemini-3-pro-image-preview` | Nano Banana Pro | Highest quality, best text rendering |
+| `gemini-3.1-flash-image` | Nano Banana 2 | Default in tiny-gemini, best value, up to 4K |
+| `gemini-3-pro-image` | Nano Banana Pro | Highest quality, best text rendering |
 | `gemini-2.5-flash-image` | Nano Banana | Cheapest, 1K only |
 
-All image models output `image/png` as base64. SynthID watermark is embedded in all generated images.
+Image models return base64 image data; the GA models (`gemini-3.1-flash-image`, `gemini-3-pro-image`) return `image/jpeg`. The CLI saves using whatever `mime_type` the response carries, so the file extension always matches the actual format. A SynthID watermark is embedded in all generated images.
 
 ### Audio Models
 

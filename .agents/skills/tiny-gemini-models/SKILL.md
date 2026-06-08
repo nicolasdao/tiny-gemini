@@ -85,8 +85,8 @@ Tiered models (e.g., `gemini-3.1-pro-preview`) include `input_per_1m_over_200k` 
 
 Apply in order. The FIRST match is your answer.
 
-1. **Generating images and need professional quality / accurate text rendering?** → `gemini-3-pro-image-preview`
-2. **Generating images?** → `gemini-3.1-flash-image-preview`
+1. **Generating images and need professional quality / accurate text rendering?** → `gemini-3-pro-image`
+2. **Generating images?** → `gemini-3.1-flash-image`
 3. **Generating images at the lowest possible cost, 1K acceptable?** → `gemini-2.5-flash-image`
 4. **Generating speech from text?** → `gemini-3.1-flash-tts-preview`
 5. **Native speech-in / speech-out (not TTS)?** → `gemini-2.5-flash-native-audio-preview-12-2025`
@@ -95,17 +95,23 @@ Apply in order. The FIRST match is your answer.
 8. **Need Remote MCP integration?** → `gemini-2.5-flash` (Gemini 3 doesn't support it; this model shuts down 2026-10-16)
 9. **Maximum reasoning quality regardless of cost?** → `gemini-3.1-pro-preview`
 10. **Cheapest text generation?** → `gemini-3.1-flash-lite`
-11. **Everything else (text, multimodal understanding, function calling, structured output, streaming)?** → `gemini-3-flash-preview`
+11. **Need a GA (non-preview) flash model for agentic/coding, cost no object?** → `gemini-3.5-flash` (GA, $1.50/$9.00; the official replacement for `gemini-2.5-flash`)
+12. **Everything else (text, multimodal understanding, function calling, structured output, streaming)?** → `gemini-3-flash-preview` (best value, the CLI's text default)
 
-## Sunset Calendar (2026-10-16)
+## Sunset Calendar
 
-| Sunset model | Replacement |
-|-------------|-------------|
-| `gemini-2.5-pro` | `gemini-3.1-pro-preview` |
-| `gemini-2.5-flash` | `gemini-3-flash-preview` |
-| `gemini-2.5-flash-lite` | `gemini-3.1-flash-lite` |
+Shutdown dates differ per model. Passing a sunsetting model via `--model` triggers a stderr deprecation warning until its date; after that date the call fails fast.
 
-Passing any of these via `--model` to a calling command triggers a stderr deprecation warning until shutdown; after 2026-10-16 the call fails fast. The 2.5 TTS model (`gemini-2.5-flash-preview-tts`) is also deprecated but Google has not yet announced its shutdown date.
+| Sunset model | Shutdown | Replacement |
+|-------------|----------|-------------|
+| `gemini-3.1-flash-image-preview` | 2026-06-25 | `gemini-3.1-flash-image` (GA) |
+| `gemini-3-pro-image-preview` | 2026-06-25 | `gemini-3-pro-image` (GA) |
+| `gemini-2.5-flash-image` | 2026-10-02 | `gemini-3.1-flash-image` |
+| `gemini-2.5-pro` | 2026-10-16 | `gemini-3.1-pro-preview` |
+| `gemini-2.5-flash` | 2026-10-16 | `gemini-3.5-flash` |
+| `gemini-2.5-flash-lite` | 2026-10-16 | `gemini-3.1-flash-lite` |
+
+Note: `gemini-2.5-flash-preview-tts` is **not** deprecated — it's still listed as active Preview on Google's models page.
 
 ## Updating the Registry
 

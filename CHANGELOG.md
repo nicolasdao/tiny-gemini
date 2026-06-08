@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Default image model is now the GA `gemini-3.1-flash-image`** (was the preview `gemini-3.1-flash-image-preview`). Google deprecated both preview image models on 2026-05-28 with a **2026-06-25 shutdown**; the GA models (`gemini-3.1-flash-image`, `gemini-3-pro-image`, launched 2026-05-28) are drop-in replacements at the same pricing. The deprecated preview IDs are now in the sunset list so explicit `--model` use gets a warning (and a hard error after 2026-06-25)
+- **Per-model shutdown dates** — `checkSunset` previously assumed a single global shutdown date (2026-10-16). It now reads a per-model date so the preview image models (2026-06-25) and `gemini-2.5-flash-image` (2026-10-02) warn with their correct dates
+- **Model registry refresh** (`models.json`, snapshot 2026-06-08): added GA `gemini-3.1-flash-image`, `gemini-3-pro-image`, and the new GA text model `gemini-3.5-flash`; marked the two preview image models and `gemini-2.5-flash-image` deprecated with their shutdown dates; corrected `gemini-2.5-flash`'s replacement pointer to `gemini-3.5-flash`; reverted `gemini-2.5-flash-preview-tts` to active `preview` status (it is still listed as Preview on Google's models page, not deprecated)
+
+### Fixed
+
+- **Image generation and TTS broken on the Interactions API** — the CLI sent `response_modalities` as uppercase enum values (`['IMAGE']`, `['AUDIO']`), carried over from the older `generateContent` convention. The Interactions API (`/v1beta/interactions`) rejects these with `400 The value 'IMAGE' is not supported for 'response_modalities[0]'. Supported values: 'text', 'image', 'audio', 'video', 'document'.` All image sub-commands that produce images (`generate`, `edit`, `story`, `icon`, `pattern`, `diagram`) and the `tts` command now send lowercase values (`['image']`, `['audio']`). `describe` was unaffected (text model, no modality). Docs and the raw-API skill reference updated to lowercase
+- **`--image-size` lowercase rejected** — the API requires an uppercase `K` suffix (`2K`, not `2k`). The image help text wrongly listed `(1k, 2k, 4k)`; it now reads `512, 1K, 2K, 4K (uppercase K required)`, and the CLI normalizes a trailing lowercase `k` before sending so a user typing `2k` no longer gets a 400
+- **TTS `speech_config` shape** — the May 2026 Interactions schema requires `speech_config` to be an array of speaker entries, even for a single speaker. The CLI sent a bare object (`{ language, voice }`), which the new schema rejects; it now sends `[{ language, voice }]`. Voice names are title-case in the API, so the CLI capitalizes the first letter of `--voice` (default is now `Kore`)
+- **TTS audio output handling** — the WAV wrapper only triggered on an exact `audio/pcm` mime label. Gemini may label the raw PCM as `audio/l16` (or `audio/L16;rate=24000`); `saveOutput` now matches any `audio/pcm` or `audio/l16` variant, wraps it as WAV, and forces a `.wav` extension, so the saved file is always playable
+- **Deep Research polling** — `pollCompletion` only treated `failed`/`cancelled` as terminal and would otherwise poll forever. It now also stops on `incomplete`, `budget_exceeded`, and `expired` (surfacing any `error.message`), and exits with a clear message on `requires_action` (which the research flow cannot satisfy)
+
 ## [2.0.0] - 2026-05-10
 
 ### Changed (breaking)

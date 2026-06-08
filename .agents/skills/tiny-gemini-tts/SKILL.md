@@ -32,7 +32,7 @@ This skill owns every speech-synthesis verb in the tiny-gemini CLI:
 
 ## Default Model
 
-`gemini-3.1-flash-tts-preview` (April 2026 launch, replaces the deprecated `gemini-2.5-flash-preview-tts`). Override with `--model`.
+`gemini-3.1-flash-tts-preview` (April 2026 launch, the recommended TTS model). The older `gemini-2.5-flash-preview-tts` is still active (Preview) and selectable via `--model`. `speech_config` is sent as an array even for a single speaker.
 
 ## Quick Reference
 
@@ -41,7 +41,7 @@ This skill owns every speech-synthesis verb in the tiny-gemini CLI:
 npx tiny-gemini tts "Hello, how are you today?"
 
 # Voice + language overrides
-npx tiny-gemini tts "Bonjour le monde" --voice=kore --language=fr-fr
+npx tiny-gemini tts "Bonjour le monde" --voice=Kore --language=fr-fr
 
 # Auto-open after saving
 npx tiny-gemini tts "Welcome" --preview
@@ -51,7 +51,7 @@ npx tiny-gemini tts "Welcome" --preview
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--voice` | `kore` | Voice name (also: `Zephyr`, `Puck`, etc.) |
+| `--voice` | `Kore` | Voice name, title-case (also: `Zephyr`, `Puck`, etc.). The CLI capitalizes the first letter. |
 | `--language` | `en-us` | BCP-47 language code (`fr-fr`, `es-es`, `ja-jp`, ...) |
 | `--model` | `gemini-3.1-flash-tts-preview` | Model override |
 | `--output-dir` | `./tiny-gemini-output` | Where to save the WAV |
@@ -69,7 +69,7 @@ Multi-speaker TTS isn't a dedicated CLI flag — use the core `tiny-gemini raw` 
 {
   "model": "gemini-3.1-flash-tts-preview",
   "input": "Alice: Hello! Bob: Hi there!",
-  "response_modalities": ["AUDIO"],
+  "response_modalities": ["audio"],
   "generation_config": {
     "speech_config": [
       { "voice": "Zephyr", "speaker": "Alice", "language": "en-US" },
@@ -83,7 +83,7 @@ Pipe to `npx tiny-gemini raw`. See core's `references/raw-api.md` for the full s
 
 ## Pricing
 
-`gemini-3.1-flash-tts-preview`: $1.00 input / $20.00 output per 1M tokens (preview, **no free tier**). The deprecated `gemini-2.5-flash-preview-tts` ($0.50 / $10.00) is still selectable via `--model` until Google announces its shutdown but the CLI emits no specific deprecation warning for it (only the 2026-10-16 sunset 2.5 text models warn).
+`gemini-3.1-flash-tts-preview`: $1.00 input / $20.00 output per 1M tokens (preview, **no free tier**). The older `gemini-2.5-flash-preview-tts` ($0.50 / $10.00, still active Preview, free tier) is selectable via `--model`. The CLI emits no deprecation warning for either (only the 2026-10-16 sunset 2.5 *text* models warn).
 
 Run `npx tiny-gemini models list --type=audio` for the live registry.
 

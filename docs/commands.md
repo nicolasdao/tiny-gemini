@@ -220,7 +220,7 @@ The `--schema` flag wraps your JSON schema in `response_format` with `type: "tex
 
 Image generation, editing, and understanding. Has 7 sub-commands.
 
-Default model: `gemini-3.1-flash-image-preview` (except `describe`, which uses `gemini-3-flash-preview`)
+Default model: `gemini-3.1-flash-image` (except `describe`, which uses `gemini-3-flash-preview`)
 
 ### Sub-Command Dispatch
 
@@ -276,18 +276,18 @@ Styles and variations can be combined. `--count` limits total output.
 
 ```json
 {
-  "model": "gemini-3.1-flash-image-preview",
+  "model": "gemini-3.1-flash-image",
   "input": "a yellow banana wearing sunglasses",
-  "response_modalities": ["IMAGE"]
+  "response_modalities": ["image"]
 }
 ```
 
 With image config (post-2026-05 schema — `image_config` lives inside `response_format` with `"type": "image"`):
 ```json
 {
-  "model": "gemini-3.1-flash-image-preview",
+  "model": "gemini-3.1-flash-image",
   "input": "a yellow banana wearing sunglasses",
-  "response_modalities": ["IMAGE"],
+  "response_modalities": ["image"],
   "response_format": {
     "type": "image",
     "aspect_ratio": "16:9",
@@ -311,12 +311,12 @@ The first argument after `edit` is the file path, the rest is the edit prompt.
 
 ```json
 {
-  "model": "gemini-3.1-flash-image-preview",
+  "model": "gemini-3.1-flash-image",
   "input": [
     { "type": "text", "text": "add sunglasses" },
     { "type": "image", "data": "<base64>", "mime_type": "image/png" }
   ],
-  "response_modalities": ["IMAGE"]
+  "response_modalities": ["image"]
 }
 ```
 
@@ -359,9 +359,9 @@ Each step is generated as a separate API call with a prompt engineered for seque
 Each step sends:
 ```json
 {
-  "model": "gemini-3.1-flash-image-preview",
+  "model": "gemini-3.1-flash-image",
   "input": "a seed growing into a tree, step 2 of 4, narrative sequence, consistent art style, smooth transition from previous step",
-  "response_modalities": ["IMAGE"]
+  "response_modalities": ["image"]
 }
 ```
 
@@ -456,7 +456,7 @@ tiny-gemini tts "Bonjour le monde" --voice=kore --language=fr-fr
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--voice` | `kore` | Voice name |
+| `--voice` | `Kore` | Voice name (title-case; the CLI capitalizes the first letter) |
 | `--language` | `en-us` | Language code |
 
 ### TTS Request Body
@@ -465,19 +465,23 @@ tiny-gemini tts "Bonjour le monde" --voice=kore --language=fr-fr
 {
   "model": "gemini-3.1-flash-tts-preview",
   "input": "Hello, how are you today?",
-  "response_modalities": ["AUDIO"],
+  "response_modalities": ["audio"],
   "generation_config": {
-    "speech_config": {
-      "language": "en-us",
-      "voice": "kore"
-    }
+    "speech_config": [
+      {
+        "language": "en-us",
+        "voice": "Kore"
+      }
+    ]
   }
 }
 ```
 
+`speech_config` is an array even for a single speaker (May 2026 schema), and voice names are title-case. The CLI capitalizes the first letter of `--voice` so a lowercase value still matches.
+
 ### TTS Output Format
 
-The API returns `audio/pcm` (raw 16-bit, 24kHz, mono PCM). The CLI converts this to WAV by prepending a 44-byte header before saving. Output files are named `tts_<text-snippet>.wav`.
+The API returns raw 16-bit, 24kHz, mono PCM (labeled `audio/pcm` or `audio/l16`). The CLI converts this to WAV by prepending a 44-byte header before saving. Output files are named `tts_<text-snippet>.wav`.
 
 ## search
 
