@@ -1,65 +1,13 @@
+---
+description: Full reference for every command and option (prompt, image, tts, search, research, raw, models), the exact request bodies sent to the API, and how responses are processed.
+tags: [commands, cli, options, request-bodies, reference]
+source:
+  - cli.js
+---
+
 # Command Reference
 
 Complete reference for every command, sub-command, and option. Includes the exact request bodies sent to the Gemini Interactions API and how responses are processed.
-
-## Table of Contents
-
-- [prompt](#prompt)
-  - [Basic Usage](#basic-usage)
-  - [Multimodal Input (--file)](#multimodal-input---file)
-  - [Prompt Files (--prompt-file)](#prompt-files---prompt-file)
-  - [Output File (--output-file)](#output-file---output-file)
-  - [System Instructions (--system)](#system-instructions---system)
-  - [Structured Output (--schema)](#structured-output---schema)
-  - [Streaming (--stream)](#streaming---stream)
-  - [Request Bodies](#request-bodies)
-    - [Text-Only Request](#text-only-request)
-    - [Multimodal Request](#multimodal-request)
-    - [With Prompt Files](#with-prompt-files)
-    - [With System Instruction](#with-system-instruction)
-    - [With Schema](#with-schema)
-- [image](#image)
-  - [Sub-Command Dispatch](#sub-command-dispatch)
-  - [generate](#generate)
-    - [Single Image](#single-image)
-    - [Batch with --count](#batch-with---count)
-    - [Batch with --styles](#batch-with---styles)
-    - [Batch with --variations](#batch-with---variations)
-    - [Generate Request Body](#generate-request-body)
-    - [Reference Images](#reference-images)
-  - [edit](#edit)
-    - [Edit Request Body](#edit-request-body)
-  - [describe](#describe)
-    - [Describe Request Body](#describe-request-body)
-  - [story](#story)
-    - [Story Request Body](#story-request-body)
-  - [icon](#icon)
-    - [Icon Options](#icon-options)
-  - [pattern](#pattern)
-    - [Pattern Options](#pattern-options)
-  - [diagram](#diagram)
-    - [Diagram Options](#diagram-options)
-  - [Image Config Options](#image-config-options)
-    - [Aspect Ratio](#aspect-ratio)
-    - [Image Size](#image-size)
-- [tts](#tts)
-  - [TTS Options](#tts-options)
-  - [TTS Request Body](#tts-request-body)
-  - [TTS Output Format](#tts-output-format)
-- [search](#search)
-  - [Search Options](#search-options)
-  - [Search Request Body](#search-request-body)
-  - [Search Response Handling](#search-response-handling)
-- [research](#research)
-  - [Research Request Body](#research-request-body)
-  - [Research Polling Flow](#research-polling-flow)
-- [raw](#raw)
-  - [Input Sources](#input-sources)
-  - [Raw Request Handling](#raw-request-handling)
-- [models](#models)
-  - [Sub-Commands](#sub-commands)
-  - [Filters](#filters)
-  - [Output Format](#output-format)
 
 ## prompt
 

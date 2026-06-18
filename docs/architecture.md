@@ -1,57 +1,13 @@
+---
+description: Internal structure of cli.js — file layout, code sections, config resolution, the .env loader, the API client, data flow, and how to add new commands.
+tags: [architecture, internals, cli, code-structure]
+source:
+  - cli.js
+---
+
 # Architecture
 
 This document explains the internal structure of `cli.js`, how the pieces fit together, and how to add new features.
-
-## Table of Contents
-
-- [File Layout](#file-layout)
-- [Code Sections](#code-sections)
-  - [Section 1: Constants (lines 1-34)](#section-1-constants-lines-1-34)
-  - [Section 2: Utilities (lines 36-58)](#section-2-utilities-lines-36-58)
-  - [Section 3: .env Loader (lines 60-113)](#section-3-env-loader-lines-60-113)
-    - [Search Order](#search-order)
-    - [File Format](#file-format)
-  - [Section 4: Config Resolution (lines 115-137)](#section-4-config-resolution-lines-115-137)
-    - [Priority Chain](#priority-chain)
-  - [Section 5: Help Text (lines 139-320)](#section-5-help-text-lines-139-320)
-  - [Section 6: API Client (lines 322-420)](#section-6-api-client-lines-322-420)
-    - [apiHeaders](#apiheaders)
-    - [callAPI](#callapi)
-    - [callAPIStream](#callapistream)
-    - [extractOutputs](#extractoutputs)
-    - [pollCompletion](#pollcompletion)
-  - [Section 7: File Handling (lines 422-560)](#section-7-file-handling-lines-422-560)
-    - [Output Pipeline](#output-pipeline)
-    - [Prompt File Reading](#prompt-file-reading)
-    - [Output File Writing](#output-file-writing)
-    - [Manifest Writing](#manifest-writing)
-    - [MIME Type Mapping](#mime-type-mapping)
-    - [WAV Header Construction](#wav-header-construction)
-  - [Section 8: Prompt Builders (lines 562-635)](#section-8-prompt-builders-lines-562-635)
-  - [Section 9: Command Handlers (lines 648-980)](#section-9-command-handlers-lines-648-980)
-  - [Section 10: Main Dispatch (lines 982-1070)](#section-10-main-dispatch-lines-982-1070)
-    - [Argument Parsing](#argument-parsing)
-    - [Command Detection](#command-detection)
-- [Data Flow](#data-flow)
-  - [Non-Streaming Request](#non-streaming-request)
-  - [Streaming Request](#streaming-request)
-  - [Background Task (Research)](#background-task-research)
-- [How to Add a New Command](#how-to-add-a-new-command)
-  - [Step 1: Register the Command](#step-1-register-the-command)
-  - [Step 2: Add Help Text](#step-2-add-help-text)
-  - [Step 3: Create the Handler](#step-3-create-the-handler)
-  - [Step 4: Add to Dispatch](#step-4-add-to-dispatch)
-  - [Step 5: Add Options (if needed)](#step-5-add-options-if-needed)
-- [How to Add an Image Sub-Command](#how-to-add-an-image-sub-command)
-- [Key Design Decisions](#key-design-decisions)
-  - [Why Interactions API (not generateContent)](#why-interactions-api-not-generatecontent)
-  - [Why x-goog-api-key Header (not URL param)](#why-x-goog-api-key-header-not-url-param)
-  - [Why Inline WAV Construction](#why-inline-wav-construction)
-  - [Why Per-Command Model Defaults](#why-per-command-model-defaults)
-  - [Why strict: false in parseArgs](#why-strict-false-in-parseargs)
-- [Error Handling](#error-handling)
-  - [APIError Class](#apierror-class)
-  - [stderr vs stdout Convention](#stderr-vs-stdout-convention)
 
 ## File Layout
 

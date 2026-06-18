@@ -1,64 +1,17 @@
+---
+description: The Gemini Interactions API tiny-gemini wraps — endpoint, headers, request/response format, streaming SSE protocol, output types, models, and known limitations.
+tags: [api, interactions, streaming, sse, gemini]
+source:
+  - cli.js
+---
+
 # Gemini Interactions API Reference
 
 This document covers the external API that `tiny-gemini` wraps. All requests go through the Gemini Interactions API — a single unified endpoint that replaces the older `generateContent` API.
 
 **Official docs:**
-- [Interactions API](https://ai.google.dev/gemini-api/docs/interactions) — local snapshot: [20260307-gemini/interactions.md](20260307-gemini/interactions.md)
-- [Image Generation](https://ai.google.dev/gemini-api/docs/image-generation) — local snapshot: [20260307-gemini/image-generation.md](20260307-gemini/image-generation.md)
-
-## Table of Contents
-
-- [Endpoint and Authentication](#endpoint-and-authentication)
-  - [Base URL](#base-url)
-  - [Authentication Header](#authentication-header)
-  - [Schema Revision Header](#schema-revision-header)
-  - [Operations](#operations)
-- [Request Body](#request-body)
-  - [Top-Level Fields](#top-level-fields)
-  - [Input Format](#input-format)
-    - [Simple Text](#simple-text)
-    - [Multimodal Content Array](#multimodal-content-array)
-    - [Supported Content Types](#supported-content-types)
-  - [Generation Config](#generation-config)
-    - [Thinking Levels](#thinking-levels)
-    - [Image Config](#image-config)
-    - [Speech Config](#speech-config)
-  - [Tools](#tools)
-    - [Google Search](#google-search)
-    - [Function Calling](#function-calling)
-    - [Other Built-in Tools](#other-built-in-tools)
-  - [System Instruction](#system-instruction)
-  - [Response Format (Structured Output)](#response-format-structured-output)
-  - [Response Modalities](#response-modalities)
-- [Response Body](#response-body)
-  - [Interaction Object](#interaction-object)
-  - [Status Values](#status-values)
-  - [Output Types](#output-types)
-    - [Text Output](#text-output)
-    - [Image Output](#image-output)
-    - [Audio Output](#audio-output)
-    - [Function Call Output](#function-call-output)
-    - [Thought Output](#thought-output)
-  - [Usage Object](#usage-object)
-- [Streaming (SSE)](#streaming-sse)
-  - [Request](#request)
-  - [Event Types](#event-types)
-  - [Delta Types](#delta-types)
-  - [Reconstruction](#reconstruction)
-- [Background Tasks and Polling](#background-tasks-and-polling)
-  - [Creating a Background Task](#creating-a-background-task)
-  - [Polling for Completion](#polling-for-completion)
-- [Models and Agents](#models-and-agents)
-  - [Text Models](#text-models)
-  - [Image Generation Models](#image-generation-models)
-  - [Audio Models](#audio-models)
-  - [Embeddings](#embeddings)
-  - [Agents](#agents)
-- [Conversation Management](#conversation-management)
-  - [Stateful (Server-Side)](#stateful-server-side)
-  - [Stateless (Client-Side)](#stateless-client-side)
-- [Data Retention](#data-retention)
-- [Known Limitations](#known-limitations)
+- [Interactions API](https://ai.google.dev/gemini-api/docs/interactions) — local snapshot: [manual/20260307-gemini/interactions.md](manual/20260307-gemini/interactions.md)
+- [Image Generation](https://ai.google.dev/gemini-api/docs/image-generation) — local snapshot: [manual/20260307-gemini/image-generation.md](manual/20260307-gemini/image-generation.md)
 
 ## Endpoint and Authentication
 

@@ -20,6 +20,7 @@ Then just ask naturally: *"Use Gemini to generate an image of a dog chasing a ca
 
 ## Table of Contents
 
+<!-- BEGIN toc -->
 - [Why This Exists](#why-this-exists)
 - [Quick Start](#quick-start)
   - [Install](#install)
@@ -45,11 +46,12 @@ Then just ask naturally: *"Use Gemini to generate an image of a dog chasing a ca
 - [Stack and Dependencies](#stack-and-dependencies)
 - [Project Structure](#project-structure)
 - [Model Selection](#model-selection)
-- [Detailed Documentation](#detailed-documentation)
+- [Documentation](#documentation)
 - [Releasing](#releasing)
 - [Reference Material](#reference-material)
 - [Changelog](#changelog)
 - [License](#license)
+<!-- END toc -->
 
 ## Why This Exists
 
@@ -404,27 +406,28 @@ tiny-gemini/
     ├── model-selection.md     # Model comparison, pricing, and decision rules
     ├── prompt-engineering.md  # Image presets, batch generation, variations
     ├── gotchas.md             # Project-specific pitfalls and how to avoid them
-    └── 20260307-gemini/       # Local snapshots of official Google docs
-        ├── interactions.md
-        └── image-generation.md
+    └── manual/
+        └── 20260307-gemini/   # Local snapshots of official Google docs
+            ├── interactions.md
+            └── image-generation.md
 ```
 
 ## Model Selection
 
 See [Model Selection Guide](docs/model-selection.md) for a complete comparison of all Gemini models — capabilities, pricing, and decision rules for choosing the right model for each task.
 
-## Detailed Documentation
+## Documentation
 
 The following docs provide the technical depth needed to understand, extend, or debug the CLI. Start with the one that matches your task:
 
-| Document | When to Read |
-|----------|--------------|
-| [API Reference](docs/api-reference.md) | Understanding the Gemini Interactions API: endpoint, headers, request/response format, streaming SSE protocol, output types, models, and known limitations |
-| [Architecture](docs/architecture.md) | Understanding the code structure, adding new commands or sub-commands, modifying config resolution, the `.env` loader, or the API client |
-| [Model Selection](docs/model-selection.md) | Choosing which Gemini model to use: decision rules, capabilities, pricing, and comparison tables for text, image, and specialized models |
-| [Commands](docs/commands.md) | Full reference for every command and option, including the exact request bodies sent to the API and how responses are processed |
-| [Prompt Engineering](docs/prompt-engineering.md) | Image generation presets (icon, pattern, diagram, story), batch generation with styles/variations, and how prompt builders work |
-| [Gotchas](docs/gotchas.md) | Project-specific pitfalls: Interactions-vs-`generateContent` schema differences, lowercase modality enums, array `speech_config`, fast preview-model deprecations, JPEG image output |
+<!-- BEGIN doc-index -->
+- [Gemini Interactions API Reference](docs/api-reference.md) — The Gemini Interactions API tiny-gemini wraps — endpoint, headers, request/response format, streaming SSE protocol, output types, models, and known limitations.
+- [Architecture](docs/architecture.md) — Internal structure of cli.js — file layout, code sections, config resolution, the .env loader, the API client, data flow, and how to add new commands.
+- [Command Reference](docs/commands.md) — Full reference for every command and option (prompt, image, tts, search, research, raw, models), the exact request bodies sent to the API, and how responses are processed.
+- [Gotchas](docs/gotchas.md) — Project-specific pitfalls in how the CLI builds requests, picks default models, and handles responses — Interactions-vs-generateContent schema, lowercase modality enums, array speech_config, fast preview-model deprecation, and JPEG image output.
+- [Model Selection Guide](docs/model-selection.md) — Choosing which Gemini model to use — decision rules, capabilities, pricing, and comparison tables for text, image, and specialized models.
+- [Prompt Engineering](docs/prompt-engineering.md) — Image generation presets (icon, pattern, diagram, story), batch generation with styles and variations, and how the prompt builder functions work.
+<!-- END doc-index -->
 
 ## Releasing
 
@@ -458,12 +461,12 @@ The skill is at [`.claude/skills/release-tiny-gemini/`](.claude/skills/release-t
 
 ## Reference Material
 
-This project was built using the following official Google documentation. **Local snapshots** of the two primary sources are saved in `docs/20260307-gemini/` for offline reference and to preserve the exact API state this project was built against.
+This project was built using the following official Google documentation. **Local snapshots** of the two primary sources are saved in `docs/manual/20260307-gemini/` for offline reference and to preserve the exact API state this project was built against.
 
 | Source | Local Snapshot | Description |
 |--------|----------------|-------------|
-| [Gemini Interactions API](https://ai.google.dev/gemini-api/docs/interactions) | [docs/20260307-gemini/interactions.md](docs/20260307-gemini/interactions.md) | The unified API endpoint this CLI wraps |
-| [Gemini Image Generation](https://ai.google.dev/gemini-api/docs/image-generation) | [docs/20260307-gemini/image-generation.md](docs/20260307-gemini/image-generation.md) | Image generation models, capabilities, and configuration |
+| [Gemini Interactions API](https://ai.google.dev/gemini-api/docs/interactions) | [docs/manual/20260307-gemini/interactions.md](docs/manual/20260307-gemini/interactions.md) | The unified API endpoint this CLI wraps |
+| [Gemini Image Generation](https://ai.google.dev/gemini-api/docs/image-generation) | [docs/manual/20260307-gemini/image-generation.md](docs/manual/20260307-gemini/image-generation.md) | Image generation models, capabilities, and configuration |
 | [Gemini API Models](https://ai.google.dev/gemini-api/docs/models) | — | Available models and their capabilities |
 | [Gemini API Keys](https://ai.google.dev/gemini-api/docs/api-key) | — | API key setup and environment variable conventions |
 | [Gemini CLI Authentication](https://github.com/google-gemini/gemini-cli/blob/main/docs/get-started/authentication.md) | — | `.gemini/.env` file convention |

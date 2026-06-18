@@ -1,16 +1,14 @@
+---
+description: Project-specific pitfalls in how the CLI builds requests, picks default models, and handles responses — Interactions-vs-generateContent schema, lowercase modality enums, array speech_config, fast preview-model deprecation, and JPEG image output.
+tags: [gotchas, pitfalls, interactions, models, image, tts]
+source:
+  - cli.js
+  - models.json
+---
+
 # Gotchas
 
 Project-specific pitfalls that have already bitten us. Read before changing how the CLI builds requests, picks default models, or handles responses. These are lessons from real failures, not style preferences.
-
-## Table of Contents
-
-- [The CLI targets the Interactions API, not `generateContent`](#the-cli-targets-the-interactions-api-not-generatecontent)
-- [`response_modalities` enum values are lowercase](#response_modalities-enum-values-are-lowercase)
-- [`speech_config` is an array, even for one speaker](#speech_config-is-an-array-even-for-one-speaker)
-- [Preview model IDs deprecate fast — track the GA IDs](#preview-model-ids-deprecate-fast--track-the-ga-ids)
-- [`image_size` requires an uppercase `K`](#image_size-requires-an-uppercase-k)
-- [GA image models return JPEG, not PNG](#ga-image-models-return-jpeg-not-png)
-- [The `docs/20260307-gemini/` snapshots are frozen and pre-migration](#the-docs20260307-gemini-snapshots-are-frozen-and-pre-migration)
 
 ## The CLI targets the Interactions API, not `generateContent`
 
@@ -60,9 +58,9 @@ The API accepts `512`, `1K`, `2K`, `4K` — the `K` must be uppercase. Lowercase
 
 **How to apply:** Trust `item.mime_type` from the response (`extractOutputs` → `saveOutput`). Same principle for TTS audio: the PCM may be labeled `audio/pcm` or `audio/l16`, so `saveOutput` matches both and wraps as WAV.
 
-## The `docs/20260307-gemini/` snapshots are frozen and pre-migration
+## The `docs/manual/20260307-gemini/` snapshots are frozen and pre-migration
 
-The files under `docs/20260307-gemini/` are deliberately preserved copies of Google's docs from 2026-03-07 — *before* the May 2026 Interactions schema migration. They still show uppercase `["IMAGE"]`/`["AUDIO"]` and object-form `speech_config`.
+The files under `docs/manual/20260307-gemini/` are deliberately preserved copies of Google's docs from 2026-03-07 — *before* the May 2026 Interactions schema migration. They still show uppercase `["IMAGE"]`/`["AUDIO"]` and object-form `speech_config`.
 
 **Risk:** Treating them as current guidance reintroduces the exact bugs above.
 

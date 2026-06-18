@@ -1,42 +1,13 @@
+---
+description: Image generation presets (icon, pattern, diagram, story), batch generation with styles and variations, and how the prompt builder functions work.
+tags: [prompt-engineering, image, presets, batch-generation]
+source:
+  - cli.js
+---
+
 # Prompt Engineering
 
 This document explains the prompt builder functions used by the `image` sub-commands (icon, pattern, diagram, story) and the batch generation system (styles, variations).
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Batch Generation](#batch-generation)
-  - [How buildBatchPrompts Works](#how-buildbatchprompts-works)
-  - [Styles](#styles)
-    - [Style List](#style-list)
-    - [Style Example](#style-example)
-  - [Variations](#variations)
-    - [Variation Map](#variation-map)
-    - [Variation Example](#variation-example)
-  - [Combining Styles and Variations](#combining-styles-and-variations)
-  - [Count Limiting](#count-limiting)
-- [Icon Preset](#icon-preset)
-  - [buildIconPrompt Parameters](#buildiconprompt-parameters)
-  - [Icon Prompt Template](#icon-prompt-template)
-  - [Icon Examples](#icon-examples)
-- [Pattern Preset](#pattern-preset)
-  - [buildPatternPrompt Parameters](#buildpatternprompt-parameters)
-  - [Pattern Prompt Template](#pattern-prompt-template)
-  - [Pattern Examples](#pattern-examples)
-- [Diagram Preset](#diagram-preset)
-  - [buildDiagramPrompt Parameters](#builddiagramprompt-parameters)
-  - [Diagram Prompt Template](#diagram-prompt-template)
-  - [Diagram Examples](#diagram-examples)
-- [Story Sequence](#story-sequence)
-  - [buildStoryPrompts Parameters](#buildstoryprompts-parameters)
-  - [Story Prompt Template](#story-prompt-template)
-  - [Story Type Suffixes](#story-type-suffixes)
-  - [Story Examples](#story-examples)
-- [Adding a New Preset](#adding-a-new-preset)
-  - [Step 1: Create the Prompt Builder](#step-1-create-the-prompt-builder)
-  - [Step 2: Register as Image Sub-Command](#step-2-register-as-image-sub-command)
-  - [Step 3: Add CLI Options](#step-3-add-cli-options)
-  - [Step 4: Update Help Text](#step-4-update-help-text)
 
 ## Overview
 

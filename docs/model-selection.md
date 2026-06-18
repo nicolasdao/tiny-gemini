@@ -1,3 +1,11 @@
+---
+description: Choosing which Gemini model to use — decision rules, capabilities, pricing, and comparison tables for text, image, and specialized models.
+tags: [models, model-selection, pricing, capabilities]
+source:
+  - cli.js
+  - models.json
+---
+
 # Model Selection Guide
 
 Which Gemini model should you use? This document gives you one unambiguous answer for every use case. Snapshot is May 2026 (per 1M tokens unless noted). For the live registry, run `npx tiny-gemini models`.
