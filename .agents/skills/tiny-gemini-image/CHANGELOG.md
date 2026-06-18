@@ -5,6 +5,13 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-06-18
+
+### Fixed
+
+- Corrected a determinism inaccuracy in `references/image-commands.md`: the batch-options table listed `--count` as applying to `story`, but `story` uses `--steps` for its sequence length and ignores `--count`. The `--count` row now scopes to `generate`/`edit`/`icon`/`pattern`/`diagram` and points `story` users to `--steps` (mirrored in SKILL.md).
+- Clarified that `describe` (image understanding) ignores the image-config and batch/output flags (`--aspect-ratio`, `--image-size`, `--count`, `--concurrency`, `--json`, `--out`, `--dry-run`) — it returns text and supports only `--stream`/`--json-output`.
+
 ## [0.3.0] - 2026-06-18
 
 ### Added

@@ -4,11 +4,11 @@ All image sub-commands use model `gemini-3.1-flash-image` by default, except `de
 
 ## Batch & output options (all generation sub-commands)
 
-These apply to `generate`, `edit`, `story`, `icon`, `pattern`, and `diagram` (everything that produces images):
+These apply to every sub-command that **produces** images: `generate`, `edit`, `story`, `icon`, `pattern`, `diagram`. They do **not** apply to `describe` (image understanding — it returns text; see its section below).
 
 | Option | Description |
 |--------|-------------|
-| `--count=N` | Generate N candidates of the same prompt. AI image generation is non-deterministic, so generating several and curating the best is the productive path. |
+| `--count=N` | Generate N candidates of the same prompt, to curate the best. Honored by `generate`, `edit`, `icon`, `pattern`, `diagram`. **NOT `story`** — a story's length is its `--steps` count, so use `--steps=N` there (`--count` is ignored for `story`). |
 | `--concurrency=N` | Max parallel API calls in a batch (default 4). The image API returns **one image per call** — there is no `candidate_count`/`sample_count` parameter — so a batch of N is N independent requests, fanned out concurrently rather than serially. A single failed call doesn't abort the batch; it's reported on stderr (or in the `failures` array of `--json`). |
 | `--out=NAME` | Base output filename; an index (`_1`, `_2`, …) is appended for batches. |
 | `--json` | Print a structured result envelope to stdout instead of relying on saved-path logs: `{ model, image_size, count, cost_usd, cost_estimated, images: [{ index, path, format, width, height, bytes, prompt, cost_usd }], references? }`. Real pixel dimensions are parsed from the returned bytes; cost is an estimate from the offline registry. Prefer this for chaining. |
@@ -78,7 +78,7 @@ npx tiny-gemini image describe photo.png
 npx tiny-gemini image describe photo.png "What breed is this dog?"
 ```
 
-Supports `--stream`. Does NOT support `--aspect-ratio` or `--image-size`.
+Supports `--stream` and `--json-output` (raw API response). Does NOT support the image-config flags (`--aspect-ratio`, `--image-size`) or the batch/output flags (`--count`, `--concurrency`, `--json`, `--out`, `--dry-run`) — those are for image *generation* only. `describe` returns text to stdout; redirect with `> file.txt` to save.
 
 ## story
 
