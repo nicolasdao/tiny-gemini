@@ -81,13 +81,44 @@ npx tiny-gemini image diagram "login flow" --type=flowchart --layout=horizontal
 
 The CLI sends these as part of the new schema's `response_format: { type: "image", aspect_ratio, image_size }` (post-2026-05 Interactions API).
 
+## Batch, Concurrency & Output (all generation sub-commands)
+
+AI image generation is non-deterministic — the productive path is to generate several candidates and curate the best. These flags make that efficient and scriptable:
+
+| Flag | What it does |
+|------|--------------|
+| `--count <n>` | Generate N candidates of the same prompt. Also works on `edit`, `icon`, `pattern`, `diagram` (not just `generate`). |
+| `--styles <list>` / `--variations <list>` | Fan one prompt across styles/variations (`generate`). |
+| `--concurrency <n>` | Max parallel API calls in a batch (default 4). The image API returns **one image per call** (no multi-image/`candidate_count` parameter), so a batch of N is N independent requests — run concurrently, not serially. Lower it if you hit rate limits; raise it on generous quotas. A single failed call no longer aborts the batch. |
+| `--out <name>` | Base output filename (`_N` index appended for batches). |
+| `--json` | Print a structured result envelope to stdout — deterministic paths, real pixel width/height, bytes, format, estimated cost, and the reference mapping. **Use this to chain reliably instead of parsing stderr.** |
+| `--dry-run` | Print the estimated cost and exit WITHOUT generating. Use to confirm spend before a large batch or a 2K/4K Pro run. |
+
+`--json` envelope shape:
+
+```json
+{ "model": "gemini-3.1-flash-image", "image_size": "1K", "count": 2,
+  "cost_usd": 0.134, "cost_per_image_usd": 0.067, "cost_estimated": true,
+  "images": [ { "index": 1, "path": ".../image_1.jpg", "format": "jpeg",
+    "width": 1024, "height": 1024, "bytes": 123456, "prompt": "...", "cost_usd": 0.067 } ],
+  "references": [ { "letter": "A", "label": "style", "path": "..." } ] }
+```
+
+Costs are estimates from the offline model registry (flagged `cost_estimated: true`), not billed actuals.
+
+```bash
+npx tiny-gemini image "a neon city" --count=4 --json           # 4 candidates, structured result
+npx tiny-gemini image "a logo" --image-size=4K --model=gemini-3-pro-image --dry-run   # preview cost first
+npx tiny-gemini image "a banana" --out hero --count=2          # hero_1.jpg, hero_2.jpg
+```
+
 ## Reference Images (generate)
 
 `image generate` accepts one or more `--file` reference images to compose, blend, or style-transfer. Refer to them in the prompt as **Image A, Image B, Image C…**, bound by `--file` order (Google's published multi-image prompting pattern: one text prompt first, image parts after, each image given an explicit role).
 
 - `--file path` (repeatable, up to **14**; model-dependent budgets). Order → letters: 1st = Image A, 2nd = Image B, …
 - `--file name=path` labels a file; the name is added to the prompt (`Reference images: Image A = logo, …`) so the prompt can reference it directly.
-- The CLI prints the `Image A = <file>` mapping to stderr. Non-image files are rejected. `--count`/`--styles`/`--variations` are ignored when references are present.
+- The CLI prints the `Image A = <file>` mapping to stderr (and includes it in the `--json` envelope as `references`). Non-image files are rejected. `--count`/`--styles`/`--variations` now **compose** with references — each variation is its own call sharing the same reference images, so `--count=3 --file ref.png` returns 3 candidates built from `ref.png`.
 - For modifying ONE existing image, prefer `image edit <file> "prompt"`. Use reference images when **composing a new image** from multiple inputs.
 
 For full reference-image examples and the per-model limits (objects vs characters vs style references), read [references/image-commands.md](references/image-commands.md).
@@ -98,7 +129,7 @@ For the full option matrix per sub-command (icon style/type/background/corners; 
 
 ## Output
 
-Generated images save to `--output-dir` (default: `./tiny-gemini-output/`) with an extension that matches the response's MIME type — the current GA models (`gemini-3.1-flash-image`, `gemini-3-pro-image`) return JPEG, so files are usually `.jpg`. Do NOT assume `.png`. Filename hints by sub-command: `image` / `image_N` (generate, including reference-image generation), `edited` (edit), `icon`, `pattern`, `diagram`, `story_step_N`. Pass `--preview` to auto-open after saving.
+Generated images save to `--output-dir` (default: `./tiny-gemini-output/`) with an extension that matches the response's MIME type — the current GA models (`gemini-3.1-flash-image`, `gemini-3-pro-image`) return JPEG, so files are usually `.jpg`. Do NOT assume `.png`. Filename hints by sub-command: `image` / `image_N` (generate, including reference-image generation), `edited` (edit), `icon`, `pattern`, `diagram`, `story_step_N` — override the base with `--out <name>`. Pass `--preview` to auto-open after saving. **For reliable chaining, pass `--json`** and read the exact saved paths (plus dimensions, format, and cost) from the envelope instead of guessing the path or parsing stderr.
 
 For `describe`, the response is text (printed to stdout). Supports `--stream` and `--json-output`. To save the description to a file, use shell redirection (`> file.txt`) — the image sub-commands don't honor `--output-file`. If you need the agentic-workflow file pipe (`--output-file` / `--output-format` / `--prompt-file`), use core's `prompt` command with `--file image.png` instead.
 
@@ -115,7 +146,7 @@ Image commands need a Google Gemini API key. Setup is shared with the rest of th
 
 - ALWAYS use `npx tiny-gemini` (not a global install)
 - NEVER fabricate sub-commands or flags not documented above or in [references/image-commands.md](references/image-commands.md)
-- Image output token billing is **expensive** ($60-$120 per 1M output tokens for 3.x image models, ~$0.04/image for 2.5 Flash Image). Confirm before batch-generating large counts.
+- Image output token billing is **expensive** ($60-$120 per 1M output tokens for 3.x image models, ~$0.04/image for 2.5 Flash Image). Confirm before batch-generating large counts — use `--dry-run` to preview the estimated cost without spending.
 - Use `gemini-3.1-flash-image` (default) unless the user needs Pro-quality text rendering or the cheapest 1K-only option
 - Streaming (`--stream`) is supported only for `describe` (image understanding), not for image generation
 - To **compose/blend a new image from multiple inputs**, use `image generate "<prompt>" --file A --file B …` and refer to them as Image A, B, C… — NOT `image edit` (which takes a single base image). Cap reference images at 14

@@ -11,7 +11,7 @@ import { exec } from 'node:child_process';
 // Constants
 // ────────────────────────────────────────────────────────────────────
 
-const VERSION = '2.1.0';
+const VERSION = '2.2.0';
 const NAME = 'tiny-gemini';
 
 const MODELS = {
@@ -48,6 +48,13 @@ const MODELS_JSON_PATH = join(__dirname, 'models.json');
 const COMMANDS = ['prompt', 'image', 'tts', 'search', 'research', 'raw', 'models'];
 const IMAGE_SUBS = ['generate', 'edit', 'describe', 'story', 'icon', 'pattern', 'diagram'];
 const MODELS_SUBS = ['list', 'pricing'];
+
+// The image API returns exactly one image per call — there is no candidate_count
+// / sample_count parameter on the Interactions API (see docs/gotchas.md), so a
+// batch of N images (--count/--styles/--variations, or story steps) is N
+// independent requests. We fan them out concurrently rather than serially; this
+// caps how many are in flight at once so a large batch doesn't trip rate limits.
+const DEFAULT_IMAGE_CONCURRENCY = 4;
 
 const VARIATIONS = {
 	lighting: ['dramatic lighting', 'soft lighting'],
@@ -307,11 +314,16 @@ OPTIONS
   --count <n>          Number of images to generate
   --styles <list>      Comma-separated styles (e.g., watercolor,sketch)
   --variations <list>  Comma-separated variations (lighting,angle,mood,...)
+  --concurrency <n>    Max parallel generations in a batch (default: ${DEFAULT_IMAGE_CONCURRENCY})
   --steps <n>          Number of story steps (default: 4)
   --style <style>      Style for icon/pattern/diagram presets
   --type <type>        Type for pattern/diagram presets
   --aspect-ratio <r>   Aspect ratio (e.g., 16:9, 1:1)
   --image-size <s>     Image size: 512, 1K, 2K, 4K (uppercase K required)
+  --out <name>         Base output filename (an index is appended for batches)
+  --json               Print a structured result envelope (deterministic paths,
+                       pixel dimensions, bytes, format, estimated cost) to stdout
+  --dry-run            Print the estimated cost and exit without generating
   --model <model>      Model (default: ${MODELS.image})
 
 REFERENCE IMAGES
@@ -820,6 +832,178 @@ function buildBatchPrompts(prompt, v = {}) {
 	return prompts.length ? prompts : [prompt];
 }
 
+// Run an async worker over `items` with bounded concurrency, preserving input
+// order in the result. Each result is { ok: true, value } or { ok: false, error }
+// so one failed call doesn't abort the rest of a batch — important when fanning
+// out N independent image generations and curating whatever comes back.
+async function mapPool(items, limit, worker) {
+	const results = new Array(items.length);
+	let next = 0;
+	const runner = async () => {
+		while (next < items.length) {
+			const i = next++;
+			try {
+				results[i] = { ok: true, value: await worker(items[i], i) };
+			} catch (err) {
+				results[i] = { ok: false, error: err };
+			}
+		}
+	};
+	const width = Math.max(1, Math.min(limit, items.length));
+	await Promise.all(Array.from({ length: width }, runner));
+	return results;
+}
+
+// Resolve the concurrency width from --concurrency, falling back to the default
+// and never exceeding the number of items in the batch.
+function resolveConcurrency(values, n) {
+	let c = values.concurrency ? parseInt(values.concurrency, 10) : DEFAULT_IMAGE_CONCURRENCY;
+	if (!Number.isFinite(c) || c < 1) c = DEFAULT_IMAGE_CONCURRENCY;
+	return Math.min(c, n);
+}
+
+// Report per-item failures from a mapPool run to stderr. If every item failed,
+// exit non-zero (preserving the old "throw on error" contract); a partial
+// failure just warns and keeps the images that did succeed.
+function reportBatch(results, noun) {
+	const failures = results.filter(r => r && !r.ok);
+	for (const f of failures) log(`  ✗ ${noun} failed: ${f.error?.message || f.error}`);
+	if (failures.length === results.length) die(`All ${results.length} ${noun} generations failed.`);
+	if (failures.length) log(`${results.length - failures.length}/${results.length} ${noun}s generated; ${failures.length} failed.`);
+}
+
+// Parse pixel dimensions straight from the encoded bytes — zero-dep, just enough
+// header reading for the formats Gemini returns (JPEG/PNG/WebP). Lets --json
+// report real width/height without decoding the image. Returns { width, height }
+// or null if the header isn't recognized.
+function imageDimensions(buf, _mime) {
+	try {
+		// PNG: 8-byte signature, then IHDR with width/height as big-endian uint32.
+		if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50) {
+			return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+		}
+		// JPEG: walk the marker segments to the Start-Of-Frame, which carries dims.
+		if (buf[0] === 0xff && buf[1] === 0xd8) {
+			let o = 2;
+			while (o + 9 < buf.length) {
+				if (buf[o] !== 0xff) { o++; continue; }
+				const marker = buf[o + 1];
+				if (marker === 0xff) { o++; continue; }                 // fill byte
+				if (marker === 0xd8 || marker === 0xd9 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) { o += 2; continue; } // standalone, no length
+				if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+					return { height: buf.readUInt16BE(o + 5), width: buf.readUInt16BE(o + 7) };
+				}
+				o += 2 + buf.readUInt16BE(o + 2);
+			}
+		}
+		// WebP: 'RIFF'....'WEBP' then a VP8/VP8L/VP8X chunk.
+		if (buf.length > 30 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
+			const fmt = buf.toString('ascii', 12, 16);
+			if (fmt === 'VP8 ') return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff };
+			if (fmt === 'VP8L') {
+				const b = buf.readUInt32LE(21);
+				return { width: (b & 0x3fff) + 1, height: ((b >> 14) & 0x3fff) + 1 };
+			}
+			if (fmt === 'VP8X') return { width: (buf.readUIntLE(24, 3) & 0xffffff) + 1, height: (buf.readUIntLE(27, 3) & 0xffffff) + 1 };
+		}
+	} catch { /* unrecognized header — fall through */ }
+	return null;
+}
+
+// "image/jpeg" → "jpeg". Used so --json reports the actual format the API
+// returned (GA models return JPEG, not PNG — see the gotcha) rather than a guess.
+function imageFormat(mime) {
+	return (mime || '').split('/')[1] || null;
+}
+
+// Estimated USD cost for one image at a given size, read from the models.json
+// registry (single source of truth). Returns null if the model/size isn't
+// priced. Image output is billed per resolution, so cost depends on image_size.
+function imageCostUsd(registry, modelId, size) {
+	const m = registry?.models?.find(x => x.id === modelId);
+	if (!m) return null;
+	const p = m.pricing || {};
+	if (p.image_cost_by_size && p.image_cost_by_size[size] != null) return p.image_cost_by_size[size];
+	if (p.output_per_image != null) return p.output_per_image;
+	return null;
+}
+
+// Shared runner for every image-generation sub-command. Builds the N-prompt
+// batch (variations are independent calls — see the no-multi-image gotcha),
+// fans them out via mapPool, and emits one of: saved files + a stderr summary
+// (default), a raw API dump (--json-output), or a structured result envelope
+// (--json) with deterministic paths, real pixel dimensions, byte sizes, format,
+// and an estimated cost. --dry-run prints the cost estimate and makes no calls.
+async function runImageBatch(opts) {
+	const { prompts, imageParts = [], hint, noun, model, imgConfig, config, values,
+		responseFormat, hasResponseFormat, references = null, registry = null } = opts;
+	const wantJson = !!values.json;
+	const size = values['image-size'] ? values['image-size'].replace(/k$/i, 'K') : '1K';
+	const single = prompts.length === 1;
+
+	if (values['dry-run']) {
+		const per = registry ? imageCostUsd(registry, model, size) : null;
+		const total = per != null ? +(per * prompts.length).toFixed(4) : null;
+		if (wantJson) {
+			console.log(JSON.stringify({ dry_run: true, model, image_size: size, count: prompts.length,
+				cost_per_image_usd: per, cost_usd: total, cost_estimated: per != null, prompts }, null, 2));
+		} else {
+			log(`Dry run: ${prompts.length} image(s) with ${model} @ ${size}` +
+				(total != null ? ` ≈ $${total.toFixed(3)} (est.)` : ' (cost unknown)') + '. No API calls made.');
+		}
+		return;
+	}
+
+	const concurrency = resolveConcurrency(values, prompts.length);
+	log(single ? `Generating ${noun}...` : `Generating ${prompts.length} ${noun}s (up to ${concurrency} at a time)...`);
+
+	const results = await mapPool(prompts, concurrency, async (p, i) => {
+		const input = imageParts.length ? [{ type: 'text', text: p }, ...imageParts] : p;
+		const body = { model, input, response_modalities: ['image'] };
+		if (hasResponseFormat) body.response_format = responseFormat;
+		if (config.jsonOutput) {                       // raw API passthrough
+			console.log(JSON.stringify(await callAPI(imgConfig, body), null, 2));
+			return null;
+		}
+		const resp = await callAPI(imgConfig, body);
+		const out = extractOutputs(resp);
+		const base = single ? hint : `${hint}_${i + 1}`;
+		const files = [];
+		for (const img of out.images) {
+			const path = await saveOutput(config.outputDir, base, img.data, img.mime, config);
+			const buf = Buffer.from(img.data, 'base64');
+			const dims = imageDimensions(buf, img.mime) || {};
+			files.push({ index: i + 1, path, format: imageFormat(img.mime),
+				width: dims.width ?? null, height: dims.height ?? null, bytes: buf.length, prompt: p });
+		}
+		if (!wantJson) for (const t of out.text) console.log(t);
+		return { files };
+	});
+
+	if (config.jsonOutput) return;                     // raw mode already printed
+
+	if (wantJson) {
+		const per = registry ? imageCostUsd(registry, model, size) : null;
+		const images = results.flatMap(r => (r && r.ok && r.value) ? r.value.files : []);
+		const failures = results
+			.map((r, i) => (r && !r.ok) ? { index: i + 1, error: r.error?.message || String(r.error) } : null)
+			.filter(Boolean);
+		const envelope = {
+			model, image_size: size, count: images.length,
+			cost_usd: per != null ? +(per * images.length).toFixed(4) : null,
+			cost_per_image_usd: per, cost_estimated: per != null,
+			images: images.map(f => ({ ...f, cost_usd: per })),
+		};
+		if (references) envelope.references = references;
+		if (failures.length) envelope.failures = failures;
+		console.log(JSON.stringify(envelope, null, 2));
+		if (!images.length) process.exitCode = 1;
+		return;
+	}
+
+	reportBatch(results, noun);
+}
+
 // ────────────────────────────────────────────────────────────────────
 // Stdin Reader
 // ────────────────────────────────────────────────────────────────────
@@ -939,19 +1123,18 @@ async function handleImage(args, values, config) {
 			const prompt = rest.join(' ');
 			if (!prompt) die('No prompt. Usage: tiny-gemini image "your prompt"');
 
-			// Reference-image generation. Per Google's prompting guidance, supply ONE
-			// text prompt first, then the image parts in order; the prompt refers to
-			// them as "Image A", "Image B", … bound by that order. We echo the
-			// A/B/C → file mapping, and when the user labels files (--file name=path)
-			// we append a legend so the model can bind both the letter and the name.
+			// Reference images (Google's guidance: one text prompt first, then image
+			// parts in --file order, referred to as "Image A", "Image B", …). They
+			// become shared image parts attached to every prompt in the batch, so
+			// --count/--styles/--variations compose with them (each variation is its
+			// own call, all sharing the same references). Labeled files (name=path)
+			// add a legend so the model can bind both the letter and the name.
 			const refs = fileArgs(values);
+			let imageParts = [];
+			let references = null;
+			let basePrompt = prompt;
 			if (refs.length) {
 				if (refs.length > 14) die(`Too many reference images (${refs.length}); the API supports up to 14.`);
-				if (values.count || values.styles || values.variations) {
-					log('Note: --count/--styles/--variations are ignored when reference images are supplied.');
-				}
-
-				const imageParts = [];
 				const mapping = [];
 				let hasNames = false;
 				for (let i = 0; i < refs.length; i++) {
@@ -969,54 +1152,25 @@ async function handleImage(args, values, config) {
 				// Surface the binding so the user knows which letter is which file.
 				for (const m of mapping) log(`Image ${m.letter} = ${m.name ? `${m.name} (${m.path})` : m.path}`);
 
-				let finalPrompt = prompt;
 				if (hasNames) {
 					const legend = mapping.map(m => m.name ? `Image ${m.letter} = ${m.name}` : `Image ${m.letter}`).join(', ');
-					finalPrompt = `${prompt}\n\nReference images: ${legend}.`;
+					basePrompt = `${prompt}\n\nReference images: ${legend}.`;
 				}
-
-				const body = {
-					model,
-					input: [{ type: 'text', text: finalPrompt }, ...imageParts],
-					response_modalities: ['image'],
-				};
-				if (hasImageConfig) body.response_format = imageResponseFormat;
-
-				log(`Generating image from ${refs.length} reference image(s)...`);
-				if (config.jsonOutput) {
-					console.log(JSON.stringify(await callAPI(imgConfig, body), null, 2));
-				} else {
-					const resp = await callAPI(imgConfig, body);
-					const out = extractOutputs(resp);
-					for (const img of out.images) {
-						await saveOutput(config.outputDir, 'image', img.data, img.mime, config);
-					}
-					for (const t of out.text) console.log(t);
-				}
-				break;
+				references = mapping.map(m => ({ letter: m.letter, label: m.name || null, path: m.path }));
 			}
 
 			const count = values.count ? parseInt(values.count) : 0;
 			const styles = values.styles ? values.styles.split(',').map(s => s.trim()) : null;
 			const variations = values.variations ? values.variations.split(',').map(s => s.trim()) : null;
-			const prompts = buildBatchPrompts(prompt, { count, styles, variations });
+			const prompts = buildBatchPrompts(basePrompt, { count, styles, variations });
+			const registry = (values.json || values['dry-run']) ? await loadModelsRegistry() : null;
 
-			for (let i = 0; i < prompts.length; i++) {
-				log(`Generating image ${i + 1}/${prompts.length}...`);
-				const body = { model, input: prompts[i], response_modalities: ['image'] };
-				if (hasImageConfig) body.response_format = imageResponseFormat;
-
-				if (config.jsonOutput) {
-					console.log(JSON.stringify(await callAPI(imgConfig, body), null, 2));
-				} else {
-					const resp = await callAPI(imgConfig, body);
-					const out = extractOutputs(resp);
-					for (const img of out.images) {
-						await saveOutput(config.outputDir, `image_${i + 1}`, img.data, img.mime, config);
-					}
-					for (const t of out.text) console.log(t);
-				}
-			}
+			await runImageBatch({
+				prompts, imageParts, references, registry,
+				hint: values.out || 'image', noun: 'image',
+				model, imgConfig, config, values,
+				responseFormat: imageResponseFormat, hasResponseFormat: hasImageConfig,
+			});
 			break;
 		}
 
@@ -1024,30 +1178,20 @@ async function handleImage(args, values, config) {
 			const file = rest.shift();
 			if (!file) die('No file. Usage: tiny-gemini image edit <file> "prompt"');
 			if (!(await exists(file))) die(`File not found: ${file}`);
-			const prompt = rest.join(' ') || 'Edit this image';
+			const editPrompt = rest.join(' ') || 'Edit this image';
 			const b64 = await readBase64(file);
 			const mime = extToMime(file);
-			const body = {
-				model,
-				input: [
-					{ type: 'text', text: prompt },
-					{ type: 'image', data: b64, mime_type: mime },
-				],
-				response_modalities: ['image'],
-			};
-			if (hasImageConfig) body.response_format = imageResponseFormat;
-
-			log('Editing image...');
-			if (config.jsonOutput) {
-				console.log(JSON.stringify(await callAPI(imgConfig, body), null, 2));
-			} else {
-				const resp = await callAPI(imgConfig, body);
-				const out = extractOutputs(resp);
-				for (const img of out.images) {
-					await saveOutput(config.outputDir, 'edited', img.data, img.mime, config);
-				}
-				for (const t of out.text) console.log(t);
-			}
+			const count = values.count ? parseInt(values.count) : 0;
+			const styles = values.styles ? values.styles.split(',').map(s => s.trim()) : null;
+			const variations = values.variations ? values.variations.split(',').map(s => s.trim()) : null;
+			const prompts = buildBatchPrompts(editPrompt, { count, styles, variations });
+			const registry = (values.json || values['dry-run']) ? await loadModelsRegistry() : null;
+			await runImageBatch({
+				prompts, imageParts: [{ type: 'image', data: b64, mime_type: mime }],
+				hint: values.out || 'edited', noun: 'image', registry,
+				model, imgConfig, config, values,
+				responseFormat: imageResponseFormat, hasResponseFormat: hasImageConfig,
+			});
 			break;
 		}
 
@@ -1082,60 +1226,34 @@ async function handleImage(args, values, config) {
 			const prompt = rest.join(' ');
 			if (!prompt) die('No prompt. Usage: tiny-gemini image story "your prompt"');
 			const steps = values.steps ? parseInt(values.steps) : 4;
+			// Each step is an independent call (coherence comes from the prompt text,
+			// not chaining), so they fan out concurrently like any other batch.
 			const prompts = buildStoryPrompts(prompt, steps, values);
-
-			for (let i = 0; i < prompts.length; i++) {
-				log(`Generating step ${i + 1}/${prompts.length}...`);
-				const body = { model, input: prompts[i], response_modalities: ['image'] };
-				if (hasImageConfig) body.response_format = imageResponseFormat;
-				const resp = await callAPI(imgConfig, body);
-				const out = extractOutputs(resp);
-				for (const img of out.images) {
-					await saveOutput(config.outputDir, `story_step_${i + 1}`, img.data, img.mime, config);
-				}
-			}
+			const registry = (values.json || values['dry-run']) ? await loadModelsRegistry() : null;
+			await runImageBatch({
+				prompts, hint: values.out || 'story_step', noun: 'story step', registry,
+				model, imgConfig, config, values,
+				responseFormat: imageResponseFormat, hasResponseFormat: hasImageConfig,
+			});
 			break;
 		}
 
-		case 'icon': {
-			const prompt = rest.join(' ') || 'app icon';
-			const engineered = buildIconPrompt(prompt, values);
-			log('Generating icon...');
-			const body = { model, input: engineered, response_modalities: ['image'] };
-			if (hasImageConfig) body.response_format = imageResponseFormat;
-			const resp = await callAPI(imgConfig, body);
-			const out = extractOutputs(resp);
-			for (const img of out.images) {
-				await saveOutput(config.outputDir, 'icon', img.data, img.mime, config);
-			}
-			break;
-		}
-
-		case 'pattern': {
-			const prompt = rest.join(' ') || 'abstract pattern';
-			const engineered = buildPatternPrompt(prompt, values);
-			log('Generating pattern...');
-			const body = { model, input: engineered, response_modalities: ['image'] };
-			if (hasImageConfig) body.response_format = imageResponseFormat;
-			const resp = await callAPI(imgConfig, body);
-			const out = extractOutputs(resp);
-			for (const img of out.images) {
-				await saveOutput(config.outputDir, 'pattern', img.data, img.mime, config);
-			}
-			break;
-		}
-
+		case 'icon':
+		case 'pattern':
 		case 'diagram': {
-			const prompt = rest.join(' ') || 'system diagram';
-			const engineered = buildDiagramPrompt(prompt, values);
-			log('Generating diagram...');
-			const body = { model, input: engineered, response_modalities: ['image'] };
-			if (hasImageConfig) body.response_format = imageResponseFormat;
-			const resp = await callAPI(imgConfig, body);
-			const out = extractOutputs(resp);
-			for (const img of out.images) {
-				await saveOutput(config.outputDir, 'diagram', img.data, img.mime, config);
-			}
+			const builders = { icon: buildIconPrompt, pattern: buildPatternPrompt, diagram: buildDiagramPrompt };
+			const fallbacks = { icon: 'app icon', pattern: 'abstract pattern', diagram: 'system diagram' };
+			const engineered = builders[sub](rest.join(' ') || fallbacks[sub], values);
+			// Presets honor --count so you can pull several variants of the same icon
+			// /pattern/diagram and curate the best.
+			const count = values.count ? parseInt(values.count) : 0;
+			const prompts = buildBatchPrompts(engineered, { count });
+			const registry = (values.json || values['dry-run']) ? await loadModelsRegistry() : null;
+			await runImageBatch({
+				prompts, hint: values.out || sub, noun: sub, registry,
+				model, imgConfig, config, values,
+				responseFormat: imageResponseFormat, hasResponseFormat: hasImageConfig,
+			});
 			break;
 		}
 	}
@@ -1360,6 +1478,9 @@ async function main() {
 			count: { type: 'string' },
 			styles: { type: 'string' },
 			variations: { type: 'string' },
+			concurrency: { type: 'string' },
+			out: { type: 'string' },
+			'dry-run': { type: 'boolean' },
 			steps: { type: 'string' },
 			style: { type: 'string' },
 			type: { type: 'string' },

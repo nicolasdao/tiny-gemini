@@ -137,6 +137,7 @@
         "input_per_1m": 0.50,
         "output_per_1m": 60.00,
         "output_text_per_1m": 3.00,
+        "image_cost_by_size": { "512px": 0.045, "1K": 0.067, "2K": 0.101, "4K": 0.151 },
         "currency": "USD",
         "notes": "GA (launched 2026-05-28), default image model in tiny-gemini. Image output billed at $60/1M tokens (≈$0.045/0.5K, $0.067/1K, $0.101/2K, $0.151/4K). Up to 14 reference images. Codename: Nano Banana 2."
       },
@@ -155,6 +156,7 @@
         "input_per_1m": 2.00,
         "output_per_1m": 120.00,
         "output_text_per_1m": 12.00,
+        "image_cost_by_size": { "1K": 0.134, "2K": 0.134, "4K": 0.24 },
         "currency": "USD",
         "notes": "GA (launched 2026-05-28). Image output billed at $120/1M tokens (≈$0.134/1K-2K, $0.24/4K). Best in-image text rendering. Codename: Nano Banana Pro."
       },

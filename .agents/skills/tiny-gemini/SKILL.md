@@ -90,8 +90,8 @@ The CLI adds the `Api-Revision: 2026-05-20` header so responses use the post-202
 
 | Flag | Where it works | What it does |
 |------|----------------|--------------|
-| `--json-output` | All API-bound commands (`prompt`, `image`, `tts`, `search`, `research`, `raw`) | Prints the raw API response JSON instead of human-formatted output |
-| `--json` | `models` command only (owned by `tiny-gemini-models`) | Prints the embedded model registry as JSON |
+| `--json-output` | All API-bound commands (`prompt`, `image`, `tts`, `search`, `research`, `raw`) | Prints the **raw** API response JSON instead of human-formatted output |
+| `--json` | `models` (registry JSON) and `image` generation (a **structured result envelope** — paths, dimensions, cost; owned by `tiny-gemini-image`) | A curated, machine-readable result, not the raw API response |
 
 The `models` command also accepts `--json-output` as an alias for convenience.
 

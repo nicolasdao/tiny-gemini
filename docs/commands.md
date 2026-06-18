@@ -199,6 +199,12 @@ Generate N images of the same prompt:
 tiny-gemini image "a cat" --count=3
 ```
 
+Because the image API returns one image per call (no multi-image parameter — see [Gotchas](gotchas.md)), `--count=3` issues 3 independent requests. They run **concurrently**, bounded by `--concurrency` (default 4), so the batch completes in roughly the time of a single call for small counts. A single failed request no longer aborts the batch — the images that succeed are still saved, and a summary of any failures is printed to stderr. Lower `--concurrency` if you hit rate limits; raise it on generous quotas.
+
+```bash
+tiny-gemini image "a cat" --count=8 --concurrency=2   # gentler on rate limits
+```
+
 #### Batch with --styles
 
 Apply different artistic styles to the same prompt:
@@ -266,7 +272,7 @@ Behavior:
 - The CLI prints the `Image A = <file>` mapping to **stderr** so you know which letter is which.
 - When any file is labeled (`name=path`), a one-line legend is appended to the prompt: `Reference images: Image A = logo, Image B = bag.`
 - Each `--file` must be an image; non-image files are rejected.
-- `--count`, `--styles`, and `--variations` are ignored when reference images are present (batch generation and reference composition don't mix).
+- `--count`, `--styles`, and `--variations` **compose** with reference images: each variation is an independent call sharing the same reference parts, so `--count=3 --file ref.png` returns 3 candidates built from `ref.png`. The reference mapping is also surfaced in the `--json` envelope (`references`).
 
 ##### Reference-Image Request Body
 
@@ -428,6 +434,44 @@ tiny-gemini image "detailed scene" --image-size=2K
 ```
 
 Values: `512px` (gemini-3.1-flash only), `1K` (default), `2K`, `4K`. Must use uppercase `K`.
+
+### Batch & Output Options
+
+These apply to every image-generation sub-command (generate, edit, story, icon, pattern, diagram):
+
+| Option | Description |
+|--------|-------------|
+| `--count <n>` | Generate N candidates of the same prompt (curate the best — image generation is non-deterministic). |
+| `--concurrency <n>` | Max parallel API calls in a batch (default 4). One image per call (no multi-image parameter — see [Gotchas](gotchas.md)), so N images = N requests, fanned out concurrently. A single failure doesn't abort the batch. |
+| `--out <name>` | Base output filename; an index (`_1`, `_2`, …) is appended for batches. |
+| `--json` | Print a structured result envelope to stdout — deterministic paths, pixel `width`/`height` (parsed from the bytes), `bytes`, `format`, estimated `cost_usd`, and the reference mapping. Distinct from `--json-output` (raw API dump). |
+| `--dry-run` | Print the estimated cost and the resolved prompts, then exit without calling the API. |
+
+```bash
+tiny-gemini image "a neon city" --count=4 --json          # 4 candidates + structured result
+tiny-gemini image "a poster" --image-size=4K --dry-run    # preview cost before spending
+tiny-gemini image "a banana" --out hero --count=2         # hero_1.jpg, hero_2.jpg
+```
+
+The `--json` envelope:
+
+```json
+{
+  "model": "gemini-3.1-flash-image",
+  "image_size": "1K",
+  "count": 2,
+  "cost_usd": 0.134,
+  "cost_per_image_usd": 0.067,
+  "cost_estimated": true,
+  "images": [
+    { "index": 1, "path": "./tiny-gemini-output/image_1.jpg", "format": "jpeg",
+      "width": 1024, "height": 1024, "bytes": 531777, "prompt": "a neon city", "cost_usd": 0.067 }
+  ],
+  "references": [ { "letter": "A", "label": "style", "path": "swatch.png" } ]
+}
+```
+
+Cost is an estimate from the offline `models.json` registry (`cost_estimated: true`), not a billed figure. When some calls fail, succeeded images are still returned and a `failures` array is included.
 
 ## tts
 

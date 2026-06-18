@@ -497,4 +497,5 @@ Set `store: false` to opt out (incompatible with `background: true`).
 - Tool combinations (MCP + Function Call + Built-in) not supported simultaneously
 - Gemini 3 lacks remote MCP support
 - Content ordering may be incorrect with search/URL tools (text may appear before tool execution)
+- No multi-image output per call — image generation returns exactly one image; there is no `candidate_count`/`sample_count`/`number_of_images` parameter (that belongs to the separate Imagen `:predict` API). N variations require N requests (the CLI fans them out concurrently). See [Gotchas](gotchas.md).
 - Model family deprecations happen regularly — check [release notes](https://ai.google.dev/gemini-api/docs/changelog) for current model availability

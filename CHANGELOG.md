@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-06-18
+
+### Added
+
+- **Concurrent batch image generation** — `image` batches (`--count`/`--styles`/`--variations`, and `story` steps) now fan out **concurrently** instead of running one API call at a time. The Gemini Interactions API returns exactly one image per call (there is no `candidate_count`/`sample_count`/`number_of_images` parameter — that belongs to the separate Imagen `:predict` API), so N variations are necessarily N requests; this change cuts wall-clock latency from N× a single call to roughly `ceil(N / concurrency)`. New `--concurrency <n>` flag bounds parallelism (default 4) — lower it to avoid rate limits, raise it on generous quotas. A single failed call no longer aborts the batch: succeeded images are still saved and failures are summarized to stderr (or in the `failures` array under `--json`)
+- **`--json` structured result envelope for image generation** — a curated, machine-readable result on stdout (distinct from `--json-output`, which dumps the raw API response): `{ model, image_size, count, cost_usd, cost_per_image_usd, cost_estimated, images: [{ index, path, format, width, height, bytes, prompt, cost_usd }], references?, failures? }`. Pixel `width`/`height` are parsed directly from the returned bytes (zero-dep JPEG/PNG/WebP header reader); paths are deterministic; cost is estimated from the offline `models.json` registry. Lets an agent chain reliably instead of guessing the path/extension or parsing stderr
+- **`--dry-run`** — print the estimated cost and the resolved prompts, then exit without calling the API. Use to confirm spend before a large or high-resolution batch (`--dry-run --json` emits a JSON estimate)
+- **`--out <name>`** — explicit base output filename for generated images (an index `_1`, `_2`, … is appended for batches)
+- **Reference images now compose with `--count`/`--styles`/`--variations`** — previously these were ignored when `--file` reference images were supplied. Each variation is now an independent call sharing the same reference parts, so `--count=3 --file ref.png` returns 3 candidates built from `ref.png`. The reference mapping is also surfaced in the `--json` envelope as `references`
+- **`--count` on `edit`, `icon`, `pattern`, `diagram`** — the preset and edit sub-commands now accept `--count` (and `edit` accepts `--styles`/`--variations`) to produce several candidates of the same request, routed through the same concurrent batch runner as `generate`
+- **`models.json`: structured `image_cost_by_size`** for the GA image models (`gemini-3.1-flash-image`, `gemini-3-pro-image`), so per-image cost estimates read from the registry (single source of truth) rather than being hardcoded
+
+### Changed
+
+- All image-generation sub-commands (`generate`, `edit`, `story`, `icon`, `pattern`, `diagram`) now run through one shared batch runner, so `--json`, `--out`, `--dry-run`, `--concurrency`, and cost estimation behave consistently across every sub-command
+
 ## [2.1.0] - 2026-06-18
 
 ### Added

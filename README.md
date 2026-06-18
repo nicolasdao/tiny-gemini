@@ -163,7 +163,9 @@ tiny-gemini image pattern "geometric" --type=seamless
 tiny-gemini image diagram "login flow" --type=flowchart
 ```
 
-Key options: `--file` (reference images, repeatable), `--count`, `--styles`, `--variations`, `--steps`, `--style`, `--type`, `--aspect-ratio`, `--image-size`
+Key options: `--file` (reference images, repeatable), `--count`, `--styles`, `--variations`, `--concurrency`, `--out`, `--json`, `--dry-run`, `--steps`, `--style`, `--type`, `--aspect-ratio`, `--image-size`
+
+**Batching:** the image API returns one image per call (no multi-image parameter), so `--count`/`--styles`/`--variations` issue one request each. The CLI runs them **concurrently** (bounded by `--concurrency`, default 4) instead of serially, and a single failed request doesn't abort the batch. Reference images compose with `--count` (N candidates sharing the same references). Pass `--json` for a structured result envelope (deterministic paths, dimensions, format, estimated cost) and `--dry-run` to preview cost before spending.
 
 **Reference images:** pass up to 14 images with `--file` (repeatable) and refer to them in the prompt as **Image A, Image B, Image C…** (bound by `--file` order). Use `--file name=path` to label one — its name is added to the prompt so you can reference it directly. This follows [Google's published multi-image prompting guidance](https://blog.google/products-and-platforms/products/gemini/prompting-tips-nano-banana-pro/).
 

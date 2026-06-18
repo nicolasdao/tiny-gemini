@@ -58,6 +58,14 @@ The API accepts `512`, `1K`, `2K`, `4K` — the `K` must be uppercase. Lowercase
 
 **How to apply:** Trust `item.mime_type` from the response (`extractOutputs` → `saveOutput`). Same principle for TTS audio: the PCM may be labeled `audio/pcm` or `audio/l16`, so `saveOutput` matches both and wraps as WAV.
 
+## The image API returns one image per call — there is no `candidate_count`
+
+The Interactions API has **no** parameter that returns multiple image candidates from a single request. There is no `candidate_count`, `number_of_images`, `sample_count`, or `n` on the request body; `response_format` (type `image`) only carries `mime_type`/`aspect_ratio`/`image_size`. Setting `candidateCount > 1` on the legacy `generateContent` path is hard-rejected for image models (`400: Multiple candidates is not enabled for this model`). The `sampleCount`/`numberOfImages` that *do* batch images belong to **Imagen** via `:predict` — a different model family (and deprecated, shutdown 2026-08-17).
+
+**Risk:** Assuming you can ask for N images in one call, or trying to add a `--count`-style parameter to the request body. It will 400 or be ignored.
+
+**How to apply:** A batch of N images (`--count`/`--styles`/`--variations`, or `story` steps) is **N independent requests**. The CLI fans them out concurrently via `mapPool` (bounded by `--concurrency`, default `DEFAULT_IMAGE_CONCURRENCY = 4`) rather than serially — see `handleImage` in `cli.js`. Don't collapse them into one call; the only API-level cost lever is the async Batch API (`:batchGenerateContent`, ~50% cheaper, ~24h turnaround), which is a separate, non-interactive path.
+
 ## The `docs/manual/20260307-gemini/` snapshots are frozen and pre-migration
 
 The files under `docs/manual/20260307-gemini/` are deliberately preserved copies of Google's docs from 2026-03-07 — *before* the May 2026 Interactions schema migration. They still show uppercase `["IMAGE"]`/`["AUDIO"]` and object-form `speech_config`.

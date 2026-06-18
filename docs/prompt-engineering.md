@@ -30,7 +30,7 @@ The `buildBatchPrompts(prompt, options)` function takes a base prompt and genera
 4. If `count` is set and prompts exceed it → truncate to `count`
 5. If nothing specified → return `[prompt]` as-is
 
-Each generated prompt results in a separate API call.
+Each generated prompt results in a separate API call — the image API returns one image per call, with no multi-image/candidate parameter (see [Gotchas](gotchas.md)). These calls are fanned out **concurrently** (bounded by `--concurrency`, default 4) rather than run one after another, so a batch of N images takes roughly the time of `ceil(N / concurrency)` calls, not N.
 
 ### Styles
 

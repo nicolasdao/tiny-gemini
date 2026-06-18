@@ -2,6 +2,20 @@
 
 All image sub-commands use model `gemini-3.1-flash-image` by default, except `describe` which uses `gemini-3-flash-preview`.
 
+## Batch & output options (all generation sub-commands)
+
+These apply to `generate`, `edit`, `story`, `icon`, `pattern`, and `diagram` (everything that produces images):
+
+| Option | Description |
+|--------|-------------|
+| `--count=N` | Generate N candidates of the same prompt. AI image generation is non-deterministic, so generating several and curating the best is the productive path. |
+| `--concurrency=N` | Max parallel API calls in a batch (default 4). The image API returns **one image per call** — there is no `candidate_count`/`sample_count` parameter — so a batch of N is N independent requests, fanned out concurrently rather than serially. A single failed call doesn't abort the batch; it's reported on stderr (or in the `failures` array of `--json`). |
+| `--out=NAME` | Base output filename; an index (`_1`, `_2`, …) is appended for batches. |
+| `--json` | Print a structured result envelope to stdout instead of relying on saved-path logs: `{ model, image_size, count, cost_usd, cost_estimated, images: [{ index, path, format, width, height, bytes, prompt, cost_usd }], references? }`. Real pixel dimensions are parsed from the returned bytes; cost is an estimate from the offline registry. Prefer this for chaining. |
+| `--dry-run` | Print the estimated cost (and the resolved prompts) and exit WITHOUT calling the API. Use to confirm spend before large or high-resolution batches. |
+
+`--json` and `--dry-run` compose (a dry-run prints a JSON estimate). Costs are estimates, flagged `cost_estimated: true`, not billed actuals.
+
 ## generate (default)
 
 Generate one or more images from a text prompt.
@@ -41,7 +55,7 @@ npx tiny-gemini image generate "Put the logo onto the bag" \
 
 - Up to **14** reference images (model-dependent: 3.1-flash = 10 objects + 4 characters; 3-pro = 6 objects + 5 characters + 3 style references).
 - The CLI prints the `Image A = <file>` mapping to stderr. When any file is labeled (`name=path`), a legend line is appended to the prompt (`Reference images: Image A = logo, Image B = bag.`).
-- Each `--file` must be an image. `--count`/`--styles`/`--variations` are ignored when reference images are present.
+- Each `--file` must be an image. `--count`/`--styles`/`--variations` **compose** with references — each variation is an independent call sharing the same reference images (e.g. `--count=3 --file ref.png` → 3 candidates from `ref.png`). The reference mapping is also returned in the `--json` envelope as `references`.
 - To **edit** a single existing image instead of composing a new one, use `image edit <file> "prompt"`.
 
 ## edit
@@ -53,7 +67,7 @@ npx tiny-gemini image edit photo.png "add sunglasses"
 npx tiny-gemini image edit logo.png "change the background to blue"
 ```
 
-First argument after `edit` is the file path, the rest is the edit prompt. Supports `--aspect-ratio` and `--image-size`.
+First argument after `edit` is the file path, the rest is the edit prompt. Supports `--aspect-ratio`, `--image-size`, and the batch/output options above (e.g. `--count=2` for two edit variants).
 
 ## describe
 
@@ -82,7 +96,7 @@ npx tiny-gemini image story "building a house" --type=process --steps=6
 | `--style` | Any string | consistent |
 | `--transition` | smooth, dramatic, fade | smooth |
 
-Each step is a separate API call. Supports `--aspect-ratio` and `--image-size`.
+Each step is a separate API call (steps fan out concurrently, bounded by `--concurrency`). Supports `--aspect-ratio` and `--image-size`.
 
 ## icon
 
