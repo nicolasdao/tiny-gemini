@@ -1,6 +1,6 @@
 {
   "name": "tiny-gemini",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Zero-dependency CLI for the Google Gemini API — text, images, TTS, search, and more via npx",
   "type": "module",
   "bin": {
