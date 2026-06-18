@@ -5,6 +5,17 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-06-18
+
+### Added
+
+- Document the **batch & output flags** for CLI v2.2.0: `--count` candidate generation across all image sub-commands (now including `edit`/`icon`/`pattern`/`diagram`), `--concurrency` bounded parallelism (one image per API call, so N variations are N concurrent requests), the `--json` structured result envelope (deterministic paths, pixel dimensions, bytes, format, estimated cost, reference mapping), `--dry-run` cost preview, and `--out` base filename. Added a "Batch, Concurrency & Output" section to SKILL.md and a "Batch & output options" section to `references/image-commands.md`.
+
+### Changed
+
+- Reference images now **compose** with `--count`/`--styles`/`--variations` (each variation is its own call sharing the references) — corrected the previous "ignored when references are present" note throughout SKILL.md and the reference doc.
+- Output guidance now recommends `--json` for reliable chaining (read exact paths from the envelope instead of parsing stderr) and `--dry-run` to preview cost before large batches.
+
 ## [0.2.0] - 2026-06-18
 
 ### Added

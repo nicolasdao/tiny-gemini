@@ -1,6 +1,6 @@
 {
 	"name": "tiny-gemini",
-	"version": "2.0.2",
+	"version": "2.0.3",
 	"description": "Suite core for the tiny-gemini NPX CLI. Covers text Q&A, search-grounded answers, and the raw Gemini API passthrough. Bundles four satellites for image, TTS, deep research, and offline model lookup.",
 	"keywords": [
 		"ai",

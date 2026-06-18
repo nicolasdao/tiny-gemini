@@ -5,6 +5,12 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-06-18
+
+### Changed
+
+- Clarify the `--json` vs `--json-output` table: `--json` now also produces a **structured result envelope** for `image` generation (paths, dimensions, estimated cost — owned by `tiny-gemini-image`), not just the `models` registry dump. Distinguishes it from `--json-output` (raw API response).
+
 ## [2.0.2] - 2026-06-08
 
 ### Changed
