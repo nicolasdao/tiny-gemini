@@ -26,6 +26,7 @@ Complete reference for every command, sub-command, and option. Includes the exac
     - [Batch with --styles](#batch-with---styles)
     - [Batch with --variations](#batch-with---variations)
     - [Generate Request Body](#generate-request-body)
+    - [Reference Images](#reference-images)
   - [edit](#edit)
     - [Edit Request Body](#edit-request-body)
   - [describe](#describe)
@@ -293,6 +294,45 @@ With image config (post-2026-05 schema — `image_config` lives inside `response
     "aspect_ratio": "16:9",
     "image_size": "2K"
   }
+}
+```
+
+#### Reference Images
+
+Supply one or more reference images with `--file` (repeatable) and refer to them in the prompt as **Image A, Image B, Image C…** — bound by `--file` order. This follows Google's published prompting guidance ([blog.google, Nov 2025](https://blog.google/products-and-platforms/products/gemini/prompting-tips-nano-banana-pro/); [DeepMind prompt guide](https://deepmind.google/models/gemini-image/prompt-guide/)): one text prompt first, image parts after, with each image given an explicit role in the text.
+
+```bash
+# Letter labels, bound by --file order (Image A = pose.png, Image B = style.png)
+tiny-gemini image generate "Use Image A for the pose, Image B for the art style" \
+  --file pose.png --file style.png
+
+# Named references (name=path) — the name is added to the prompt so you can
+# reference it directly. Letters still apply (Image A = logo, Image B = bag).
+tiny-gemini image generate "Put the logo onto the bag" \
+  --file logo=brand.png --file bag=tote.png
+```
+
+Behavior:
+
+- Up to **14** reference images (model-dependent: `gemini-3.1-flash-image` allows 10 objects + 4 characters; `gemini-3-pro-image` allows 6 objects + 5 characters + 3 style references).
+- The CLI prints the `Image A = <file>` mapping to **stderr** so you know which letter is which.
+- When any file is labeled (`name=path`), a one-line legend is appended to the prompt: `Reference images: Image A = logo, Image B = bag.`
+- Each `--file` must be an image; non-image files are rejected.
+- `--count`, `--styles`, and `--variations` are ignored when reference images are present (batch generation and reference composition don't mix).
+
+##### Reference-Image Request Body
+
+The `input` is an array: one text part first, then the image parts in `--file` order. This is the same multimodal array shape used by `edit`/`describe`, just with multiple images.
+
+```json
+{
+  "model": "gemini-3.1-flash-image",
+  "input": [
+    { "type": "text", "text": "Use Image A for the pose, Image B for the art style\n\nReference images: Image A = pose, Image B = style." },
+    { "type": "image", "data": "<BASE64_IMG_A>", "mime_type": "image/png" },
+    { "type": "image", "data": "<BASE64_IMG_B>", "mime_type": "image/png" }
+  ],
+  "response_modalities": ["image"]
 }
 ```
 

@@ -1,0 +1,21 @@
+{
+	"snapshot_id": "snap_2026-06-18T084914370Z_b9417d87da47",
+	"timestamp": "2026-06-18T08:49:14.374Z",
+	"skill_state_hash": "sha256-b9417d87da475324411a36a8adc305aa0b497dbd334a154e906cafe1ac672e22",
+	"workspace": "nicolasdao",
+	"skill": "tiny-gemini-image",
+	"dir_integrity": "sha256-9ae6cfe1370ab668b8dfda066b5c1aa7de56234080e4f81b183b4d1926aecef5",
+	"note": "pre-release: tiny-gemini-image",
+	"lock_entry": {
+		"version": "0.1.2",
+		"ref": "refs/tags/v0.1.2",
+		"commit": "6cd5a3ba73918ef293ee3397442c621e1ac94a34c9904d677503d04827e91e57",
+		"integrity": "sha256-831f425fd0ea986ff30db788898e2d23a3733dfc668523939ab0759bf4e62871",
+		"base_commit": "6cd5a3ba73918ef293ee3397442c621e1ac94a34c9904d677503d04827e91e57",
+		"base_integrity": "sha256-831f425fd0ea986ff30db788898e2d23a3733dfc668523939ab0759bf4e62871",
+		"requested_by": [
+			"__root__"
+		],
+		"dependencies": {}
+	}
+}

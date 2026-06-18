@@ -1,6 +1,6 @@
 {
 	"name": "tiny-gemini-image",
-	"version": "0.2.0",
+	"version": "0.1.2",
 	"description": "Teaches AI agents to use the tiny-gemini CLI image command for Gemini image generation, editing, and understanding via the npx CLI. Suite member of nicolasdao/tiny-gemini.",
 	"keywords": [
 		"ai",

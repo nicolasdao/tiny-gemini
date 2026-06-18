@@ -151,6 +151,8 @@ Image generation, editing, and understanding with 7 sub-commands.
 ```bash
 tiny-gemini image "a cat on the moon"                          # generate (default)
 tiny-gemini image generate "a cat" --count=3 --styles=watercolor,sketch
+tiny-gemini image generate "Use Image A for the pose, Image B for the style" \
+  --file pose.png --file style.png                             # reference images (compose/blend)
 tiny-gemini image edit photo.png "add sunglasses"
 tiny-gemini image describe photo.png
 tiny-gemini image story "a seed growing" --steps=4
@@ -159,7 +161,9 @@ tiny-gemini image pattern "geometric" --type=seamless
 tiny-gemini image diagram "login flow" --type=flowchart
 ```
 
-Key options: `--count`, `--styles`, `--variations`, `--steps`, `--style`, `--type`, `--aspect-ratio`, `--image-size`
+Key options: `--file` (reference images, repeatable), `--count`, `--styles`, `--variations`, `--steps`, `--style`, `--type`, `--aspect-ratio`, `--image-size`
+
+**Reference images:** pass up to 14 images with `--file` (repeatable) and refer to them in the prompt as **Image A, Image B, Image C…** (bound by `--file` order). Use `--file name=path` to label one — its name is added to the prompt so you can reference it directly. This follows [Google's published multi-image prompting guidance](https://blog.google/products-and-platforms/products/gemini/prompting-tips-nano-banana-pro/).
 
 ### tts
 

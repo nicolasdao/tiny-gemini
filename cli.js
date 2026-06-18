@@ -292,7 +292,7 @@ USAGE
   ${NAME} image [sub-command] [args] [options]
 
 SUB-COMMANDS
-  generate [prompt]        Generate image(s) (default)
+  generate [prompt]        Generate image(s); --file adds reference images (default)
   edit <file> [prompt]     Edit an existing image
   describe <file> [prompt] Describe/analyze an image
   story [prompt]           Multi-step story sequence
@@ -301,6 +301,9 @@ SUB-COMMANDS
   diagram [prompt]         Technical diagram generation
 
 OPTIONS
+  --file <path>        Reference image for generate (repeatable, up to 14).
+                       Bound to Image A, B, C… in --file order. Prefix with a
+                       label to name it: --file pose=person.png
   --count <n>          Number of images to generate
   --styles <list>      Comma-separated styles (e.g., watercolor,sketch)
   --variations <list>  Comma-separated variations (lighting,angle,mood,...)
@@ -311,9 +314,16 @@ OPTIONS
   --image-size <s>     Image size: 512, 1K, 2K, 4K (uppercase K required)
   --model <model>      Model (default: ${MODELS.image})
 
+REFERENCE IMAGES
+  Supply images with --file and refer to them in the prompt as Image A, B, C…
+  (in --file order). Use name=path to label a file; its name is added to the
+  prompt so you can reference it directly. Up to 14 images (model-dependent).
+
 EXAMPLES
   ${NAME} image "a banana wearing sunglasses"
   ${NAME} image generate "a cat" --count=3 --styles=watercolor,sketch
+  ${NAME} image generate "Use Image A for the pose, Image B for the art style" --file pose.png --file style.png
+  ${NAME} image generate "Put the logo from logo onto the bag in bag" --file logo=brand.png --file bag=tote.png
   ${NAME} image edit photo.png "add a hat"
   ${NAME} image describe photo.png
   ${NAME} image story "a seed growing" --steps=4
@@ -647,6 +657,22 @@ async function readBase64(path) {
 	return (await readFile(path)).toString('base64');
 }
 
+// `--file` is repeatable (parseArgs multiple:true → always an array when present).
+// Each value is a path, optionally prefixed with a label: "name=path". A leading
+// "name=" is only treated as a label when it looks like a bare identifier, so real
+// paths that happen to contain "=" are left intact.
+function fileArgs(values) {
+	const raw = values.file == null ? [] : (Array.isArray(values.file) ? values.file : [values.file]);
+	return raw.map((entry) => {
+		const eq = entry.indexOf('=');
+		if (eq > 0) {
+			const name = entry.slice(0, eq);
+			if (/^[A-Za-z0-9_-]+$/.test(name)) return { name, path: entry.slice(eq + 1) };
+		}
+		return { name: null, path: entry };
+	});
+}
+
 async function readPromptFiles(paths) {
 	const parts = [];
 	for (const p of paths) {
@@ -823,14 +849,16 @@ async function handlePrompt(prompt, values, config) {
 		textPrompt = textPrompt ? `${textPrompt}\n\n${fileContent}` : fileContent;
 	}
 
-	if (values.file) {
-		if (!(await exists(values.file))) die(`File not found: ${values.file}`);
-		const b64 = await readBase64(values.file);
-		const mime = extToMime(values.file);
-		body.input = [
-			{ type: 'text', text: textPrompt },
-			{ type: inputType(mime), data: b64, mime_type: mime },
-		];
+	const files = fileArgs(values);
+	if (files.length) {
+		const parts = [{ type: 'text', text: textPrompt }];
+		for (const f of files) {
+			if (!(await exists(f.path))) die(`File not found: ${f.path}`);
+			const b64 = await readBase64(f.path);
+			const mime = extToMime(f.path);
+			parts.push({ type: inputType(mime), data: b64, mime_type: mime });
+		}
+		body.input = parts;
 	} else {
 		body.input = textPrompt;
 	}
@@ -910,6 +938,64 @@ async function handleImage(args, values, config) {
 		case 'generate': {
 			const prompt = rest.join(' ');
 			if (!prompt) die('No prompt. Usage: tiny-gemini image "your prompt"');
+
+			// Reference-image generation. Per Google's prompting guidance, supply ONE
+			// text prompt first, then the image parts in order; the prompt refers to
+			// them as "Image A", "Image B", … bound by that order. We echo the
+			// A/B/C → file mapping, and when the user labels files (--file name=path)
+			// we append a legend so the model can bind both the letter and the name.
+			const refs = fileArgs(values);
+			if (refs.length) {
+				if (refs.length > 14) die(`Too many reference images (${refs.length}); the API supports up to 14.`);
+				if (values.count || values.styles || values.variations) {
+					log('Note: --count/--styles/--variations are ignored when reference images are supplied.');
+				}
+
+				const imageParts = [];
+				const mapping = [];
+				let hasNames = false;
+				for (let i = 0; i < refs.length; i++) {
+					const { name, path } = refs[i];
+					if (!(await exists(path))) die(`Reference image not found: ${path}`);
+					const mime = extToMime(path);
+					if (!mime.startsWith('image/')) die(`Reference must be an image: ${path} (${mime})`);
+					const b64 = await readBase64(path);
+					imageParts.push({ type: 'image', data: b64, mime_type: mime });
+					const letter = String.fromCharCode(65 + i); // A, B, C…
+					if (name) hasNames = true;
+					mapping.push({ letter, name, path });
+				}
+
+				// Surface the binding so the user knows which letter is which file.
+				for (const m of mapping) log(`Image ${m.letter} = ${m.name ? `${m.name} (${m.path})` : m.path}`);
+
+				let finalPrompt = prompt;
+				if (hasNames) {
+					const legend = mapping.map(m => m.name ? `Image ${m.letter} = ${m.name}` : `Image ${m.letter}`).join(', ');
+					finalPrompt = `${prompt}\n\nReference images: ${legend}.`;
+				}
+
+				const body = {
+					model,
+					input: [{ type: 'text', text: finalPrompt }, ...imageParts],
+					response_modalities: ['image'],
+				};
+				if (hasImageConfig) body.response_format = imageResponseFormat;
+
+				log(`Generating image from ${refs.length} reference image(s)...`);
+				if (config.jsonOutput) {
+					console.log(JSON.stringify(await callAPI(imgConfig, body), null, 2));
+				} else {
+					const resp = await callAPI(imgConfig, body);
+					const out = extractOutputs(resp);
+					for (const img of out.images) {
+						await saveOutput(config.outputDir, 'image', img.data, img.mime, config);
+					}
+					for (const t of out.text) console.log(t);
+				}
+				break;
+			}
+
 			const count = values.count ? parseInt(values.count) : 0;
 			const styles = values.styles ? values.styles.split(',').map(s => s.trim()) : null;
 			const variations = values.variations ? values.variations.split(',').map(s => s.trim()) : null;
@@ -1159,11 +1245,12 @@ async function handleRaw(jsonStr, values, config) {
 	if (jsonStr) {
 		body = tryJSON(jsonStr);
 		if (!body) die('Invalid JSON argument');
-	} else if (values.file) {
-		if (!(await exists(values.file))) die(`File not found: ${values.file}`);
-		const content = await readFile(values.file, 'utf-8');
+	} else if (fileArgs(values).length) {
+		const path = fileArgs(values)[0].path;
+		if (!(await exists(path))) die(`File not found: ${path}`);
+		const content = await readFile(path, 'utf-8');
 		body = tryJSON(content);
-		if (!body) die(`Invalid JSON in file: ${values.file}`);
+		if (!body) die(`Invalid JSON in file: ${path}`);
 	} else {
 		const stdin = await readStdin();
 		if (stdin) {
@@ -1265,7 +1352,7 @@ async function main() {
 			'prompt-file': { type: 'string', multiple: true },
 			'output-file': { type: 'string' },
 			'output-format': { type: 'string' },
-			file: { type: 'string' },
+			file: { type: 'string', multiple: true },
 			system: { type: 'string' },
 			schema: { type: 'string' },
 			voice: { type: 'string' },

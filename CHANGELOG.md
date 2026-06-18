@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Reference images for `image generate`** — `--file` is now repeatable (up to 14) on the `image generate` sub-command, letting you compose, blend, or style-transfer from multiple input images. Images are bound to **Image A, Image B, Image C…** by `--file` order and the prompt refers to them by those labels, following Google's published multi-image prompting guidance (one text prompt first, then the image parts; each image given an explicit role). Use `--file name=path` to label a file — its name is appended to the prompt as a legend so the prompt can reference it by name. The CLI prints the `Image A = <file>` mapping to stderr. Built as an `input` array of `[{type:'text'}, {type:'image'}, …]` (the existing multimodal shape, with multiple images). `--count`/`--styles`/`--variations` are ignored when reference images are present. As a side effect, `--file` is now also repeatable on the default `prompt` command (multiple multimodal attachments)
+
 ## [2.0.1] - 2026-06-08
 
 ### Changed

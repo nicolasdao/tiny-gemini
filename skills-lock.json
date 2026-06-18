@@ -1,6 +1,6 @@
 {
 	"lockVersion": 2,
-	"generatedAt": "2026-06-08T05:38:32.030Z",
+	"generatedAt": "2026-06-18T08:49:54.599Z",
 	"skills": {
 		"happyskillsai/happyskills": {
 			"version": "2.5.3",
@@ -142,12 +142,12 @@
 			"type": "skill"
 		},
 		"nicolasdao/tiny-gemini-image": {
-			"version": "0.1.2",
-			"ref": "refs/tags/v0.1.2",
-			"commit": "6cd5a3ba73918ef293ee3397442c621e1ac94a34c9904d677503d04827e91e57",
-			"integrity": "sha256-831f425fd0ea986ff30db788898e2d23a3733dfc668523939ab0759bf4e62871",
-			"base_commit": "6cd5a3ba73918ef293ee3397442c621e1ac94a34c9904d677503d04827e91e57",
-			"base_integrity": "sha256-831f425fd0ea986ff30db788898e2d23a3733dfc668523939ab0759bf4e62871",
+			"version": "0.2.0",
+			"ref": "refs/tags/v0.2.0",
+			"commit": "ba0502a44dc81f17fcbb527252b22a830c3e2dc329685dfcd6cbaa53bb6ce006",
+			"integrity": "sha256-6891f8757ceede536137c16b3616336c722afe387876514a07e2cebad473fb68",
+			"base_commit": "ba0502a44dc81f17fcbb527252b22a830c3e2dc329685dfcd6cbaa53bb6ce006",
+			"base_integrity": "sha256-6891f8757ceede536137c16b3616336c722afe387876514a07e2cebad473fb68",
 			"requested_by": [
 				"__root__"
 			],
