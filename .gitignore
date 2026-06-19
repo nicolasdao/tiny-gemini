@@ -2,3 +2,10 @@ node_modules/
 tiny-gemini-output/
 .DS_Store
 *.log
+
+# Python bytecode caches (e.g. init-doc skill scripts)
+__pycache__/
+*.py[cod]
+
+# HappySkills transient publish snapshots
+.happyskills/snapshots/
