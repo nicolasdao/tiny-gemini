@@ -67,7 +67,7 @@ npx tiny-gemini image edit photo.png "add sunglasses"
 npx tiny-gemini image edit logo.png "change the background to blue"
 ```
 
-First argument after `edit` is the file path, the rest is the edit prompt. Supports `--aspect-ratio`, `--image-size`, and the batch/output options above (e.g. `--count=2` for two edit variants).
+First argument after `edit` is the file path, the rest is the edit prompt. Supports `--aspect-ratio`, `--image-size`, and the batch/output options above — including `--count` (e.g. `--count=2` for two edit variants) and `--styles`/`--variations`, which fan the edit across styles/variations the same way they do for `generate` (e.g. `image edit photo.png "add a hat" --styles=watercolor,sketch` → two styled edits).
 
 ## describe
 

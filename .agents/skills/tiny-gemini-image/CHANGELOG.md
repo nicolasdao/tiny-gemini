@@ -5,6 +5,12 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-06-19
+
+### Added
+
+- Document that `edit` also accepts `--styles`/`--variations` (not just `--count`) — they fan an edit across styles/variations exactly as they do for `generate` (e.g. `image edit photo.png "add a hat" --styles=watercolor,sketch` → two styled edits). Previously the skill scoped `--styles`/`--variations` to `generate` only, under-documenting a working `edit` capability. Updated the SKILL.md batch table and the `edit` section of `references/image-commands.md`.
+
 ## [0.3.1] - 2026-06-18
 
 ### Fixed

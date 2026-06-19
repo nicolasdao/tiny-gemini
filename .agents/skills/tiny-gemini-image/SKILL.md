@@ -88,7 +88,7 @@ AI image generation is non-deterministic — the productive path is to generate 
 | Flag | What it does |
 |------|--------------|
 | `--count <n>` | Generate N candidates of the same prompt. Works on `generate`, `edit`, `icon`, `pattern`, `diagram`. For `story`, length is set by `--steps` instead (`--count` is ignored there). |
-| `--styles <list>` / `--variations <list>` | Fan one prompt across styles/variations (`generate`). |
+| `--styles <list>` / `--variations <list>` | Fan one prompt across styles/variations (`generate` and `edit`). |
 | `--concurrency <n>` | Max parallel API calls in a batch (default 4). The image API returns **one image per call** (no multi-image/`candidate_count` parameter), so a batch of N is N independent requests — run concurrently, not serially. Lower it if you hit rate limits; raise it on generous quotas. A single failed call no longer aborts the batch. |
 | `--out <name>` | Base output filename (`_N` index appended for batches). |
 | `--json` | Print a structured result envelope to stdout — deterministic paths, real pixel width/height, bytes, format, estimated cost, and the reference mapping. **Use this to chain reliably instead of parsing stderr.** |
