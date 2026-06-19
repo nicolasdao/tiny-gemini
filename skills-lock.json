@@ -1,6 +1,6 @@
 {
 	"lockVersion": 2,
-	"generatedAt": "2026-06-18T08:49:54.599Z",
+	"generatedAt": "2026-06-19T04:13:40.041Z",
 	"skills": {
 		"happyskillsai/happyskills": {
 			"version": "2.5.3",
@@ -33,39 +33,13 @@
 			],
 			"dependencies": {}
 		},
-		"nicolasdao/init-context": {
-			"version": "1.2.0",
-			"ref": "refs/tags/v1.2.0",
-			"commit": "d5da5b0f76080e7245b0e23c1b961e03a0bce9c684d7db3ed9dd95eca83ec081",
-			"integrity": "sha256-417c5dc3e0b59f785fd8af166bbaa757f4bfac8343d7365708342e84d386bd01",
-			"base_commit": "d5da5b0f76080e7245b0e23c1b961e03a0bce9c684d7db3ed9dd95eca83ec081",
-			"base_integrity": "sha256-417c5dc3e0b59f785fd8af166bbaa757f4bfac8343d7365708342e84d386bd01",
-			"requested_by": [
-				"__root__"
-			],
-			"dependencies": {},
-			"type": "skill"
-		},
-		"nicolasdao/update-doc": {
-			"version": "1.3.0",
-			"ref": "refs/tags/v1.3.0",
-			"commit": "ccb24e080689e67eab4a7f7595af8955903c9253b28210f4ed5f9b6d72a2f0e8",
-			"integrity": "sha256-e60d3df49530031a5f663aed8a6999fda6b4caab4deba249ec7cfd5ec65f085c",
-			"base_commit": "ccb24e080689e67eab4a7f7595af8955903c9253b28210f4ed5f9b6d72a2f0e8",
-			"base_integrity": "sha256-e60d3df49530031a5f663aed8a6999fda6b4caab4deba249ec7cfd5ec65f085c",
-			"requested_by": [
-				"__root__"
-			],
-			"dependencies": {},
-			"type": "skill"
-		},
 		"nicolasdao/tiny-gemini": {
-			"version": "2.0.2",
-			"ref": "refs/tags/v2.0.2",
-			"commit": "8b1a100696ca49890879acb5b12861a4fc83d64be37589ef1b03a2c817570245",
-			"integrity": "sha256-e63caf2dcbb75db551f4ac2b59bcca030440387243e13fe02a14fa4e80235af9",
-			"base_commit": "8b1a100696ca49890879acb5b12861a4fc83d64be37589ef1b03a2c817570245",
-			"base_integrity": "sha256-e63caf2dcbb75db551f4ac2b59bcca030440387243e13fe02a14fa4e80235af9",
+			"version": "2.0.3",
+			"ref": "refs/tags/v2.0.3",
+			"commit": "f7cb6be429b1cf12ac8c48b67fa5cc0a0e78de2c6d10ae8f62caca8adff2d57a",
+			"integrity": "sha256-def00c5ee6bbb707abba19fd857e82e1d27b2ebd28b256e3023ee24b8513cf09",
+			"base_commit": "f7cb6be429b1cf12ac8c48b67fa5cc0a0e78de2c6d10ae8f62caca8adff2d57a",
+			"base_integrity": "sha256-def00c5ee6bbb707abba19fd857e82e1d27b2ebd28b256e3023ee24b8513cf09",
 			"requested_by": [
 				"__root__"
 			],
@@ -77,13 +51,14 @@
 			}
 		},
 		"happyskillsai/happyskills-design": {
-			"version": "0.10.2",
-			"ref": "refs/tags/v0.10.2",
-			"commit": "c4cb1be549f24b9a28b9b08dde980a49bb55f76041d36d0b922aef2f8f7fbb0e",
-			"integrity": "sha256-4a8877b9226195533beb2b411ff4db132101c2f665a8951683c4874a992635af",
-			"base_commit": "c4cb1be549f24b9a28b9b08dde980a49bb55f76041d36d0b922aef2f8f7fbb0e",
-			"base_integrity": "sha256-4a8877b9226195533beb2b411ff4db132101c2f665a8951683c4874a992635af",
+			"version": "0.11.1",
+			"ref": "refs/tags/v0.11.1",
+			"commit": "5c0c54512476530fdfee9778510b80225c36839daea2687d75edcf9eb6bf33d6",
+			"integrity": "sha256-4b3d268350cbe7b7338cb5e165ce2d8c9137629715acd573fcbed945c5684dd0",
+			"base_commit": "5c0c54512476530fdfee9778510b80225c36839daea2687d75edcf9eb6bf33d6",
+			"base_integrity": "sha256-4b3d268350cbe7b7338cb5e165ce2d8c9137629715acd573fcbed945c5684dd0",
 			"requested_by": [
+				"nicolasdao/create-release-skill",
 				"happyskillsai/happyskills"
 			],
 			"dependencies": {},
@@ -129,25 +104,27 @@
 			"type": "skill"
 		},
 		"nicolasdao/create-release-skill": {
-			"version": "0.1.0",
-			"ref": "refs/tags/v0.1.0",
-			"commit": "cff85c7d4b8c5661ea86c418dcfe62981c5d156309683154e7a50c3d27c47eb1",
+			"version": "0.3.0",
+			"ref": "refs/tags/v0.3.0",
+			"commit": "8e1215ddffb7e97804e52cd466571ec5a0d92bc312892664eb75be18faaaf2a4",
 			"integrity": "sha256-f6cd172cdbc24a5aadd5eaea7ea557b6b5253296e5e30e96d1ba36249ebc4e50",
-			"base_commit": "cff85c7d4b8c5661ea86c418dcfe62981c5d156309683154e7a50c3d27c47eb1",
+			"base_commit": "8e1215ddffb7e97804e52cd466571ec5a0d92bc312892664eb75be18faaaf2a4",
 			"base_integrity": "sha256-f6cd172cdbc24a5aadd5eaea7ea557b6b5253296e5e30e96d1ba36249ebc4e50",
 			"requested_by": [
 				"__root__"
 			],
-			"dependencies": {},
+			"dependencies": {
+				"happyskillsai/happyskills-design": "^0.9.0"
+			},
 			"type": "skill"
 		},
 		"nicolasdao/tiny-gemini-image": {
-			"version": "0.2.0",
-			"ref": "refs/tags/v0.2.0",
-			"commit": "ba0502a44dc81f17fcbb527252b22a830c3e2dc329685dfcd6cbaa53bb6ce006",
-			"integrity": "sha256-6891f8757ceede536137c16b3616336c722afe387876514a07e2cebad473fb68",
-			"base_commit": "ba0502a44dc81f17fcbb527252b22a830c3e2dc329685dfcd6cbaa53bb6ce006",
-			"base_integrity": "sha256-6891f8757ceede536137c16b3616336c722afe387876514a07e2cebad473fb68",
+			"version": "0.3.2",
+			"ref": "refs/tags/v0.3.2",
+			"commit": "7e3bb731c425997a299296e0a31f1cffae7c1ed2080a4f6fda5ce6cece9ee1ef",
+			"integrity": "sha256-c9a2f217b07025ee7da33014a867b86ee043b14d700697deb8b73a9787c42197",
+			"base_commit": "7e3bb731c425997a299296e0a31f1cffae7c1ed2080a4f6fda5ce6cece9ee1ef",
+			"base_integrity": "sha256-c9a2f217b07025ee7da33014a867b86ee043b14d700697deb8b73a9787c42197",
 			"requested_by": [
 				"__root__"
 			],
@@ -166,16 +143,17 @@
 			"dependencies": {}
 		},
 		"nicolasdao/tiny-gemini-research": {
-			"version": "0.1.0",
-			"ref": "refs/tags/v0.1.0",
-			"commit": "beafd3a15e226d1d5db4ae63b55f01ea66880a94e21c9e24fe316ab3e5658145",
+			"version": "0.1.1",
+			"ref": "refs/tags/v0.1.1",
+			"commit": "b930764b40afe5ab95d1387572a57722f7e2fc21d93d9e884637fbcb6ce7dede",
 			"integrity": "sha256-168b01bb28d96e5f6918558b533906d4afc27da741464b66df4c3f60173b2c45",
-			"base_commit": "beafd3a15e226d1d5db4ae63b55f01ea66880a94e21c9e24fe316ab3e5658145",
+			"base_commit": "b930764b40afe5ab95d1387572a57722f7e2fc21d93d9e884637fbcb6ce7dede",
 			"base_integrity": "sha256-168b01bb28d96e5f6918558b533906d4afc27da741464b66df4c3f60173b2c45",
 			"requested_by": [
 				"__root__"
 			],
-			"dependencies": {}
+			"dependencies": {},
+			"type": "skill"
 		},
 		"nicolasdao/tiny-gemini-models": {
 			"version": "0.1.2",
@@ -198,6 +176,96 @@
 			"base_integrity": "sha256-7fced0c5770b10e8b1b5d1cf026b20a52a642c4bf8db6b357f0cd1519134cdf3",
 			"requested_by": [
 				"happyskillsai/happyskills"
+			],
+			"dependencies": {},
+			"type": "skill"
+		},
+		"nicolasdao/project-memory": {
+			"version": "0.7.1",
+			"ref": "refs/tags/v0.7.1",
+			"commit": "1b5272438cd16dec3f36a33e7b487e5fe4ee79eac16379767f7d8aa8edc3c521",
+			"integrity": "sha256-0da6d091d8c0fcb4b0a5c164854a1df1359e315886d6fdb5f50df106f2b807c1",
+			"base_commit": "1b5272438cd16dec3f36a33e7b487e5fe4ee79eac16379767f7d8aa8edc3c521",
+			"base_integrity": "sha256-0da6d091d8c0fcb4b0a5c164854a1df1359e315886d6fdb5f50df106f2b807c1",
+			"requested_by": [
+				"__root__"
+			],
+			"dependencies": {
+				"nicolasdao/init-doc": "*",
+				"nicolasdao/update-doc": "*",
+				"nicolasdao/refactor-doc": "*",
+				"nicolasdao/init-context": "*",
+				"nicolasdao/init-mission": "*"
+			},
+			"type": "skill"
+		},
+		"nicolasdao/init-doc": {
+			"version": "1.9.0",
+			"ref": "refs/tags/v1.9.0",
+			"commit": "891c30ed81de9183fcc690b9432028ba621ce106927fea02b8e842bb104f2002",
+			"integrity": "sha256-cae686095ea274b25944d2e091e854992d2c32c25a13974c423d87062329cfb9",
+			"base_commit": "891c30ed81de9183fcc690b9432028ba621ce106927fea02b8e842bb104f2002",
+			"base_integrity": "sha256-cae686095ea274b25944d2e091e854992d2c32c25a13974c423d87062329cfb9",
+			"requested_by": [
+				"nicolasdao/project-memory"
+			],
+			"dependencies": {
+				"nicolasdao/init-mission": "*"
+			},
+			"type": "skill"
+		},
+		"nicolasdao/update-doc": {
+			"version": "1.9.0",
+			"ref": "refs/tags/v1.9.0",
+			"commit": "2bd7582359e5dcf2b32518b6ca3610db3809692175d3c3be92fd10e853f11536",
+			"integrity": "sha256-84c7605466667a86254bd7c94847329aa3abbdb4598992e10ee4260076a8a4bc",
+			"base_commit": "2bd7582359e5dcf2b32518b6ca3610db3809692175d3c3be92fd10e853f11536",
+			"base_integrity": "sha256-84c7605466667a86254bd7c94847329aa3abbdb4598992e10ee4260076a8a4bc",
+			"requested_by": [
+				"nicolasdao/project-memory"
+			],
+			"dependencies": {
+				"nicolasdao/init-doc": "*"
+			},
+			"type": "skill"
+		},
+		"nicolasdao/refactor-doc": {
+			"version": "0.8.0",
+			"ref": "refs/tags/v0.8.0",
+			"commit": "93b9f8fa415404f22a377205ebf1b9b16eab89ab35c89b3f281ba999ce355d93",
+			"integrity": "sha256-1bdac1a30b57d8685838f19b951c16840e9c8c97498edd3fd307bb5ec9392a68",
+			"base_commit": "93b9f8fa415404f22a377205ebf1b9b16eab89ab35c89b3f281ba999ce355d93",
+			"base_integrity": "sha256-1bdac1a30b57d8685838f19b951c16840e9c8c97498edd3fd307bb5ec9392a68",
+			"requested_by": [
+				"nicolasdao/project-memory"
+			],
+			"dependencies": {
+				"nicolasdao/init-doc": "*"
+			},
+			"type": "skill"
+		},
+		"nicolasdao/init-context": {
+			"version": "1.8.0",
+			"ref": "refs/tags/v1.8.0",
+			"commit": "678896c5c845bf2b7aee358914ad5aebeb1ab6aa0db3666f6ceba675fe0890fb",
+			"integrity": "sha256-80ae31a8f7978ceaf87475a32b42c2d12e2b604eaa6d6bab23f42d72a05ec93f",
+			"base_commit": "678896c5c845bf2b7aee358914ad5aebeb1ab6aa0db3666f6ceba675fe0890fb",
+			"base_integrity": "sha256-80ae31a8f7978ceaf87475a32b42c2d12e2b604eaa6d6bab23f42d72a05ec93f",
+			"requested_by": [
+				"nicolasdao/project-memory"
+			],
+			"dependencies": {},
+			"type": "skill"
+		},
+		"nicolasdao/init-mission": {
+			"version": "0.6.0",
+			"ref": "refs/tags/v0.6.0",
+			"commit": "092965f628c762eec1473a9a83344c2609fbb3edf5edf6a282aeecc59e6aaa89",
+			"integrity": "sha256-9765c5507869b5df92ec2e5be3366a6af6d17d1a86e646e066530906791f7320",
+			"base_commit": "092965f628c762eec1473a9a83344c2609fbb3edf5edf6a282aeecc59e6aaa89",
+			"base_integrity": "sha256-9765c5507869b5df92ec2e5be3366a6af6d17d1a86e646e066530906791f7320",
+			"requested_by": [
+				"nicolasdao/project-memory"
 			],
 			"dependencies": {},
 			"type": "skill"

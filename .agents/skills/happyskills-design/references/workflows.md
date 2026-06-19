@@ -160,7 +160,7 @@ For each area, note the file, location, and specific recommendation.
 
 6. **Frontmatter completeness** — Are `name` and `description` present? Is `allowed-tools` set appropriately? Is `disable-model-invocation` set correctly for the skill's purpose?
 
-7. **Content structure** — Is SKILL.md under 500 lines? Are supporting files under 400 lines each? Is content organized into `references/`, `scripts/`, `assets/` appropriately? Are there files dumped at root that should be in subdirectories?
+7. **Content structure** — Is SKILL.md under 500 lines? Are supporting files under 400 lines each? Is content organized into `references/`, `scripts/`, `assets/` appropriately? Are there files dumped at root that should be in subdirectories? If the skill splits gotchas into `references/gotchas/<domain>.md`, verify the `## Gotchas` index in SKILL.md links every domain file and every link resolves (hub↔domain sync — an unlinked gotcha file is invisible to the agent).
 
 8. **DRY compliance** — Scan all files for content that appears in more than one file or more than once within the same file. For each duplication found, classify it before flagging:
 
@@ -176,7 +176,7 @@ For each area, note the file, location, and specific recommendation.
 
    **Guiding principle:** DRY is a means to maintainability, not an end in itself. When deduplicating would degrade execution reliability (by adding indirection hops the agent may fail to follow), the duplication is the better trade-off.
 
-9. **Anti-pattern scan** — Check against the full anti-pattern list in [skill-authoring.md](skill-authoring.md): vague description, oversized files, missing constraints section, missing verification steps, executable code in markdown, deeply nested references, etc.
+9. **Anti-pattern scan** — Check against the full anti-pattern list in [skill-authoring.md](skill-authoring.md): vague description, oversized files, missing constraints section, missing gotchas section (on a knowledge- or domain-heavy skill), missing verification steps, executable code in markdown, restating obvious default behavior, deeply nested references, etc.
 
 10. **skill.json completeness** (if HappySkills-managed) — Are `description`, `dependencies`, and `systemDependencies` set correctly? Does the skill.json `description` differ from the SKILL.md `description` (they serve different purposes)?
 

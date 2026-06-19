@@ -329,6 +329,8 @@ Before publishing a skill:
 node_modules, .git, .env, .env.*, .DS_Store, .tmp, *.log
 ```
 
+> **Per-user `config.json` is NOT auto-excluded.** If a skill uses the config.json setup pattern ([skill-authoring.md § 11, Pattern 6](skill-authoring.md)), that file holds per-install values (a channel, a project ID) — not authored content. Publish an empty or template config (or omit the file), never your own filled-in values, and never secrets — secrets belong in `.env`, which *is* excluded.
+
 ---
 
 ## 8. Installation Structure

@@ -683,6 +683,12 @@ Use ultrathink to analyze the architectural trade-offs...
     - **Exceptions**: Single-line cross-references ("see Section X") are not duplication. Short contextual reminders (1-2 lines restating a critical rule in a workflow step) are acceptable when they reinforce a safety constraint — but the authoritative definition must still live in one place.
     - **When NOT to extract**: If two blocks look similar but have meaningful contextual differences (different actions, different assumptions about starting state), keep them separate. False deduplication that hides genuine nuances is worse than the repetition it eliminates.
 14. **Translate tool output for the user — don't transcribe it.** Skills that wrap a CLI command and surface its JSON output **must prescribe the user-facing phrasing, not just the agent behavior.** A "Status Values" table that lists `Status | Meaning | Action` is a *behavior* prescription. To also be a *communication* prescription, every status value, response key, or aggregate field the agent will present to the user needs an explicit plain-English opening sentence the agent should use verbatim. Without this, under uncertainty an LLM agent defaults to enumerating the JSON's vocabulary (`status: diverged`, `base_commit`, `merge_parents` …) — producing a wall of jargon for the user. The fix is structural: add a "Plain-English meaning (use as your opening sentence)" column to every status-value table, and frame the section with an explicit rule ("Lead with the plain-English meaning; quote JSON values only if the user asks"). See `happyskills-sync` SKILL.md Section 2 for the reference implementation. This rule applies to **every** skill that interprets command output for a user — `validate`, `status`, `check`, `pull`, `diff`, `publish`, anything that returns a status field or a result code.
+15. **Capture hard-won failure knowledge in a Gotchas section** — The highest-signal content in most skills is the set of counterintuitive, domain-specific facts Claude gets *wrong* by default: the table that's append-only so the row you want is the highest version, not the most recent `created_at`; the field called `@request_id` in one service and `trace_id` in another; the staging endpoint that returns 200 even when the webhook never fired. This is distinct from the Constraints section (#3): constraints are *prohibitions* ("never do X"), whereas gotchas are *corrections to the model's wrong priors* about how the domain actually behaves. Seed the section with the first failure you hit and grow it each time the skill trips on a new edge case — most strong skills started as a few lines plus one gotcha. The Skill Update Workflow exists precisely to fold session-discovered gotchas back into the skill. **Where they live scales with how many you have, and SKILL.md must always link to them:**
+    - **A few:** an inline `## Gotchas` section in SKILL.md.
+    - **Many, or domain-split:** keep that section as a *thin index* (one line per area) and move the detail into `references/gotchas/<domain>.md`, linked **directly** from the index — one hop, so it respects the reference-depth rule (§ 7) and stays off SKILL.md's hard 500-line budget.
+    - **The index is load-bearing:** a gotcha file SKILL.md doesn't point to is one the agent never loads. Keep it in sync (every domain file linked, every link resolves — the Audit Workflow checks this), and don't split until the inline section is genuinely unwieldy (over-structuring three gotchas is #17 in miniature). This mirrors the hub+domain gotchas pattern the project's docs use, folded into a skill's single always-loaded entry point.
+16. **Don't state the obvious — encode only the non-default** — Claude already writes code competently and can read the codebase, so body instructions that restate what the model would do anyway spend context budget without adding signal *and* dilute the high-value content around them. Every line should push Claude off a default it would otherwise take: an org-specific convention, a taste judgment (the frontend-design skill earns its keep by steering away from the default Inter-font-and-purple-gradient look, not by explaining CSS), a non-obvious gotcha. Litmus test — if a sentence would be true of any competent engineer working with no skill loaded, cut it. This is the body-content counterpart to the description discipline in #2 and the length budget in § 5: signal density, not volume.
+17. **Give judgment room — don't railroad** — A skill is reused across situations its author never anticipated, so rigid, over-specified step sequences make it brittle: the moment reality diverges from the assumed path, the skill stalls or forces a wrong action. Prefer handing Claude the *goal plus the context it needs to decide* over a fixed script it must follow blindly. The exception is deliberate and important — where an operation is destructive, irreversible, or must be deterministic (releases, migrations, anything safety-critical, cf. #4 and #12), prescribe it tightly and verify each step; there, removing the model's discretion is the whole point. Calibrate by stakes: tight rails on the dangerous path, room to adapt everywhere else.
 
 | Anti-Pattern | Problem | Fix |
 |---|---|---|
@@ -702,6 +708,10 @@ Use ultrathink to analyze the architectural trade-offs...
 | Deeply nested reference chains (A → B → C → D) | Agent may lose context traversing multiple hops | Keep references one level deep from SKILL.md. Subdirectories are fine, but avoid chains of files referencing other files |
 | Same procedure or rule copy-pasted across multiple files | Content drifts out of sync when one copy is updated but others are forgotten | Extract to a single location (Common Procedures section or authoritative reference file) and reference it from each workflow. See Best Practice #13 |
 | Skill describes CLI status values or result codes without prescribing the plain-English opening sentence the agent should use | Under uncertainty, the agent transcribes the JSON vocabulary (`status: diverged`, `base_commit`, `merge_parents`) into prose — producing a wall of jargon for the user | Add a "Plain-English meaning (use as your opening sentence)" column to every status-value table, and frame the section with "Lead with the plain-English meaning; quote JSON values only if the user asks." See Best Practice #14 and `happyskills-sync` SKILL.md Section 2 for the reference implementation |
+| No Gotchas section in a knowledge- or domain-heavy skill | The skill's highest-signal content — the model's wrong priors about the domain — is never corrected, so Claude repeats the same default mistakes | Add a Gotchas section; seed it with the first observed failure and grow it over time. Distinct from Constraints (prohibitions vs. prior-corrections). See Best Practice #15 |
+| Gotchas that outgrow SKILL.md, or sit in `references/` unlinked from it | Either bloats SKILL.md toward the 500-line silent-death cap, or leaves a gotcha file the agent never loads (unlinked = invisible) | Move the detail to `references/gotchas/<domain>.md` and link it directly from a thin `## Gotchas` index in SKILL.md (one hop). See Best Practice #15 |
+| Body content that restates what Claude already does by default | Wastes context budget and dilutes the high-signal content around it | Cut it — encode only what pushes Claude off a default (conventions, taste calls, gotchas). See Best Practice #16 |
+| Rigid, over-specified steps on a non-critical path | Brittle — the skill stalls or misfires the moment the situation deviates from the author's assumed path | Give the goal plus context and let Claude adapt; reserve tight rails for destructive or deterministic operations. See Best Practice #17 |
 
 ---
 
@@ -813,6 +823,29 @@ Instead of one large skill:
 ```
 
 Each skill is focused, small, and has a precise description for accurate auto-invocation.
+
+---
+
+### Pattern 6 — Setup via config.json (per-user configuration)
+
+Some skills need setup values the author can't know in advance — a Slack channel to post to, a project ID, a dashboard URL, an account name. Hard-coding them breaks reuse; re-asking on every run is annoying. The convention is a `config.json` in the skill directory that the skill reads at the start of its workflow, fills in by asking the user the first time, and reuses thereafter.
+
+```markdown
+## Setup
+
+At the start, read `${CLAUDE_SKILL_DIR}/config.json`.
+If `slack_channel` is missing or empty, ask the user which channel to post to
+(use the AskUserQuestion tool for a structured prompt), then write their answer
+back to config.json before continuing.
+```
+
+```json
+{ "slack_channel": "" }
+```
+
+- **It is a convention, not a spec feature.** The Agent Skills spec defines no `config.json` — it simply permits arbitrary files in a skill directory, and `.json` is a recognized resource extension. The runtime gives the file no special meaning; your SKILL.md instructions are what make it load-and-persist setup state. (Distinct from `scripts/`, which holds executable code, and `assets/`, which holds output templates — this is mutable runtime state.)
+- **Pair it with AskUserQuestion** for the first-run prompt so the user picks from structured choices instead of typing free-text.
+- **It holds per-install state, not authored content.** Keep your own filled-in values out of the published artifact and never put secrets in it (secrets belong in `.env`, which HappySkills already excludes). See [happyskills-conventions.md § 7](happyskills-conventions.md).
 
 ---
 

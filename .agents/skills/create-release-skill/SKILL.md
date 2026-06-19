@@ -1,7 +1,6 @@
 ---
 name: create-release-skill
-description: Create a release skill for any project. Analyzes a project directory to discover its type and versioning strategy, gathers release requirements through conversation, then generates a tailored release skill with changelog management, semantic versioning, and git integration. Use when setting up release automation, adding release workflows, or creating release skills for monorepo sub-projects.
-disable-model-invocation: true
+description: Release skills — generate a tailored release skill for a project by reverse-engineering its type, versioning, and conventions. Use when setting up release automation or adding release workflows to a project. Not for running an existing release.
 arguments: [project_path, instructions]
 argument-hint: "[project-path] [\"custom instructions\"]"
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
@@ -38,13 +37,12 @@ Verify these hard requirements before anything else. If any fail, stop and show 
 
 1. **Node.js and npx**: Run `npx --version`. If it fails, tell the user to install Node.js 18+.
 2. **HappySkills CLI**: Run `npx happyskills --version`. If it fails, tell the user to run `npx happyskills setup`.
-3. **HappySkills skill**: Search for the HappySkills SKILL.md in these locations (check in order, stop at first match):
-   - `.agents/skills/happyskills/SKILL.md` (project-level)
-   - `~/.agents/skills/happyskills/SKILL.md` (global)
-   - `.claude/skills/happyskills/SKILL.md` (project-level, Claude convention)
-   - `~/.claude/skills/happyskills/SKILL.md` (global, Claude convention)
-   If not found, tell the user to run `npx happyskills setup`.
-   Record the located path — it will be needed in Phase 3 for reading skill-authoring best practices.
+3. **HappySkills Design skill**: Phase 3 delegates all scaffolding and structural best practices to the `happyskills-design` skill (declared in this skill's `dependencies`). Confirm it is installed by checking for its SKILL.md in these locations (check in order, stop at first match):
+   - `.agents/skills/happyskills-design/SKILL.md` (project-level)
+   - `~/.agents/skills/happyskills-design/SKILL.md` (global)
+   - `.claude/skills/happyskills-design/SKILL.md` (project-level, Claude convention)
+   - `~/.claude/skills/happyskills-design/SKILL.md` (global, Claude convention)
+   If not found, tell the user to run `npx happyskills install happyskillsai/happyskills-design` (or `npx happyskills setup` for the full HappySkills family). Do NOT fall back to authoring the skill structure by hand — `happyskills-design` owns skill form and structure.
 4. **Project path**: Verify `$project_path` exists and is a directory. (Already resolved in Step 0 if it was empty.)
 5. **Git**: Run `git --version`. Git is a hard requirement for all release skills.
 
@@ -164,44 +162,13 @@ Use AskUserQuestion for final confirmation before generating.
 
 Derive from the project: `release-<project-name>` (e.g., `release-frontend`, `release-web-apis`). Confirm with the user via AskUserQuestion.
 
-### 3.2 Scaffold with HappySkills
+> **Phase 3 splits into content and form.** `create-release-skill` owns the **content** of the release skill (what it does — assembled in 3.2). `happyskills-design` owns the **form** (how it is scaffolded and structured — delegated in 3.3). Verify the result in 3.4.
 
-Run `npx happyskills init` from the **project root directory** (the directory containing `.agents/` and/or `.claude/`). Never run it from inside `.agents/skills/`, `.claude/skills/`, or any subdirectory.
+### 3.2 Assemble the release-skill content spec
 
-```bash
-npx happyskills init <skill-name>
-```
+This is `create-release-skill`'s realm. Produce a written brief that `happyskills-design` will shape into a well-formed skill in 3.3. The brief MUST capture three things:
 
-#### 3.2.1 Verify Scaffold Location
-
-After `happyskills init` completes, verify the output landed correctly:
-
-1. The skill directory exists at `.agents/skills/<skill-name>/` (the canonical location)
-2. A symlink exists at `.claude/skills/<skill-name>` pointing to `../../.agents/skills/<skill-name>`
-3. The symlink is relative, not absolute (check with `ls -la .claude/skills/<skill-name>`)
-
-If any check fails, the init was run from the wrong directory. Delete the incorrectly placed files and re-run from the project root.
-
-### 3.3 Read Skill-Authoring Best Practices
-
-Before writing any content, read the HappySkills skill-authoring reference located during pre-flight:
-
-```
-<happyskills-path>/references/skill-authoring.md
-```
-
-Follow all best practices from that reference when generating the skill. Key rules:
-- SKILL.md under 500 lines — use `references/` for detailed content if needed
-- Keyword-rich description with trigger-phrase resilience
-- No forbidden characters in frontmatter values
-- Include a Constraints section
-- Include verification steps after actions
-- All executable code in `scripts/`, never embedded in markdown
-- Conditional file references ("read X if Y happens")
-
-### 3.4 Core Behaviors
-
-Every generated release skill MUST implement the behaviors defined in [references/release-skill-spec.md](references/release-skill-spec.md). This includes:
+**A. Core behaviors the generated skill must implement** (from [references/release-skill-spec.md](references/release-skill-spec.md) — the content authority):
 
 1. Pre-flight check (clean working directory — hard gate)
 2. Mode detection (A/B/C based on session context and $action)
@@ -214,34 +181,30 @@ Every generated release skill MUST implement the behaviors defined in [reference
 9. Git tag (annotated, format per monorepo/standalone detection)
 10. User confirmation before irreversible actions
 
-### 3.5 Craft the Description
+**B. Project-specific content** gathered in Phases 1–2: project type, version file and tag format, the post-release/deploy procedure to document, any existing release process to preserve, and the custom requirements the user described.
 
-The quality of the generated skill's `description` depends on the invocation preference chosen in Phase 2.
+**C. Form decisions already made** — pass these THROUGH so `happyskills-design` does NOT re-ask the user:
+- **Skill name** (from 3.1).
+- **Invocation model** — auto-invoke vs user-only, decided in Phase 2. Determines `disable-model-invocation`.
+- **Arguments** — always `[action, note]`, hint `[patch|minor|major|draft] ["description"]`.
+- **Description inputs** — raw material for the five-slot description (design composes the final string per its grammar): the project's release *family* (Domain), what the skill does (verbs), the concrete project name (Object), trigger phrases, and whether sibling `release-*` skills exist (Negative). Detect siblings with `ls .agents/skills/ .claude/skills/ 2>/dev/null | grep '^release-'`.
 
-**If auto-invoke**: The description is the sole trigger signal for Claude. It must be keyword-rich and cover multiple phrasing families so Claude matches reliably. Include:
-- Action verbs: "Release", "Ship", "Cut a version", "Tag a release"
-- Project-specific nouns: the project name, type, and domain
-- Phrasing variations: imperative ("release the frontend"), question ("can you release?"), past tense ("I released the API"), noun-phrase ("frontend release"), progressive ("releasing the web app")
-- Use case context: "after finishing features or fixes", "when ready to ship", "to bump version and update changelog"
+### 3.3 Delegate scaffolding and structure to happyskills-design
 
-**If user-only**: The description still needs to be clear (it appears in `skill.json` for registry search), but trigger-phrase resilience is not required since Claude will never see it for auto-invocation.
+Do **not** scaffold, structure, or write the skill files yourself. Invoke the **`happyskills-design`** skill (its Authoring Workflow) and hand it the brief from 3.2. `happyskills-design` owns the **form**: running `npx happyskills init`, composing the five-slot `description` per its grammar, organizing SKILL.md (under 500 lines), splitting content across `references/`/`scripts/`/`assets/`, setting frontmatter, writing `skill.json` metadata, validating, and post-init enrichment.
 
-### 3.6 Write the Files
+When invoking it:
+- Provide the content (3.2.A + 3.2.B) as the skill's substance, and the form decisions (3.2.C) as **already settled** — instruct it to apply the pre-decided invocation model and arguments and NOT re-ask the user about purpose or invocation.
+- Let `happyskills-design` run its own standard steps that Phase 2 did not cover (e.g., the mandatory authors/license/repository enrichment prompts).
+- Any executable release commands the generated skill needs go in its `scripts/` per design's best practices — never embedded in the generated SKILL.md.
 
-1. Write `SKILL.md` with frontmatter (`arguments: [action, note]`, proper description, allowed-tools, and `disable-model-invocation: true` ONLY if the user chose user-only in Phase 2)
-2. Update `skill.json` with description, keywords, and systemDependencies
-3. Create supporting files in `references/` if the skill exceeds ~300 lines
-4. If the project has custom release scripts, place them in `scripts/` and reference via `${CLAUDE_SKILL_DIR}/scripts/`
+### 3.4 Verify the generated skill
 
-### 3.6 Validate
+After `happyskills-design` returns:
 
-Run validation:
-
-```bash
-npx happyskills validate <skill-name>
-```
-
-Fix any issues reported by the validator.
+1. Confirm the generated skill exists and validated cleanly. `happyskills-design` runs `npx happyskills validate` internally — if it reported errors, resolve them with design before continuing.
+2. Confirm the generated SKILL.md implements every core behavior from the content spec (3.2.A) and every project-specific requirement (3.2.B).
+3. If anything from the content spec is missing or misshapen, hand the gap back to `happyskills-design` to fold in — do not patch the structure yourself.
 
 ## Phase 4 — Handoff
 
@@ -261,9 +224,9 @@ After successful generation:
 - NEVER include secrets, credentials, or environment-specific values in generated skills
 - NEVER embed absolute paths in generated skills — all paths must be relative (to the project root, git root, or use `${CLAUDE_SKILL_DIR}` for skill-bundled files). Absolute paths break portability across machines and users
 - NEVER skip user confirmation before generating the final skill
-- ALWAYS run `npx happyskills init` from the project root to scaffold — never from inside `.agents/skills/` or `.claude/skills/`. Skills are created in `.agents/skills/` and symlinked to `.claude/skills/` — never write directly to `.claude/skills/`
-- ALWAYS verify after scaffolding that the canonical directory is in `.agents/skills/` and symlinks are relative
-- ALWAYS follow HappySkills best practices from the skill-authoring reference
+- ALWAYS delegate scaffolding, file structure, frontmatter, the five-slot description, and validation to the `happyskills-design` skill (Phase 3.3) — never run `npx happyskills init`, hand-author the skill structure, or re-implement skill-authoring best practices in this skill
+- NEVER write the generated skill's files yourself — `happyskills-design` owns skill form and structure, this skill owns only the release content (the brief in Phase 3.2)
+- ALWAYS verify the delegated result implements the full content spec before handoff (Phase 3.4)
 - ALWAYS ask the user about invocation preference during Phase 2 — never assume user-only or auto-invoke without asking
 - ALWAYS include Mode A, B, and C support in every generated skill
 - If the project has no previous releases (no tags, no CHANGELOG.md), the generated skill should start at version 0.1.0 for the first release

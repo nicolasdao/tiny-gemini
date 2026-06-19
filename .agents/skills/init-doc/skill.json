@@ -1,19 +1,22 @@
 {
-	"name": "update-doc",
+	"name": "init-doc",
 	"version": "1.9.0",
-	"type": "skill",
-	"description": "Maintain project documentation in sync with code changes — features, APIs, CLI, architectural. Part of the ProjectMemory constellation.",
+	"description": "Bootstrap codebase documentation from source code. Part of the ProjectMemory constellation. Creates README.md hub and docs/ folder for projects with no docs or legacy docs to replace.",
 	"keywords": [
-		"devops",
 		"documentation",
-		"docs"
+		"docs",
+		"bootstrap",
+		"readme",
+		"init",
+		"devops"
 	],
+	"type": "skill",
 	"authors": [
 		"Nicolas Dao (nicolas.dao@gmail.com)"
 	],
 	"license": "BSD-3-Clause",
 	"dependencies": {
-		"nicolasdao/init-doc": "*"
+		"nicolasdao/init-mission": "*"
 	},
 	"systemDependencies": {
 		"git": {
@@ -27,7 +30,7 @@
 			}
 		},
 		"python3": {
-			"description": "Python 3 runtime for the bundled init-doc manifest generator (diff mapping + regeneration)",
+			"description": "Python 3 runtime (standard library only) for scripts/build-doc-manifest.py",
 			"version": ">=3.8",
 			"check": "python3 --version",
 			"install": {

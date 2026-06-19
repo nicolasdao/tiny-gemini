@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.11.1] - 2026-06-10
+
+### Changed
+- **Sharpened Best Practice #15 (Gotchas) in `references/skill-authoring.md` with placement and progressive-disclosure guidance.** The original named *what* to capture but not *where it lives* or *how SKILL.md surfaces it*. Added a size-scaled placement ladder: a few gotchas stay in an inline `## Gotchas` section; many or domain-split gotchas keep that section as a thin index linking **directly** to `references/gotchas/<domain>.md` (one hop — respecting the reference-depth rule in § 7 and SKILL.md's hard 500-line cap). Made the load-bearing rule explicit — an unlinked gotcha file is invisible to the agent, so SKILL.md must always link to externalized gotchas, and the index must stay in sync with the files. Calibrated against over-structuring (don't split three gotchas — the #17 failure in miniature). Adapted from the hub+domain gotchas pattern the project's documentation tooling uses, folded into a skill's single always-loaded entry point.
+- **New § 9 anti-pattern row** for gotchas that outgrow SKILL.md or sit unlinked in `references/`.
+- **`references/workflows.md` Audit step 7 (content structure)** now checks hub↔domain gotchas sync — every `references/gotchas/<domain>.md` linked from SKILL.md's index, every link resolving.
+
+### Rationale
+Follow-up to 0.11.0, closing the gap that release left open: BP #15 specified the *content* of a Gotchas section but not its *placement* or the SKILL.md *linking contract* — the exact progressive-disclosure mechanics that keep externalized gotchas discoverable while holding SKILL.md under its hard line cap. Ports the mature hub+domain gotchas pattern already proven in the documentation tooling, adapted to a skill's single always-loaded entry point and its shallow reference-depth rule.
+
+## [0.11.0] - 2026-06-09
+
+### Added
+- **Three authoring best practices in `references/skill-authoring.md` § 9**, distilled from Anthropic's "Lessons from building Claude Code: how we use skills" and integrated into the existing framework rather than appended:
+  - **#15 Capture hard-won failure knowledge in a Gotchas section** — names the highest-signal content in a skill (the counterintuitive facts Claude gets wrong by default) and distinguishes it from the Constraints section (#3): constraints are *prohibitions*, gotchas are *corrections to the model's wrong priors*. Tied to the Skill Update Workflow as the mechanism that grows it.
+  - **#16 Don't state the obvious, encode only the non-default** — the body-content counterpart to the description discipline (#2) and the § 5 length budget: every line should push Claude off a default it would otherwise take; cut anything true of any competent engineer with no skill loaded.
+  - **#17 Give judgment room, don't railroad** — reconciled with the skill's own prescriptiveness via stakes-calibration: tight rails on destructive, irreversible, or deterministic operations (cf. #4, #12), room to adapt on non-critical paths.
+  - Three matching anti-pattern rows in § 9, each cross-referencing its best practice.
+- **`references/skill-authoring.md` § 11 — Pattern 6 (Setup via config.json)**: the per-user configuration convention (read `${CLAUDE_SKILL_DIR}/config.json` on start, ask once via AskUserQuestion, persist), framed explicitly as a convention (the Agent Skills spec defines no such file) rather than a platform feature, with a publish-safety caveat.
+
+### Changed
+- **`references/happyskills-conventions.md` § 7** — noted that a per-user `config.json` is NOT in the auto-excluded set; publish an empty or template config (or omit it), never filled-in values or secrets (secrets belong in `.env`, which is excluded). Cross-references Pattern 6.
+- **`SKILL.md` Section 2 step 5** — the design-content-structure step now also asks whether the skill needs per-user setup, bridging authoring to Pattern 6 (which otherwise had no referrer).
+- **`references/workflows.md` Audit step 9** — the anti-pattern scan enumeration now surfaces "missing gotchas section" and "restating obvious default behavior."
+
+### Rationale
+Folds the durable lessons from Anthropic's published skill-authoring guidance into the framework, integrated to fit existing structure: the three content-quality practices map to one principle — maximize signal, cut noise, stay adaptable — and the config.json pattern reuses the existing AskUserQuestion and `${CLAUDE_SKILL_DIR}` conventions. Deliberately excluded the blog's memory/persistent-state and on-demand-hooks ideas, both Claude-Code-specific and at odds with HappySkills' multi-platform mission. The change was audited via the skill's own Audit Workflow before release.
+
 ## [0.10.2] - 2026-06-06
 
 ### Changed

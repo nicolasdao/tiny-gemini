@@ -1,7 +1,6 @@
 ---
 name: tiny-gemini-research
 description: tiny-gemini — Run autonomous Deep Research via the Gemini agents in the npx CLI. Use when commissioning a multi-minute report, comprehensive analysis, or background research. Not for quick search-grounded answers, which use the core.
-user-invocable: false
 allowed-tools: Bash, Read
 ---
 

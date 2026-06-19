@@ -83,7 +83,9 @@ User passed `draft` as $action.
 
 ## 3. Pre-flight Check
 
-**This is a hard gate. The skill MUST NOT offer a "proceed anyway" option.**
+**This is a hard gate for Mode A and Mode B. The skill MUST NOT offer a "proceed anyway" option.**
+
+**Mode C exception:** Section 2 (Mode C — Draft) relaxes the clean-directory check because the user is mid-work. See Mode C's "Pre-flight exception" note below.
 
 Release skills only commit release-specific files (version file + CHANGELOG.md). They do NOT commit feature/fix code. If there are uncommitted changes in the project directory, the release produces a tag whose commit does not contain the changes it ships — a silent, high-blast-radius bug.
 

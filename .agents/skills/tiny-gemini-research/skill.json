@@ -1,6 +1,6 @@
 {
 	"name": "tiny-gemini-research",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Teaches AI agents to use the tiny-gemini CLI research command for Gemini Deep Research multi-minute autonomous investigations. Suite member of nicolasdao/tiny-gemini.",
 	"keywords": [
 		"ai",
