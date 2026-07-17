@@ -1,6 +1,6 @@
 {
-  "snapshot_date": "2026-06-08",
-  "source": "https://ai.google.dev/gemini-api/docs/models + /pricing + /deprecations",
+  "snapshot_date": "2026-07-16",
+  "source": "https://ai.google.dev/gemini-api/docs/models (+ per-model pages) + /pricing + /deprecations + /changelog. Last verified against live docs 2026-07-16.",
   "models": [
     {
       "id": "gemini-3.5-flash",
@@ -147,6 +147,23 @@
       "free_tier": false
     },
     {
+      "id": "gemini-3.1-flash-lite-image",
+      "type": "image",
+      "status": "ga",
+      "context_window": null,
+      "capabilities": ["text_to_image", "image_editing", "1K", "10_aspect_ratios"],
+      "pricing": {
+        "input_per_1m": null,
+        "output_per_1m": null,
+        "currency": "USD",
+        "notes": "GA (launched 2026-06-30). Google's fastest and cheapest Gemini image model — the entry tier below gemini-3.1-flash-image. 1K resolution ONLY (no 512px, no 2K/4K). 10 standard aspect ratios only — the extreme 1:4/1:8/4:1/8:1 ratios are gemini-3.1-flash-image-only. Up to 14 reference images (objects). Recommended successor to the deprecated gemini-2.5-flash-image. Codename: Nano Banana 2 Lite. Pricing not separately itemized on the pricing page as of 2026-07-16."
+      },
+      "deprecated_on": null,
+      "shutdown_on": null,
+      "replacement": null,
+      "free_tier": false
+    },
+    {
       "id": "gemini-3-pro-image",
       "type": "image",
       "status": "ga",
@@ -251,6 +268,23 @@
       "shutdown_on": null,
       "replacement": null,
       "free_tier": true
+    },
+    {
+      "id": "gemini-2.5-pro-preview-tts",
+      "type": "audio",
+      "status": "preview",
+      "context_window": null,
+      "capabilities": ["text_to_speech", "multi_speaker", "multi_language"],
+      "pricing": {
+        "input_per_1m": 1.00,
+        "output_per_1m": 20.00,
+        "currency": "USD",
+        "notes": "2.5-family Pro TTS. Preview, no free tier. Higher-tier 2.5 TTS than gemini-2.5-flash-preview-tts; gemini-3.1-flash-tts-preview is the newer recommended default. Verified live 2026-07-16."
+      },
+      "deprecated_on": null,
+      "shutdown_on": null,
+      "replacement": null,
+      "free_tier": false
     },
     {
       "id": "gemini-2.5-flash-native-audio-preview-12-2025",

@@ -5,6 +5,12 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-17
+
+### Changed
+
+- Reworked the API-key section to document that the key is **CLI-managed** (resolution order + not-found behavior; Deep Research remains paid-tier). No skill-level secret/`env`; reverted an earlier same-day draft that declared a `skills-config` secret, since key management is the CLI's responsibility.
+
 ## [0.1.1] - 2026-05-10
 
 ### Fixed

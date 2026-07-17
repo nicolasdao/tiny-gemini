@@ -233,7 +233,7 @@ Styles and variations can be combined. `--count` limits total output.
 {
   "model": "gemini-3.1-flash-image",
   "input": "a yellow banana wearing sunglasses",
-  "response_modalities": ["image"]
+  "response_format": { "type": "image" }
 }
 ```
 
@@ -242,7 +242,6 @@ With image config (post-2026-05 schema — `image_config` lives inside `response
 {
   "model": "gemini-3.1-flash-image",
   "input": "a yellow banana wearing sunglasses",
-  "response_modalities": ["image"],
   "response_format": {
     "type": "image",
     "aspect_ratio": "16:9",
@@ -286,7 +285,7 @@ The `input` is an array: one text part first, then the image parts in `--file` o
     { "type": "image", "data": "<BASE64_IMG_A>", "mime_type": "image/png" },
     { "type": "image", "data": "<BASE64_IMG_B>", "mime_type": "image/png" }
   ],
-  "response_modalities": ["image"]
+  "response_format": { "type": "image" }
 }
 ```
 
@@ -310,7 +309,7 @@ The first argument after `edit` is the file path, the rest is the edit prompt.
     { "type": "text", "text": "add sunglasses" },
     { "type": "image", "data": "<base64>", "mime_type": "image/png" }
   ],
-  "response_modalities": ["image"]
+  "response_format": { "type": "image" }
 }
 ```
 
@@ -355,7 +354,7 @@ Each step sends:
 {
   "model": "gemini-3.1-flash-image",
   "input": "a seed growing into a tree, step 2 of 4, narrative sequence, consistent art style, smooth transition from previous step",
-  "response_modalities": ["image"]
+  "response_format": { "type": "image" }
 }
 ```
 
@@ -427,6 +426,8 @@ tiny-gemini image "landscape" --aspect-ratio=16:9
 
 Values: `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9`
 
+The four extreme ratios `1:4`, `1:8`, `4:1`, `8:1` are supported by **`gemini-3.1-flash-image` only** (the default). `gemini-3-pro-image` and `gemini-3.1-flash-lite-image` accept only the 10 standard ratios and 400 on the extremes — see [Gotchas](gotchas.md).
+
 #### Image Size
 
 ```bash
@@ -497,7 +498,7 @@ tiny-gemini tts "Bonjour le monde" --voice=kore --language=fr-fr
 {
   "model": "gemini-3.1-flash-tts-preview",
   "input": "Hello, how are you today?",
-  "response_modalities": ["audio"],
+  "response_format": { "type": "audio" },
   "generation_config": {
     "speech_config": [
       {
@@ -509,11 +510,15 @@ tiny-gemini tts "Bonjour le monde" --voice=kore --language=fr-fr
 }
 ```
 
-`speech_config` is an array even for a single speaker (May 2026 schema), and voice names are title-case. The CLI capitalizes the first letter of `--voice` so a lowercase value still matches.
+Audio output is declared by `response_format: { "type": "audio" }` (the old `response_modalities: ["audio"]` field was removed in the May 2026 migration). `speech_config` stays inside `generation_config` and is an array even for a single speaker; voice names are title-case (the CLI capitalizes the first letter of `--voice` so a lowercase value still matches). See [Gotchas](gotchas.md).
 
 ### TTS Output Format
 
 The API returns raw 16-bit, 24kHz, mono PCM (labeled `audio/pcm` or `audio/l16`). The CLI converts this to WAV by prepending a 44-byte header before saving. Output files are named `tts_<text-snippet>.wav`.
+
+**Streaming:** the Interactions API added streaming TTS for `gemini-3.1-flash-tts-preview` (2026-06-17, via `stream: true`). The CLI's `tts` command does **not** stream — it requests the full audio and writes one WAV (the CLI's SSE path only extracts text deltas, not audio; see [Architecture](architecture.md)). Use `raw` with `"stream": true` if you need streamed audio chunks.
+
+**Model choice:** `gemini-3.1-flash-tts-preview` is the default and recommended TTS model. The 2.5-family `gemini-2.5-flash-preview-tts` and `gemini-2.5-pro-preview-tts` remain available via `--model` (both Preview; see [Model Selection](model-selection.md)).
 
 ## search
 

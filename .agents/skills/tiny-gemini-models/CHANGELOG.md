@@ -5,6 +5,24 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-07-16
+
+### Added
+
+- Documented that this skill needs **no** configuration or API key — the `models` command is fully offline. Running a model needs a Gemini key, but that is managed by the CLI, not by any skill.
+
+## [0.1.4] - 2026-07-16
+
+### Changed
+
+- Added `gemini-2.5-pro-preview-tts` (Audio, Preview, $1.00/$20.00, no free tier) to the model registry reference. Verbatim-verified against the live models + pricing pages on 2026-07-16.
+
+## [0.1.3] - 2026-07-16
+
+### Changed
+
+- Add the GA image model `gemini-3.1-flash-lite-image` ("Nano Banana 2 Lite", GA 2026-06-30, 1K-only) and point the "cheapest image" decision rule at it, replacing the deprecated `gemini-2.5-flash-image` (shutdown 2026-10-02). Noted per-model aspect-ratio support and JPEG/PNG output. Verified against live docs 2026-07-16.
+
 ## [0.1.2] - 2026-06-08
 
 ### Changed

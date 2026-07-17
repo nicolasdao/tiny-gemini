@@ -49,8 +49,7 @@ Use the `id` field from the JSON output as the `model` (or `agent`) value in you
 | `model` | string | One of model/agent | Model ID (e.g., `gemini-3-flash-preview`) |
 | `agent` | string | One of model/agent | Agent ID (e.g., `deep-research-preview-04-2026`) |
 | `input` | string or Content[] | Yes | Text or multimodal content |
-| `response_modalities` | string[] | No | Output modalities (lowercase), e.g., `["image"]`, `["audio"]`, `["text", "image"]` |
-| `response_format` | object | No | Polymorphic. Shape depends on `type`: `text` (with optional `mime_type` + `schema`), `image` (with `aspect_ratio`, `image_size`). Replaces the older bare-schema usage. |
+| `response_format` | object or object[] | No | Declares the output type — this **replaced the removed `response_modalities` field** (gone since the 2026-06-08 schema cutover). Shape depends on `type`: `text` (optional `mime_type` + `schema` for structured output), `image` (`aspect_ratio`, `image_size`, `mime_type`), `audio` (TTS; `speech_config` stays under `generation_config`). Pass an **array** of entries for multiple modalities. |
 | `generation_config` | object | No | Temperature, thinking, speech config. (Note: `image_config` moved to `response_format`.) |
 | `system_instruction` | string | No | System prompt |
 | `tools` | Tool[] | No | Function calling, search, code execution, MCP, etc. |
@@ -122,9 +121,20 @@ To send function results back, use `previous_interaction_id`:
 |------|-------------|
 | `code_execution` | Python code execution |
 | `url_context` | Fetch and analyze web pages |
-| `computer_use` | Browser automation |
+| `computer_use` | Virtual screen/keyboard/mouse control. Public preview since 2026-06-24; recommended model `gemini-3.5-flash`. Docs: ai.google.dev/gemini-api/docs/computer-use |
 | `file_search` | Search file stores |
 | `mcp_server` | MCP server integration (Gemini 3 models do not support Remote MCP) |
+
+## Newer surfaces reachable via `raw` (no dedicated CLI command)
+
+The CLI wraps the common cases, but `raw` reaches 100% of the API — including surfaces Google shipped after the CLI's dedicated commands. These have no `tiny-gemini` subcommand; drive them through `raw` with the appropriate body:
+
+| Surface | ID / entry point | Docs |
+|---------|------------------|------|
+| Managed Agents (autonomous stateful agents in a sandbox) + the Antigravity agent | `agent: "antigravity-preview-05-2026"` | ai.google.dev/gemini-api/docs/custom-agents, .../docs/agents |
+| Gemini Omni Flash (text/image → short video) | `model: "gemini-omni-flash-preview"` | ai.google.dev/gemini-api/docs/omni |
+
+These are also catalogued in `docs/sources.md` for monitoring. Confirm the exact request body against the live docs before use.
 
 ## Generation Config
 
@@ -153,7 +163,6 @@ The post-2026-05 shape places `aspect_ratio` and `image_size` inside `response_f
 {
   "model": "gemini-3.1-flash-image",
   "input": "a yellow banana wearing sunglasses",
-  "response_modalities": ["image"],
   "response_format": {
     "type": "image",
     "aspect_ratio": "16:9",
@@ -162,7 +171,7 @@ The post-2026-05 shape places `aspect_ratio` and `image_size` inside `response_f
 }
 ```
 
-Aspect ratios: `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9`. Sizes: `512px` (3.1 Flash only), `1K` (default), `2K`, `4K` — uppercase K required.
+`response_format` with `"type": "image"` is required to get an image (it declares the modality — there is no `response_modalities` field). Aspect ratios: `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9`. Sizes: `512px`, `1K` (default), `2K`, `4K` — uppercase K required. **Model-specific:** `512px` and the extreme ratios `1:4`/`1:8`/`4:1`/`8:1` are `gemini-3.1-flash-image`-only; `gemini-3-pro-image` and `gemini-3.1-flash-lite-image` take the 10 standard ratios, and `gemini-3.1-flash-lite-image` is 1K-only.
 
 ## Multi-Speaker TTS
 
@@ -170,7 +179,7 @@ Aspect ratios: `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5
 {
   "model": "gemini-3.1-flash-tts-preview",
   "input": "Alice: Hello! Bob: Hi there!",
-  "response_modalities": ["audio"],
+  "response_format": { "type": "audio" },
   "generation_config": {
     "speech_config": [
       { "voice": "Zephyr", "speaker": "Alice", "language": "en-US" },

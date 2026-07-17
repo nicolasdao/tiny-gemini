@@ -9,3 +9,8 @@ __pycache__/
 
 # HappySkills transient publish snapshots
 .happyskills/snapshots/
+
+# API-key files — never commit a real GEMINI_API_KEY. The CLI reads a project-level
+# .gemini/.env (searching up from cwd) as well as ~/.gemini/.env, so a project .env can hold the key.
+*.env
+!*.env.example

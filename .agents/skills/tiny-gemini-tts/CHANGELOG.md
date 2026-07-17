@@ -5,6 +5,24 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-17
+
+### Changed
+
+- Documented that the Gemini API key is **CLI-managed** — added an "API Key" section covering the CLI's resolution order and not-found behavior. No skill-level secret/`env`; reverted an earlier same-day draft that declared a `skills-config` secret, since key management is the CLI's responsibility.
+
+## [0.1.4] - 2026-07-16
+
+### Changed
+
+- Noted `gemini-2.5-pro-preview-tts` as a selectable 2.5-family TTS model (Preview, $1.00/$20.00, no free tier) alongside `gemini-2.5-flash-preview-tts`. Documented that the API added streaming TTS for `gemini-3.1-flash-tts-preview` (2026-06-17) but the CLI's `tts` command writes a non-streaming WAV — use `raw` with `"stream": true` for streamed audio.
+
+## [0.1.3] - 2026-07-16
+
+### Changed
+
+- Update the multi-speaker `raw` example to the current Interactions schema: audio output is declared by `response_format: { "type": "audio" }` (the removed `response_modalities: ["audio"]` field is gone as of the 2026-06-08 schema cutover). `speech_config` still lives under `generation_config`.
+
 ## [0.1.2] - 2026-06-08
 
 ### Fixed

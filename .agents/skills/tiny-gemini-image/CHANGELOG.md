@@ -5,6 +5,18 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-07-17
+
+### Changed
+
+- Documented that the Gemini API key is **CLI-managed** — added an "API Key" section covering the CLI's resolution order and not-found behavior. No skill-level secret/`env`; reverted an earlier same-day draft that declared a `skills-config` secret, since key management is the CLI's responsibility.
+
+## [0.3.3] - 2026-07-16
+
+### Changed
+
+- Point the cheapest-image override at the new GA `gemini-3.1-flash-lite-image` ("Nano Banana 2 Lite", 1K-only) instead of the deprecated `gemini-2.5-flash-image` (shutdown 2026-10-02). Documented that the extreme aspect ratios (`1:4`/`1:8`/`4:1`/`8:1`) and `512px` are `gemini-3.1-flash-image`-only.
+
 ## [0.3.2] - 2026-06-19
 
 ### Added

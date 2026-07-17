@@ -1,14 +1,15 @@
 {
-	"name": "tiny-gemini-research",
-	"version": "0.2.0",
-	"description": "Teaches AI agents to use the tiny-gemini CLI research command for Gemini Deep Research multi-minute autonomous investigations. Suite member of nicolasdao/tiny-gemini.",
+	"name": "tiny-gemini-upkeep",
+	"version": "0.1.0",
+	"description": "Audits tiny-gemini against the live Gemini API — checks the CLI schema, registry, and docs vs official sources and surfaces new models or breaking changes. Suite member of nicolasdao/tiny-gemini.",
 	"keywords": [
 		"ai",
 		"gemini",
 		"google",
-		"deep-research",
-		"agent",
-		"background-task",
+		"currency-check",
+		"model-registry",
+		"api-schema",
+		"maintenance",
 		"cli"
 	],
 	"type": "skill",

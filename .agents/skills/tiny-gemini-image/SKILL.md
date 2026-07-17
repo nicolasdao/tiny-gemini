@@ -32,6 +32,10 @@ This skill owns every image-related verb in the tiny-gemini CLI:
 | Multi-minute autonomous research reports | `tiny-gemini-research` |
 | Looking up which models exist or what they cost | `tiny-gemini-models` |
 
+## API Key
+
+Image generation calls the Gemini API and needs a Google Gemini API key, which the **CLI manages** — there is no skill-level secret. Resolution: `--api-key` > `TINY_GEMINI_API_KEY` > `GEMINI_API_KEY` > `GOOGLE_API_KEY` > `.gemini/.env` (searching up) > `~/.gemini/.env`. Set `GEMINI_API_KEY` in your shell or `~/.gemini/.env` (free key: https://aistudio.google.com/app/apikey). If a command reports no key, surface the CLI's setup instructions to the user rather than storing the key yourself. See the core [tiny-gemini](../tiny-gemini/SKILL.md) skill.
+
 ## Default Models
 
 | Sub-command | Default model |
@@ -39,7 +43,7 @@ This skill owns every image-related verb in the tiny-gemini CLI:
 | `generate`, `edit`, `story`, `icon`, `pattern`, `diagram` | `gemini-3.1-flash-image` |
 | `describe` | `gemini-3-flash-preview` (uses the text model — image as input) |
 
-Override with `--model=gemini-3-pro-image` for the highest-quality image gen (better text rendering in images), or `--model=gemini-2.5-flash-image` for cheapest 1K output. Run `npx tiny-gemini models list --type=image` to see the current set.
+Override with `--model=gemini-3-pro-image` for the highest-quality image gen (better text rendering in images), or `--model=gemini-3.1-flash-lite-image` for cheapest/fastest 1K output (GA successor to the deprecated `gemini-2.5-flash-image`, shutdown 2026-10-02). Run `npx tiny-gemini models list --type=image` to see the current set.
 
 ## Quick Reference
 
@@ -79,7 +83,7 @@ npx tiny-gemini image diagram "login flow" --type=flowchart --layout=horizontal
 | `--aspect-ratio` | `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9` |
 | `--image-size` | `512px` (3.1 Flash only), `1K` (default), `2K`, `4K` — uppercase `K` required |
 
-The CLI sends these as part of the new schema's `response_format: { type: "image", aspect_ratio, image_size }` (post-2026-05 Interactions API).
+The CLI sends these as part of the new schema's `response_format: { type: "image", aspect_ratio, image_size }` (post-2026-05 Interactions API). The extreme ratios `1:4`/`1:8`/`4:1`/`8:1` and `512px` are `gemini-3.1-flash-image`-only; `gemini-3-pro-image` and `gemini-3.1-flash-lite-image` accept only the 10 standard ratios, and `gemini-3.1-flash-lite-image` is 1K-only.
 
 ## Batch, Concurrency & Output (all generation sub-commands)
 

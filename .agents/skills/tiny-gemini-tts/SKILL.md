@@ -29,9 +29,15 @@ This skill owns every speech-synthesis verb in the tiny-gemini CLI:
 | Looking up which models exist or what they cost | `tiny-gemini-models` |
 | Multi-speaker dialogue requiring custom JSON | Core `tiny-gemini` `raw` command (see core for the multi-speaker `speech_config` shape) |
 
+## API Key
+
+TTS calls the Gemini API and needs a Google Gemini API key, which the **CLI manages** — there is no skill-level secret. Resolution: `--api-key` > `TINY_GEMINI_API_KEY` > `GEMINI_API_KEY` > `GOOGLE_API_KEY` > `.gemini/.env` (searching up) > `~/.gemini/.env`. Set `GEMINI_API_KEY` in your shell or `~/.gemini/.env` (free key: https://aistudio.google.com/app/apikey). If a command reports no key, surface the CLI's setup instructions to the user rather than storing the key yourself. See the core [tiny-gemini](../tiny-gemini/SKILL.md) skill.
+
 ## Default Model
 
-`gemini-3.1-flash-tts-preview` (April 2026 launch, the recommended TTS model). The older `gemini-2.5-flash-preview-tts` is still active (Preview) and selectable via `--model`. `speech_config` is sent as an array even for a single speaker.
+`gemini-3.1-flash-tts-preview` (April 2026 launch, the recommended TTS model). The older 2.5-family `gemini-2.5-flash-preview-tts` (lower cost, free tier) and `gemini-2.5-pro-preview-tts` (higher tier, no free tier) are still active (Preview) and selectable via `--model`. `speech_config` is sent as an array even for a single speaker.
+
+**Streaming:** the API added streaming TTS for `gemini-3.1-flash-tts-preview` (2026-06-17, `stream: true`), but the CLI's `tts` command writes a single non-streaming WAV — it does not stream audio. Use the core `tiny-gemini raw` command with `"stream": true` if you need streamed audio chunks.
 
 ## Quick Reference
 
@@ -68,7 +74,7 @@ Multi-speaker TTS isn't a dedicated CLI flag — use the core `tiny-gemini raw` 
 {
   "model": "gemini-3.1-flash-tts-preview",
   "input": "Alice: Hello! Bob: Hi there!",
-  "response_modalities": ["audio"],
+  "response_format": { "type": "audio" },
   "generation_config": {
     "speech_config": [
       { "voice": "Zephyr", "speaker": "Alice", "language": "en-US" },

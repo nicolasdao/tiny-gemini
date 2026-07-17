@@ -12,19 +12,23 @@ Project-specific pitfalls that have already bitten us. Read before changing how 
 
 ## The CLI targets the Interactions API, not `generateContent`
 
-Every request goes to `POST /v1beta/interactions` (see `callAPI` in `cli.js`), **not** the older `…/models/{model}:generateContent` endpoint. The two have different schemas: snake_case fields (`response_modalities`, `system_instruction`) and lowercase enums on Interactions vs camelCase (`responseModalities`) and uppercase enums on `generateContent`.
+Every request goes to `POST /v1beta/interactions` (see `callAPI` in `cli.js`), **not** the older `…/models/{model}:generateContent` endpoint. The two have different schemas: snake_case fields (`response_format`, `system_instruction`) and lowercase enums on Interactions vs camelCase (`responseModalities`) and uppercase enums on `generateContent`.
 
 **Risk:** A raw `curl` against `:generateContent` can succeed with a body that the CLI's endpoint rejects (and vice versa). The original v2.0.0 image bug was diagnosed by a working `generateContent` curl that used uppercase `"IMAGE"` — but that proved nothing about the CLI's Interactions request.
 
 **How to apply:** When verifying or debugging, reproduce against `/v1beta/interactions` with the Interactions schema. Don't port request shapes between the two APIs.
 
-## `response_modalities` enum values are lowercase
+## `response_modalities` was removed — declare the output type via `response_format`
 
-The Interactions API requires lowercase modality strings: `text`, `image`, `audio`, `video`, `document`. Uppercase is rejected with `400 The value 'IMAGE' is not supported for 'response_modalities[0]'`.
+The May 2026 Interactions migration (completed **2026-06-08**, legacy schema removed) **deleted the `response_modalities` field**. Output modality is now declared by the `type` of a `response_format` entry:
 
-**Risk:** Examples copied from `generateContent` docs (or our own frozen snapshots) use uppercase `["IMAGE"]`/`["AUDIO"]` and will break every image and TTS call.
+- **Image**: `response_format: { type: 'image', … }` — this same object also carries `aspect_ratio`/`image_size`.
+- **TTS**: `response_format: { type: 'audio' }` — and `speech_config` stays under `generation_config` (it does **not** move into `response_format`).
+- **Multiple modalities** (e.g. text + image): pass an **array** of format entries to `response_format`.
 
-**How to apply:** Image bodies use `response_modalities: ['image']`; TTS uses `['audio']`. Keep it lowercase everywhere, including doc/skill examples that an agent might paste into `raw`.
+**Why the old gotcha flipped:** under the *pre*-migration schema, `response_modalities` was required and its values had to be lowercase (`['image']`/`['audio']`; uppercase `['IMAGE']` returned `400 The value 'IMAGE' is not supported`). That is why earlier CLI versions sent it. The field is now gone; sending it is at best inert and at worst a 400 on an unknown field. Setting *only* `response_modalities` and no `response_format` (the old bare-image path) can now return text instead of an image.
+
+**How to apply:** See `runImageBatch` and `handleTTS` in `cli.js` — always send `response_format` with the right `type`, never `response_modalities`. Verified against the live API on **2026-07-16** (image + TTS round-trip both succeed under the new shape). Source: https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026
 
 ## `speech_config` is an array, even for one speaker
 
@@ -50,13 +54,21 @@ The API accepts `512`, `1K`, `2K`, `4K` — the `K` must be uppercase. Lowercase
 
 **How to apply:** The CLI normalizes a trailing lowercase `k` to `K` before sending (see `handleImage` in `cli.js`). Keep help text and docs showing the uppercase form.
 
-## GA image models return JPEG, not PNG
+## Extreme aspect ratios and `512px` are `gemini-3.1-flash-image`-only
 
-`gemini-3.1-flash-image` / `gemini-3-pro-image` return `image/jpeg`, not PNG. The CLI saves using whatever `mime_type` the response carries, so the file extension always matches — do not hardcode `.png`.
+The CLI advertises 14 aspect ratios, but the value set is **model-specific**. Only `gemini-3.1-flash-image` (the default) supports the four extremes `1:4`, `1:8`, `4:1`, `8:1` and the `512px` size. `gemini-3-pro-image`, the new `gemini-3.1-flash-lite-image`, and the deprecated `gemini-2.5-flash-image` accept only the 10 standard ratios (`1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9`) and 400 on the extremes. `gemini-3.1-flash-lite-image` is additionally **1K-only** (no `512px`/`2K`/`4K`).
 
-**Risk:** Code or docs that assume `image/png` for all image output, or force a `.png` extension, will mislabel files.
+**Risk:** `--aspect-ratio=8:1 --model=gemini-3-pro-image` (or `--image-size=4K --model=gemini-3.1-flash-lite-image`) returns a 400. The CLI stays permissive and does **not** gate values per model — it relies on the API's clear error.
 
-**How to apply:** Trust `item.mime_type` from the response (`extractOutputs` → `saveOutput`). Same principle for TTS audio: the PCM may be labeled `audio/pcm` or `audio/l16`, so `saveOutput` matches both and wraps as WAV.
+**How to apply:** Keep the full ratio list for the default model. If you pass `--model`, stick to the 10 standard ratios (and 1K) unless you are on `gemini-3.1-flash-image`. Source: https://ai.google.dev/gemini-api/docs/image-generation (per-model tables, verified 2026-07-16).
+
+## GA image models default to JPEG; PNG is available via `mime_type`
+
+`gemini-3.1-flash-image` / `gemini-3-pro-image` return `image/jpeg` by default. As of the current image docs, `image/png` is also selectable by setting `mime_type` on the image `response_format` entry (`{ type: 'image', mime_type: 'image/png' }`). Either way, the CLI saves using whatever `mime_type` the response carries, so the file extension always matches the actual bytes — do not hardcode `.png` **or** `.jpg`.
+
+**Risk:** Code or docs that assume a fixed format for all image output, or force an extension, will mislabel files.
+
+**How to apply:** Trust `item.mime_type` from the response (`extractOutputs` → `saveOutput`). Same principle for TTS audio: the PCM may be labeled `audio/pcm` or `audio/l16`, so `saveOutput` matches both and wraps as WAV. Source: https://ai.google.dev/gemini-api/docs/image-generation
 
 ## The image API returns one image per call — there is no `candidate_count`
 

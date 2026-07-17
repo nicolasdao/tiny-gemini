@@ -5,6 +5,25 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-07-17
+
+### Changed
+
+- **API-key management stays with the CLI, not the skill.** Rewrote "API Key Setup" to document the CLI's own key resolution (`--api-key` > `TINY_GEMINI_API_KEY` > `GEMINI_API_KEY` > `GOOGLE_API_KEY` > `.gemini/.env` searching up > `~/.gemini/.env`) and its not-found behavior (interactive save to `~/.gemini/.env` in a TTY; a clear error + non-zero exit in agent/non-interactive contexts). No skill-level secret, `env`, `sharedEnv`, or `config` — the CLI is the single source of truth for the key.
+- Reverted an earlier same-day draft that declared a HappySkills `skills-config` secret + `sharedEnv` + `config`. Credential storage is the CLI's responsibility, and a personal Gemini key is naturally user-global via `~/.gemini/.env` rather than per-project.
+
+## [2.0.5] - 2026-07-16
+
+### Changed
+
+- `references/raw-api.md`: documented that the `computer_use` tool is in public preview (2026-06-24, model `gemini-3.5-flash`), and added a "Newer surfaces reachable via `raw`" section covering the Managed Agents API + Antigravity agent (`antigravity-preview-05-2026`) and Gemini Omni Flash video (`gemini-omni-flash-preview`) — capabilities with no dedicated CLI command that `raw` still reaches. Surfaced by the 2026-07-16 upkeep discovery pass.
+
+## [2.0.4] - 2026-07-16
+
+### Changed
+
+- Update `references/raw-api.md` for the completed May 2026 Interactions migration (legacy schema removed 2026-06-08): the `response_modalities` field is **gone** — output type is now declared by `response_format` (`{type:"image"}`, `{type:"audio"}`, or an array for multiple modalities). Image and multi-speaker TTS examples updated. Documented that the extreme aspect ratios (`1:4`/`1:8`/`4:1`/`8:1`) and `512px` are `gemini-3.1-flash-image`-only. Verified against the live API 2026-07-16.
+
 ## [2.0.3] - 2026-06-18
 
 ### Changed

@@ -1,6 +1,6 @@
 # tiny-gemini
 
-Zero-dependency CLI for the Google Gemini API. Text, images, TTS, search, deep research, and raw API passthrough — all through `npx`. Ships with a [Claude Code agent skill](#claude-code-agent-skill) managed by [HappySkills](https://happyskills.ai).
+Zero-dependency CLI for the Google Gemini API. Text, images, TTS, search, deep research, and raw API passthrough — all through `npx`. Ships with a [Claude Code agent skill constellation](#claude-code-agent-skill) managed by [HappySkills](https://happyskills.ai).
 
 ```bash
 # Ask a question
@@ -48,6 +48,7 @@ Then just ask naturally: *"Use Gemini to generate an image of a dog chasing a ca
 - [Model Selection](#model-selection)
 - [Documentation](#documentation)
 - [Releasing](#releasing)
+- [Keeping Current](#keeping-current)
 - [Reference Material](#reference-material)
 - [Changelog](#changelog)
 - [License](#license)
@@ -64,7 +65,7 @@ Google's Gemini API is a single unified endpoint (the [Interactions API](https:/
 `tiny-gemini` wraps this API with dedicated subcommands for common use cases (`prompt`, `image`, `tts`, `search`, `research`) plus a `raw` JSON passthrough for full API coverage. It is:
 
 - **Zero-dependency** — only Node.js built-ins (no `node_modules`)
-- **Single file** — everything in `cli.js` (~1070 lines)
+- **Single file** — everything in `cli.js` (~1600 lines)
 - **NPX-ready** — `npx tiny-gemini "your prompt"` works immediately, no install required
 - **Complete** — the `raw` command covers 100% of the API surface
 - **Agent-first** — built for LLM agents with `--prompt-file` and `--output-file` to keep context windows clean
@@ -334,11 +335,11 @@ tiny-gemini "Fix bugs shown in this screenshot" \
 
 ## Claude Code Agent Skill
 
-This project ships with a [Claude Code](https://claude.ai/claude-code) agent skill that teaches AI agents how to use `tiny-gemini` automatically. The skill is managed by [HappySkills](https://happyskills.ai) — a package manager for AI agent skills.
+This project ships with a **constellation of [Claude Code](https://claude.ai/claude-code) agent skills** that teach AI agents how to use `tiny-gemini` automatically. They are managed by [HappySkills](https://happyskills.ai) — a package manager for AI agent skills.
 
 ### What It Does
 
-When the skill is installed in a project, Claude Code automatically knows how to use `npx tiny-gemini` whenever you ask it to work with the Gemini API. No manual instructions needed — just ask naturally:
+When the skills are installed in a project, Claude Code automatically knows how to use `npx tiny-gemini` whenever you ask it to work with the Gemini API. No manual instructions needed — just ask naturally:
 
 - "Generate an image of a sunset over the ocean"
 - "Convert this text to speech"
@@ -346,7 +347,7 @@ When the skill is installed in a project, Claude Code automatically knows how to
 - "Run deep research on quantum computing"
 - "Send this JSON to the Gemini API"
 
-The skill covers 100% of the CLI surface: all 6 commands, all 7 image sub-commands, all options, model selection rules, and agentic workflow patterns.
+Together the skills cover 100% of the CLI surface: all 7 commands, all 7 image sub-commands, all options, model-selection rules, and agentic workflow patterns.
 
 ### Install the Skill
 
@@ -354,20 +355,23 @@ The skill covers 100% of the CLI surface: all 6 commands, all 7 image sub-comman
 npx happyskills install nicolasdao/tiny-gemini
 ```
 
-This installs the skill into your project's `.claude/skills/` directory. Claude Code will auto-detect it on the next session.
+Installing the core pulls in its satellites (declared as dependencies) into your project's `.claude/skills/` directory. Claude Code auto-detects them on the next session.
 
 ### How It Works
 
-The skill is a set of reference files that Claude Code loads on demand:
+The suite is a **core skill plus focused satellites**, each auto-invocable for its own intent (you never invoke them by hand — Claude loads the right one when it detects the matching intent). The core declares the capability satellites as dependencies, so installing it installs the whole set:
 
-| File | Purpose |
-|------|---------|
-| `SKILL.md` | Core reference — commands, options, examples, constraints |
-| `references/image-commands.md` | All 7 image sub-commands with every option and value |
-| `references/models.md` | Model selection decision rules and comparison tables |
-| `references/raw-api.md` | Raw API passthrough, function calling, tools, multi-turn conversations |
+| Skill | Owns |
+|-------|------|
+| `tiny-gemini` (core) | Text Q&A, search-grounded answers, and the `raw` JSON passthrough (100% API coverage); ships `references/raw-api.md` |
+| `tiny-gemini-image` | Image generation, editing, and understanding (all 7 image sub-commands) |
+| `tiny-gemini-tts` | Text-to-speech (WAV) |
+| `tiny-gemini-research` | Multi-minute Deep Research agents |
+| `tiny-gemini-models` | Offline model registry, pricing, and deprecation lookup |
+| `tiny-gemini-upkeep` | Auditing the CLI + skills against the live Gemini docs (see [Keeping Current](#keeping-current)) |
+| `release-tiny-gemini` | The local release workflow (see [Releasing](#releasing)) |
 
-The skill is set to `user-invocable: false` — Claude loads it automatically when it detects Gemini-related intent. You never need to invoke it manually.
+The skill sources live in `.agents/skills/` and are surfaced under `.claude/skills/` via symlinks.
 
 ## Stack and Dependencies
 
@@ -387,26 +391,28 @@ The skill is set to `user-invocable: false` — Claude loads it automatically wh
 
 ```
 tiny-gemini/
-├── cli.js          # Single executable (~1300 lines, all logic)
+├── cli.js          # Single executable (~1600 lines, all logic)
 ├── models.json     # Embedded snapshot of Gemini model registry + pricing
 ├── package.json    # NPX-ready with bin entry
 ├── CHANGELOG.md    # Release history (Keep a Changelog format)
 ├── LICENSE         # BSD-3-Clause
 ├── .gitignore
 ├── README.md
-├── .claude/skills/tiny-gemini/         # Claude Code agent skill (managed by HappySkills)
-│   ├── SKILL.md                        # Core skill — commands, options, constraints
-│   ├── skill.json                      # HappySkills manifest (name, version, keywords)
-│   └── references/
-│       ├── image-commands.md           # All 7 image sub-commands
-│       ├── models.md                   # Model selection rules
-│       └── raw-api.md                  # Raw API, function calling, tools
+├── .agents/skills/                     # Claude Code agent skill constellation (surfaced under .claude/skills/ via symlinks, managed by HappySkills)
+│   ├── tiny-gemini/                    # Core — text, search, raw API (references/raw-api.md)
+│   ├── tiny-gemini-image/              # Image generation, editing, understanding
+│   ├── tiny-gemini-tts/                # Text-to-speech
+│   ├── tiny-gemini-research/           # Deep Research agents
+│   ├── tiny-gemini-models/             # Offline model registry lookup
+│   ├── tiny-gemini-upkeep/             # Currency check vs live Gemini docs
+│   └── release-tiny-gemini/            # Local release workflow
 └── docs/
     ├── api-reference.md       # Gemini Interactions API details
     ├── architecture.md        # Code structure and how to add features
     ├── commands.md            # Full command reference with request bodies
     ├── model-selection.md     # Model comparison, pricing, and decision rules
     ├── prompt-engineering.md  # Image presets, batch generation, variations
+    ├── sources.md             # Canonical registry of official sources + currency-check procedure
     ├── gotchas.md             # Project-specific pitfalls and how to avoid them
     └── manual/
         └── 20260307-gemini/   # Local snapshots of official Google docs
@@ -429,6 +435,7 @@ The following docs provide the technical depth needed to understand, extend, or 
 - [Gotchas](docs/gotchas.md) — Project-specific pitfalls in how the CLI builds requests, picks default models, and handles responses — Interactions-vs-generateContent schema, lowercase modality enums, array speech_config, fast preview-model deprecation, and JPEG image output.
 - [Model Selection Guide](docs/model-selection.md) — Choosing which Gemini model to use — decision rules, capabilities, pricing, and comparison tables for text, image, and specialized models.
 - [Prompt Engineering](docs/prompt-engineering.md) — Image generation presets (icon, pattern, diagram, story), batch generation with styles and variations, and how the prompt builder functions work.
+- [Sources](docs/sources.md) — The single canonical registry of every external source this project is built on — official Gemini API docs, model/pricing/deprecation pages, prompting guides, auth conventions, and local snapshots — plus the step-by-step procedure for checking that the CLI and skills are still up to date. Designed to be consumed by a future "check-currency" skill.
 <!-- END doc-index -->
 
 ## Releasing
@@ -461,19 +468,33 @@ npm publish
 
 The skill is at [`.claude/skills/release-tiny-gemini/`](.claude/skills/release-tiny-gemini/SKILL.md). It is auto-invocable (Claude may trigger it on phrases like "release tiny-gemini" or "ship a new version"), and always confirms via prompt before any commit or tag.
 
+## Keeping Current
+
+The Gemini API and model lineup move fast — new models reach GA, previews shut down, and the request schema changes. The `/tiny-gemini-upkeep` Claude Code skill keeps this project in sync with Google's official docs so you don't have to audit them by hand.
+
+Invoke it by asking naturally (*"is tiny-gemini up to date?"*, *"did Gemini ship new models?"*, *"check for Gemini breaking changes"*) or explicitly:
+
+```bash
+/tiny-gemini-upkeep                 # full sweep
+/tiny-gemini-upkeep models          # focus on the model registry
+/tiny-gemini-upkeep schema          # focus on the request/response schema
+```
+
+What it does:
+
+1. Reads the source registry in [docs/sources.md](docs/sources.md) plus the current baseline (`models.json`, `cli.js`).
+2. Fans out research sub-agents to **verify** every known official source for new models, deprecations, pricing changes, and breaking API changes.
+3. **Discovers** what the registry doesn't track yet — new model families, new capabilities, and brand-new official sources — and folds any new sources back into `docs/sources.md`.
+4. Presents a reconciled findings report and **waits for your approval before editing anything**.
+5. On approval, updates `cli.js` / `models.json` / docs / skills, smoke-tests any schema change against the live API, records the run in the `docs/sources.md` verification log, and hands release/publish back to `/release-tiny-gemini` and the HappySkills flow.
+
+It is auto-invocable (Claude may trigger it when you ask about Gemini currency) and never publishes or releases on its own. The skill is at [`.claude/skills/tiny-gemini-upkeep/`](.claude/skills/tiny-gemini-upkeep/SKILL.md); the procedure it automates is documented in [docs/sources.md § Currency-check procedure](docs/sources.md#5-currency-check-procedure).
+
 ## Reference Material
 
-This project was built using the following official Google documentation. **Local snapshots** of the two primary sources are saved in `docs/manual/20260307-gemini/` for offline reference and to preserve the exact API state this project was built against.
+Every official source this project is built on — the Gemini API docs, the model / pricing / deprecation pages, the prompting guides, the auth conventions, and the frozen local snapshots — is catalogued in **one canonical registry: [docs/sources.md](docs/sources.md)**. That document also carries the step-by-step **currency-check procedure** (what to re-verify and which files it drives) and a **verification log**. Last verified against live docs: **2026-07-16**.
 
-| Source | Local Snapshot | Description |
-|--------|----------------|-------------|
-| [Gemini Interactions API](https://ai.google.dev/gemini-api/docs/interactions) | [docs/manual/20260307-gemini/interactions.md](docs/manual/20260307-gemini/interactions.md) | The unified API endpoint this CLI wraps |
-| [Gemini Image Generation](https://ai.google.dev/gemini-api/docs/image-generation) | [docs/manual/20260307-gemini/image-generation.md](docs/manual/20260307-gemini/image-generation.md) | Image generation models, capabilities, and configuration |
-| [Gemini API Models](https://ai.google.dev/gemini-api/docs/models) | — | Available models and their capabilities |
-| [Gemini API Keys](https://ai.google.dev/gemini-api/docs/api-key) | — | API key setup and environment variable conventions |
-| [Gemini CLI Authentication](https://github.com/google-gemini/gemini-cli/blob/main/docs/get-started/authentication.md) | — | `.gemini/.env` file convention |
-
-When the API changes or models are deprecated, compare the local snapshots against the live docs to understand what shifted.
+Start any "are we still up to date?" check from the [Gemini API changelog](https://ai.google.dev/gemini-api/docs/changelog) (the primary feed), then follow the procedure in `docs/sources.md` — or let the `/tiny-gemini-upkeep` skill run it for you (see [Keeping Current](#keeping-current)). Local snapshots of the two primary sources are frozen under `docs/manual/20260307-gemini/` (2026-03-07, **pre-migration** — deliberately out of date; see [Gotchas](docs/gotchas.md)).
 
 ## Changelog
 

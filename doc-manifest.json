@@ -43,22 +43,23 @@
         "Model Selection",
         "Documentation",
         "Releasing",
+        "Keeping Current",
         "Reference Material",
         "Changelog",
         "License"
       ],
-      "line_count": 482,
+      "line_count": 505,
       "links_to": [
         ".claude/skills/release-tiny-gemini/SKILL.md",
+        ".claude/skills/tiny-gemini-upkeep/SKILL.md",
         "CHANGELOG.md",
         "docs/api-reference.md",
         "docs/architecture.md",
         "docs/commands.md",
         "docs/gotchas.md",
-        "docs/manual/20260307-gemini/image-generation.md",
-        "docs/manual/20260307-gemini/interactions.md",
         "docs/model-selection.md",
-        "docs/prompt-engineering.md"
+        "docs/prompt-engineering.md",
+        "docs/sources.md"
       ],
       "over_size": false,
       "parse_error": null,
@@ -99,7 +100,7 @@
         "Other Built-in Tools",
         "System Instruction",
         "Response Format (Structured Output)",
-        "Response Modalities",
+        "Output Modality (`response_format` type)",
         "Response Body",
         "Interaction Object",
         "Status Values",
@@ -130,9 +131,10 @@
         "Data Retention",
         "Known Limitations"
       ],
-      "line_count": 500,
+      "line_count": 505,
       "links_to": [
         "docs/architecture.md",
+        "docs/gotchas.md",
         "docs/manual/20260307-gemini/image-generation.md",
         "docs/manual/20260307-gemini/interactions.md",
         "docs/model-selection.md"
@@ -212,7 +214,7 @@
         "APIError Class",
         "stderr vs stdout Convention"
       ],
-      "line_count": 415,
+      "line_count": 419,
       "links_to": [
         "docs/prompt-engineering.md"
       ],
@@ -279,6 +281,7 @@
         "Image Config Options",
         "Aspect Ratio",
         "Image Size",
+        "Batch & Output Options",
         "tts",
         "TTS Options",
         "TTS Request Body",
@@ -298,9 +301,12 @@
         "Filters",
         "Output Format"
       ],
-      "line_count": 614,
+      "line_count": 663,
       "links_to": [
         "README.md",
+        "docs/architecture.md",
+        "docs/gotchas.md",
+        "docs/model-selection.md",
         "docs/prompt-engineering.md"
       ],
       "over_size": false,
@@ -330,14 +336,16 @@
       "headings": [
         "Gotchas",
         "The CLI targets the Interactions API, not `generateContent`",
-        "`response_modalities` enum values are lowercase",
+        "`response_modalities` was removed — declare the output type via `response_format`",
         "`speech_config` is an array, even for one speaker",
         "Preview model IDs deprecate fast — track the GA IDs",
         "`image_size` requires an uppercase `K`",
-        "GA image models return JPEG, not PNG",
+        "Extreme aspect ratios and `512px` are `gemini-3.1-flash-image`-only",
+        "GA image models default to JPEG; PNG is available via `mime_type`",
+        "The image API returns one image per call — there is no `candidate_count`",
         "The `docs/manual/20260307-gemini/` snapshots are frozen and pre-migration"
       ],
-      "line_count": 67,
+      "line_count": 87,
       "links_to": [],
       "over_size": false,
       "parse_error": null,
@@ -374,7 +382,7 @@
         "CLI Defaults",
         "Live Discovery"
       ],
-      "line_count": 115,
+      "line_count": 117,
       "links_to": [],
       "over_size": false,
       "parse_error": null,
@@ -437,7 +445,9 @@
         "Step 4: Update Help Text"
       ],
       "line_count": 285,
-      "links_to": [],
+      "links_to": [
+        "docs/gotchas.md"
+      ],
       "over_size": false,
       "parse_error": null,
       "path": "docs/prompt-engineering.md",
@@ -450,6 +460,49 @@
         "image",
         "presets",
         "batch-generation"
+      ],
+      "toc": {
+        "linked": false,
+        "present": false,
+        "stale": false
+      }
+    },
+    {
+      "dangling": false,
+      "description": "The single canonical registry of every external source this project is built on — official Gemini API docs, model/pricing/deprecation pages, prompting guides, auth conventions, and local snapshots — plus the step-by-step procedure for checking that the CLI and skills are still up to date. Designed to be consumed by a future \"check-currency\" skill.",
+      "has_frontmatter": true,
+      "headings": [
+        "Sources",
+        "1. Primary API & model sources (canonical — monitor these)",
+        "1b. Adjacent surfaces to monitor (reachable via `raw`, no dedicated command)",
+        "2. Prompting & model guidance (secondary — inform behavior, not schema)",
+        "3. Setup / tooling references",
+        "4. Local frozen snapshots (historical — do not treat as current)",
+        "5. Currency-check procedure",
+        "Verification log"
+      ],
+      "line_count": 94,
+      "links_to": [
+        "README.md",
+        "docs/gotchas.md",
+        "docs/manual/20260307-gemini/image-generation.md",
+        "docs/manual/20260307-gemini/interactions.md"
+      ],
+      "over_size": false,
+      "parse_error": null,
+      "path": "docs/sources.md",
+      "source": [
+        "cli.js",
+        "models.json"
+      ],
+      "source_unresolved": [],
+      "tags": [
+        "sources",
+        "references",
+        "monitoring",
+        "models",
+        "api",
+        "currency-check"
       ],
       "toc": {
         "linked": false,

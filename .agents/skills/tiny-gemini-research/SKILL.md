@@ -71,9 +71,9 @@ Research tasks typically take **5-15 minutes** (more for `-max-`). Plan for that
 
 Billed via the underlying model the agent uses (Pro-tier rates). Run `npx tiny-gemini models list --type=agent --json` for the current set of agents and their notes.
 
-## API Key & Cross-Cutting Setup
+## API Key
 
-Research needs a Google Gemini API key (paid tier — Deep Research is **not** in the free tier). Setup is shared with the rest of the suite — see the core [tiny-gemini](../tiny-gemini/SKILL.md) skill.
+Research calls the Gemini API and needs a Google Gemini API key, which the **CLI manages** — there is no skill-level secret. Deep Research is **paid tier** (not free), so the key must be on a billing-enabled project. Resolution: `--api-key` > `TINY_GEMINI_API_KEY` > `GEMINI_API_KEY` > `GOOGLE_API_KEY` > `.gemini/.env` (searching up) > `~/.gemini/.env`. Set `GEMINI_API_KEY` in your shell or `~/.gemini/.env` (free key: https://aistudio.google.com/app/apikey). If a command reports no key, surface the CLI's setup instructions to the user rather than storing the key yourself. See the core [tiny-gemini](../tiny-gemini/SKILL.md) skill.
 
 ## Constraints
 

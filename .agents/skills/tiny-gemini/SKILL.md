@@ -24,13 +24,23 @@ If a user prompt belongs to a sibling skill, **don't try to handle it from here*
 
 ## API Key Setup
 
-The CLI needs a `GEMINI_API_KEY`. Resolution order: `--api-key` flag > `TINY_GEMINI_API_KEY` env > `GEMINI_API_KEY` env > `GOOGLE_API_KEY` env > `.gemini/.env` (project, searching up) > `~/.gemini/.env`.
+`tiny-gemini` needs a Google Gemini API key for any command that calls the API (the `models` command is offline and needs none). **Key management is owned by the CLI — there is nothing to configure at the skill level, and no skill stores the key.** The CLI resolves it in this order:
 
-If no key is found in a TTY terminal, the CLI prompts interactively. In non-TTY (agent/pipe), it shows setup instructions.
+`--api-key` flag > `TINY_GEMINI_API_KEY` > `GEMINI_API_KEY` > `GOOGLE_API_KEY` > `.gemini/.env` (searching up from the working directory) > `~/.gemini/.env`.
+
+Get a free key at https://aistudio.google.com/app/apikey, then make it available any of these ways:
+
+```bash
+export GEMINI_API_KEY="your-key-here"                                       # shell / CI
+mkdir -p ~/.gemini && echo 'GEMINI_API_KEY=your-key-here' > ~/.gemini/.env  # user-global file (Gemini CLI convention)
+npx tiny-gemini --api-key=your-key-here "Hello"                             # one-off flag
+```
+
+**If a command reports no key:** in an interactive terminal the CLI prompts and saves the key to `~/.gemini/.env`; in a non-interactive/agent context it prints setup instructions and exits non-zero. When you hit that, surface those instructions to the user (set `GEMINI_API_KEY`, or pass `--api-key`) — do **not** try to store the key from the skill.
 
 ## Environment Variables
 
-Three env vars override the corresponding CLI flags. Useful for shells, CI, or `.env` files. **All sibling satellites share these** — defined here as the cross-cutting source of truth.
+These env vars override the corresponding CLI flags (useful for shells, CI, or a `.gemini/.env` file). **All satellites share the same key** because it is resolved by the CLI they all call — not stored per-skill.
 
 | Env var | Equivalent flag | Purpose |
 |---------|-----------------|---------|

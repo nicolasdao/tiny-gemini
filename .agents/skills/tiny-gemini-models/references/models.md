@@ -8,7 +8,7 @@ Follow these rules in order. The FIRST match is your answer.
 
 1. **Generating images and need professional quality or accurate text rendering?** Use `gemini-3-pro-image`.
 2. **Generating images?** Use `gemini-3.1-flash-image`.
-3. **Generating images at the lowest possible cost (1K resolution acceptable)?** Use `gemini-2.5-flash-image`.
+3. **Generating images at the lowest possible cost/latency (1K resolution acceptable)?** Use `gemini-3.1-flash-lite-image` (GA "Nano Banana 2 Lite"; the deprecated `gemini-2.5-flash-image` still serves until shutdown 2026-10-02).
 4. **Generating speech from text?** Use `gemini-3.1-flash-tts-preview`.
 5. **Native speech-in / speech-out conversation (not TTS)?** Use `gemini-2.5-flash-native-audio-preview-12-2025`.
 6. **Running deep research (multi-minute autonomous investigation)?** Use `deep-research-preview-04-2026` (speed-optimized) or `deep-research-max-preview-04-2026` (comprehensive). Agents, not models — set the request `agent` field, not `model`.
@@ -30,11 +30,13 @@ Follow these rules in order. The FIRST match is your answer.
 | `gemini-2.5-flash` | Text — **Sunset 2026-10-16** | Currently the only path to Remote MCP. Replacement: `gemini-3.5-flash`. |
 | `gemini-2.5-pro` | Text — **Sunset 2026-10-16** | Replacement: `gemini-3.1-pro-preview`. |
 | `gemini-2.5-flash-lite` | Text — **Sunset 2026-10-16** | Replacement: `gemini-3.1-flash-lite`. |
-| `gemini-3.1-flash-image` | Image (GA) | Default for image generation. Up to 4K, up to 14 reference images, all 14 aspect ratios. Returns JPEG. |
+| `gemini-3.1-flash-image` | Image (GA) | Default for image generation. Up to 4K, up to 14 reference images, all 14 aspect ratios (only model with `512px` + extreme ratios). JPEG default; PNG via `mime_type`. |
+| `gemini-3.1-flash-lite-image` | Image (GA) | Cheapest/fastest (GA 2026-06-30, "Nano Banana 2 Lite"). 1K only, 10 standard ratios. Successor to `gemini-2.5-flash-image`. |
 | `gemini-3-pro-image` | Image (GA) | Professional assets. Highest quality, best text rendering in images. |
-| `gemini-2.5-flash-image` | Image — **Sunset 2026-10-02** | Cheapest image generation. 1K only. Replacement: `gemini-3.1-flash-image`. |
+| `gemini-2.5-flash-image` | Image — **Sunset 2026-10-02** | Cheapest image generation. 1K only. Replacement: `gemini-3.1-flash-lite-image`. |
 | `gemini-3.1-flash-tts-preview` | Audio | TTS default. Outputs raw PCM converted to WAV. |
 | `gemini-2.5-flash-preview-tts` | Audio (Preview) | Older, lower-cost 2.5-family TTS. Still active (not deprecated). |
+| `gemini-2.5-pro-preview-tts` | Audio (Preview) | Higher-tier 2.5-family TTS ($1.00/$20.00, no free tier). `gemini-3.1-flash-tts-preview` is the newer default. |
 | `gemini-2.5-flash-native-audio-preview-12-2025` | Audio | Native speech-in / speech-out (distinct from TTS). |
 | `gemini-embedding-2` | Embeddings (GA) | Multimodal: text, image, video, audio, PDF. |
 | `deep-research-preview-04-2026` | Agent | Autonomous deep research (speed-optimized). Requires `background: true`, uses `agent` field (not `model`). |

@@ -45,9 +45,9 @@ This opts into the new schema (`steps` array, renamed SSE events). Background:
 |------|-------|
 | 2026-05-07 | Opt-in available via `Api-Revision: 2026-05-20` |
 | 2026-05-26 | New schema becomes the default for REST clients |
-| 2026-06-08 | Legacy schema removed |
+| 2026-06-08 | Legacy schema removed; **`Api-Revision` header now ignored** |
 
-Sending the explicit header makes our requests deterministic across the transition. To pin to the legacy shape (only useful before 2026-06-08), pass `Api-Revision: 2026-05-07` directly via the `raw` command after constructing the body manually.
+As of **2026-06-08** the migration is complete: the legacy schema is gone, the new schema is the only schema, and the API **ignores** the `Api-Revision` header. There is no newer revision value to adopt. The CLI still sends `2026-05-20` as a harmless explicit marker (see `API_REVISION` in `cli.js`); it is inert, and omitting it would make no difference today.
 
 See https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026 for the full migration matrix.
 
@@ -69,10 +69,9 @@ See https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026
 | `model` | string | One of model/agent | Model ID (e.g., `gemini-3-flash-preview`) |
 | `agent` | string | One of model/agent | Agent ID (e.g., `deep-research-preview-04-2026`) |
 | `input` | string or Content[] | Yes | Text or multimodal content |
-| `response_modalities` | string[] | No | Output types (lowercase): `["image"]`, `["audio"]` |
-| `generation_config` | object | No | Temperature, thinking, image config, speech config |
+| `generation_config` | object | No | Temperature, thinking, speech config |
 | `system_instruction` | string | No | System prompt |
-| `response_format` | object | No | JSON schema for structured output |
+| `response_format` | object or object[] | No | Declares the output type and its config: `{type:"text",…}` (incl. structured-output schema), `{type:"image",…}` (aspect_ratio/image_size), `{type:"audio"}`. An **array** requests multiple modalities. Replaced the removed `response_modalities` field in the May 2026 migration. |
 | `tools` | Tool[] | No | Function calling, search, code execution |
 | `previous_interaction_id` | string | No | For stateful conversations |
 | `stream` | boolean | No | Enable streaming (default: false) |
@@ -139,8 +138,9 @@ See https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026
 |-------|--------|
 | `aspect_ratio` | `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9` |
 | `image_size` | `512px` (3.1 Flash only), `1K` (default), `2K`, `4K` |
+| `mime_type` | `image/jpeg` (default), `image/png` |
 
-**Note:** Image size values must use uppercase `K` (e.g., `"2K"` not `"2k"`).
+**Note:** Image size values must use uppercase `K` (e.g., `"2K"` not `"2k"`). The value sets are **model-specific**: the four extreme ratios (`1:4`, `1:8`, `4:1`, `8:1`) and `512px` are supported by `gemini-3.1-flash-image` only; `gemini-3-pro-image` and `gemini-3.1-flash-lite-image` take the 10 standard ratios, and `gemini-3.1-flash-lite-image` is 1K-only. See [Gotchas](gotchas.md).
 
 #### Speech Config
 
@@ -223,16 +223,17 @@ Multi-speaker:
 
 The model's text output will be valid JSON conforming to this schema.
 
-### Response Modalities
+### Output Modality (`response_format` type)
 
-Controls what type of output the model generates. The Interactions API requires **lowercase** enum values (`text`, `image`, `audio`, `video`, `document`) — uppercase values are rejected with `400 The value 'IMAGE' is not supported for 'response_modalities[0]'`:
+The `response_modalities` field was **removed** in the May 2026 migration (legacy schema gone 2026-06-08). Output type is now declared by the `type` of a `response_format` entry — see [Gotchas](gotchas.md):
 
-| Value | Effect |
-|-------|--------|
-| `["image"]` | Generate images |
-| `["audio"]` | Generate audio (TTS) |
-| `["text", "image"]` | Interleaved text and images |
-| *(not set)* | Text only (default) |
+| Goal | `response_format` |
+|------|-------------------|
+| Text (default) | *(not set)*, or `{ "type": "text" }` |
+| Structured JSON | `{ "type": "text", "mime_type": "application/json", "schema": {…} }` |
+| Image | `{ "type": "image", "aspect_ratio": "…", "image_size": "…" }` |
+| Audio (TTS) | `{ "type": "audio" }` (with `generation_config.speech_config`) |
+| Multiple (e.g. text + image) | an **array**: `[ { "type": "text" }, { "type": "image" } ]` |
 
 ## Response Body
 
@@ -431,7 +432,8 @@ For the live registry, run `npx tiny-gemini models`. See [Model Selection](model
 
 | Model ID | Notes |
 |----------|-------|
-| `gemini-3-flash-preview` | Default for text/search, best value |
+| `gemini-3-flash-preview` | Default for text/search in tiny-gemini, best value |
+| `gemini-3.5-flash` | GA — Google's recommended latest flash (agentic/coding); official replacement for `gemini-2.5-flash` |
 | `gemini-3.1-pro-preview` | Most capable, deepest reasoning |
 | `gemini-3.1-flash-lite` | Cheapest text in the Gemini 3 family (GA) |
 | `gemini-2.5-flash` | Remote MCP support — **sunset 2026-10-16** |
@@ -442,9 +444,10 @@ For the live registry, run `npx tiny-gemini models`. See [Model Selection](model
 
 | Model ID | Codename | Notes |
 |----------|----------|-------|
-| `gemini-3.1-flash-image` | Nano Banana 2 | Default in tiny-gemini, best value, up to 4K |
+| `gemini-3.1-flash-image` | Nano Banana 2 | Default in tiny-gemini, best value, up to 4K. Only model with `512px` + the extreme `1:4/1:8/4:1/8:1` ratios |
+| `gemini-3.1-flash-lite-image` | Nano Banana 2 Lite | GA 2026-06-30. Fastest/cheapest, **1K only**, 10 standard ratios. Successor to `gemini-2.5-flash-image` |
 | `gemini-3-pro-image` | Nano Banana Pro | Highest quality, best text rendering |
-| `gemini-2.5-flash-image` | Nano Banana | Cheapest, 1K only |
+| `gemini-2.5-flash-image` | Nano Banana | **Deprecated** (shutdown 2026-10-02) → `gemini-3.1-flash-lite-image` |
 
 Image models return base64 image data; the GA models (`gemini-3.1-flash-image`, `gemini-3-pro-image`) return `image/jpeg`. The CLI saves using whatever `mime_type` the response carries, so the file extension always matches the actual format. A SynthID watermark is embedded in all generated images.
 
@@ -452,8 +455,9 @@ Image models return base64 image data; the GA models (`gemini-3.1-flash-image`, 
 
 | Model ID | Notes |
 |----------|-------|
-| `gemini-3.1-flash-tts-preview` | TTS default. Outputs raw PCM (24kHz, 16-bit, mono) |
-| `gemini-2.5-flash-preview-tts` | **Deprecated**, → `gemini-3.1-flash-tts-preview` |
+| `gemini-3.1-flash-tts-preview` | TTS default. Outputs raw PCM (24kHz, 16-bit, mono). Streaming supported by the API (2026-06-17); the CLI's `tts` writes a non-streaming WAV |
+| `gemini-2.5-flash-preview-tts` | Preview (not deprecated) — older, lower-cost 2.5-family TTS → prefer `gemini-3.1-flash-tts-preview` |
+| `gemini-2.5-pro-preview-tts` | Preview — higher-tier 2.5-family TTS → prefer `gemini-3.1-flash-tts-preview` |
 | `gemini-2.5-flash-native-audio-preview-12-2025` | Native speech-in / speech-out (distinct from TTS) |
 
 ### Embeddings

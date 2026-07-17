@@ -21,8 +21,10 @@ const MODELS = {
 	research: 'deep-research-preview-04-2026',
 };
 
-// Opt into the new Interactions API schema (steps/step.delta/etc.).
-// New schema becomes default 2026-05-26; legacy removed 2026-06-08.
+// Interactions API schema-revision header. The May 2026 migration finished on
+// 2026-06-08 (legacy schema removed; the API now ignores this header), so the
+// value is inert today and there is no newer revision to adopt — it is kept only
+// as a harmless explicit marker. See docs/api-reference.md for the timeline.
 const API_REVISION = '2026-05-20';
 
 // Background-task statuses that mean "stop polling, it won't complete".
@@ -936,7 +938,7 @@ function imageCostUsd(registry, modelId, size) {
 // and an estimated cost. --dry-run prints the cost estimate and makes no calls.
 async function runImageBatch(opts) {
 	const { prompts, imageParts = [], hint, noun, model, imgConfig, config, values,
-		responseFormat, hasResponseFormat, references = null, registry = null } = opts;
+		responseFormat, references = null, registry = null } = opts;
 	const wantJson = !!values.json;
 	const size = values['image-size'] ? values['image-size'].replace(/k$/i, 'K') : '1K';
 	const single = prompts.length === 1;
@@ -959,8 +961,11 @@ async function runImageBatch(opts) {
 
 	const results = await mapPool(prompts, concurrency, async (p, i) => {
 		const input = imageParts.length ? [{ type: 'text', text: p }, ...imageParts] : p;
-		const body = { model, input, response_modalities: ['image'] };
-		if (hasResponseFormat) body.response_format = responseFormat;
+		// Current Interactions schema (post-2026-06-08): output modality is declared
+			// by response_format's `type`, not the removed response_modalities field.
+			// response_format always carries at least { type: 'image' }; the
+			// aspect_ratio/image_size fields are merged in when the user sets them.
+			const body = { model, input, response_format: responseFormat || { type: 'image' } };
 		if (config.jsonOutput) {                       // raw API passthrough
 			console.log(JSON.stringify(await callAPI(imgConfig, body), null, 2));
 			return null;
@@ -1109,14 +1114,16 @@ async function handleImage(args, values, config) {
 	checkSunset(model);
 	const imgConfig = { ...config, model };
 
-	// New schema (May 2026): aspect_ratio + image_size live inside response_format
-	// with type:"image", not under generation_config.image_config.
+	// Current Interactions schema: response_format with type:"image" both declares
+	// the output modality (this replaced the removed response_modalities field in
+	// the May 2026 migration) and carries aspect_ratio + image_size (which used to
+	// live under generation_config.image_config). type:"image" is always sent; the
+	// two config fields below are added only when the user requests them.
 	const imageResponseFormat = { type: 'image' };
 	if (values['aspect-ratio']) imageResponseFormat.aspect_ratio = values['aspect-ratio'];
 	// The API requires an uppercase K suffix (e.g. "2K"); normalize a lowercase
 	// "2k" so a user following older help text doesn't get a 400.
 	if (values['image-size']) imageResponseFormat.image_size = values['image-size'].replace(/k$/i, 'K');
-	const hasImageConfig = values['aspect-ratio'] || values['image-size'];
 
 	switch (sub) {
 		case 'generate': {
@@ -1169,7 +1176,7 @@ async function handleImage(args, values, config) {
 				prompts, imageParts, references, registry,
 				hint: values.out || 'image', noun: 'image',
 				model, imgConfig, config, values,
-				responseFormat: imageResponseFormat, hasResponseFormat: hasImageConfig,
+				responseFormat: imageResponseFormat,
 			});
 			break;
 		}
@@ -1190,7 +1197,7 @@ async function handleImage(args, values, config) {
 				prompts, imageParts: [{ type: 'image', data: b64, mime_type: mime }],
 				hint: values.out || 'edited', noun: 'image', registry,
 				model, imgConfig, config, values,
-				responseFormat: imageResponseFormat, hasResponseFormat: hasImageConfig,
+				responseFormat: imageResponseFormat,
 			});
 			break;
 		}
@@ -1233,7 +1240,7 @@ async function handleImage(args, values, config) {
 			await runImageBatch({
 				prompts, hint: values.out || 'story_step', noun: 'story step', registry,
 				model, imgConfig, config, values,
-				responseFormat: imageResponseFormat, hasResponseFormat: hasImageConfig,
+				responseFormat: imageResponseFormat,
 			});
 			break;
 		}
@@ -1252,7 +1259,7 @@ async function handleImage(args, values, config) {
 			await runImageBatch({
 				prompts, hint: values.out || sub, noun: sub, registry,
 				model, imgConfig, config, values,
-				responseFormat: imageResponseFormat, hasResponseFormat: hasImageConfig,
+				responseFormat: imageResponseFormat,
 			});
 			break;
 		}
@@ -1272,10 +1279,12 @@ async function handleTTS(text, values, config) {
 	const body = {
 		model,
 		input: text,
-		response_modalities: ['audio'],
+		// Current Interactions schema (post-2026-06-08): audio output is declared
+		// via response_format {type:"audio"} — the old response_modalities:["audio"]
+		// field was removed in the May 2026 migration. speech_config stays inside
+		// generation_config and must be an array even for a single speaker.
+		response_format: { type: 'audio' },
 		generation_config: {
-			// The new Interactions schema requires speech_config to be an array,
-			// even for a single speaker (was an object pre-2026-05).
 			speech_config: [{ language, voice }],
 		},
 	};

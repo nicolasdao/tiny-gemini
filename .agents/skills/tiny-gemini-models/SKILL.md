@@ -30,6 +30,10 @@ This skill owns every "ask about the Gemini API" verb (vs "use" the API):
 
 This skill is **offline** — no API key needed, no network call. It's pure reference / discovery.
 
+## Configuration
+
+**None.** The `models` command is fully offline — it reads the embedded `models.json` registry with no network call and no API key. (Actually *running* a model — text, images, audio, research — needs a Gemini key, but that is managed by the **CLI**, not by any skill — see the core [tiny-gemini](../tiny-gemini/SKILL.md) skill.)
+
 ## Quick Reference
 
 ```bash
@@ -86,7 +90,7 @@ Apply in order. The FIRST match is your answer.
 
 1. **Generating images and need professional quality / accurate text rendering?** → `gemini-3-pro-image`
 2. **Generating images?** → `gemini-3.1-flash-image`
-3. **Generating images at the lowest possible cost, 1K acceptable?** → `gemini-2.5-flash-image`
+3. **Generating images at the lowest possible cost/latency, 1K acceptable?** → `gemini-3.1-flash-lite-image` (GA; the deprecated `gemini-2.5-flash-image` still serves until shutdown 2026-10-02)
 4. **Generating speech from text?** → `gemini-3.1-flash-tts-preview`
 5. **Native speech-in / speech-out (not TTS)?** → `gemini-2.5-flash-native-audio-preview-12-2025`
 6. **Multi-minute autonomous research?** → `deep-research-preview-04-2026` (or `-max-` for comprehensive)

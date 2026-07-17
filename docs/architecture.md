@@ -14,7 +14,7 @@ This document explains the internal structure of `cli.js`, how the pieces fit to
 The entire CLI is a single file: `cli.js`. This is intentional — it keeps the project NPX-friendly (no `node_modules`, no build step) and makes it easy to audit or fork.
 
 ```
-cli.js (~1070 lines)
+cli.js (~1600 lines)
 ├── Shebang + Imports          (lines 1-7)
 ├── Constants                  (lines 9-34)
 ├── Utilities                  (lines 36-58)
@@ -43,12 +43,16 @@ const MODELS = {
     research: 'deep-research-preview-04-2026',
 };
 
-const API_REVISION = '2026-05-20';   // opt into new Interactions schema
-const SHUTDOWN_DATE = '2026-10-16';  // gemini-2.5-* family hard removal
+const API_REVISION = '2026-05-20';   // opt into the new Interactions schema (now inert post-migration — see docs/api-reference.md)
+
+// Models with an announced shutdown, each mapped to its GA replacement and the
+// date the API stops serving it. Dates differ per model, so each entry carries
+// its own { replacement, shutdown }.
 const SUNSET_MODELS = {
-    'gemini-2.5-pro': 'gemini-3.1-pro-preview',
-    'gemini-2.5-flash': 'gemini-3-flash-preview',
-    'gemini-2.5-flash-lite': 'gemini-3.1-flash-lite',
+    'gemini-2.5-pro':         { replacement: 'gemini-3.1-pro-preview',   shutdown: '2026-10-16' },
+    'gemini-2.5-flash':       { replacement: 'gemini-3.5-flash',         shutdown: '2026-10-16' },
+    'gemini-2.5-flash-image': { replacement: 'gemini-3.1-flash-image',   shutdown: '2026-10-02' },
+    // …plus gemini-2.5-flash-lite, gemini-3.1-flash-image-preview, gemini-3-pro-image-preview (6 entries total)
 };
 ```
 
@@ -57,6 +61,7 @@ const SUNSET_MODELS = {
 - `MODELS_SUBS` — models sub-commands: `list`, `pricing`
 - `VARIATIONS` — variation map for batch image generation (7 categories, 2 alternatives each)
 - `MODELS_JSON_PATH` — absolute path to the embedded model registry, resolved relative to `cli.js` via `import.meta.url`
+- `TERMINAL_FAILURE_STATES` — background-task statuses that mean "stop polling, it won't complete" (`failed`, `cancelled`, `incomplete`, `budget_exceeded`, `expired`)
 
 ### Section 2: Utilities (lines 36-58)
 
@@ -66,8 +71,7 @@ const SUNSET_MODELS = {
 - `exists()` — async file existence check via `access()`
 - `tryJSON()` — safe JSON parse returning null on failure
 - `APIError` — error class that extracts the API error message from response body
-- `isPastShutdown()` — returns `true` once the system clock has crossed `SHUTDOWN_DATE`
-- `checkSunset(model)` — if the model is in `SUNSET_MODELS`, prints a stderr warning naming the replacement; after shutdown, calls `die()` instead
+- `checkSunset(model)` — if the model is in `SUNSET_MODELS`, prints a stderr deprecation warning naming the GA replacement; once past that model's own `shutdown` date, calls `die()` instead
 
 ### Section 3: .env Loader (lines 60-113)
 
