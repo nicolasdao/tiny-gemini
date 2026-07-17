@@ -1,6 +1,6 @@
 {
 	"lockVersion": 2,
-	"generatedAt": "2026-07-17T04:14:04.153Z",
+	"generatedAt": "2026-07-17T10:07:00.296Z",
 	"skills": {
 		"happyskillsai/happyskills": {
 			"version": "2.7.0",
@@ -34,18 +34,19 @@
 			"dependencies": {}
 		},
 		"nicolasdao/tiny-gemini": {
-			"version": "2.1.0",
-			"ref": "refs/tags/v2.1.0",
-			"commit": "54334f7ff6598b3688794b684b1d24282b2b3341959f14caa1f218bae09c4201",
-			"integrity": "sha256-2c431a2547fdbe152a3ae0d5a236ebbfccc1448f9c458f713568ffd841672b86",
-			"base_commit": "54334f7ff6598b3688794b684b1d24282b2b3341959f14caa1f218bae09c4201",
-			"base_integrity": "sha256-2c431a2547fdbe152a3ae0d5a236ebbfccc1448f9c458f713568ffd841672b86",
+			"version": "2.2.0",
+			"ref": "refs/tags/v2.2.0",
+			"commit": "1b1db6cf29766c7167284d1ac2abc892b740a83c59dc44b19200b35c103ab721",
+			"integrity": "sha256-b7cef3c09b30723d86438fcd1b1b034e4f130d03749bb001302a4484828df9ee",
+			"base_commit": "1b1db6cf29766c7167284d1ac2abc892b740a83c59dc44b19200b35c103ab721",
+			"base_integrity": "sha256-b7cef3c09b30723d86438fcd1b1b034e4f130d03749bb001302a4484828df9ee",
 			"requested_by": [
 				"__root__"
 			],
 			"dependencies": {
 				"nicolasdao/tiny-gemini-image": "^0.1.0",
 				"nicolasdao/tiny-gemini-tts": "^0.1.0",
+				"nicolasdao/tiny-gemini-video": "^0.1.0",
 				"nicolasdao/tiny-gemini-research": "^0.1.0",
 				"nicolasdao/tiny-gemini-models": "^0.1.0"
 			}
@@ -156,12 +157,12 @@
 			"type": "skill"
 		},
 		"nicolasdao/tiny-gemini-models": {
-			"version": "0.1.5",
-			"ref": "refs/tags/v0.1.5",
-			"commit": "95e0b95f496d11f52c337624f6a09fb4db844d36200d3e7f5d6eb507d3c6f4dc",
-			"integrity": "sha256-55a18b1aef75243db9bd0d2dbb88f2b6c378c0e0450f197a1ecd8f93b2ef9ee6",
-			"base_commit": "95e0b95f496d11f52c337624f6a09fb4db844d36200d3e7f5d6eb507d3c6f4dc",
-			"base_integrity": "sha256-55a18b1aef75243db9bd0d2dbb88f2b6c378c0e0450f197a1ecd8f93b2ef9ee6",
+			"version": "0.1.6",
+			"ref": "refs/tags/v0.1.6",
+			"commit": "0d71c9f7d243ae0bcc8bd3af0fa6e7f3f7055bb18a5573e717eb82eb1db16ebb",
+			"integrity": "sha256-15a4cb54f45ee48ae7694497de8fdb3aace8cac4d5df94551560f65f6e492b37",
+			"base_commit": "0d71c9f7d243ae0bcc8bd3af0fa6e7f3f7055bb18a5573e717eb82eb1db16ebb",
+			"base_integrity": "sha256-15a4cb54f45ee48ae7694497de8fdb3aace8cac4d5df94551560f65f6e492b37",
 			"requested_by": [
 				"__root__"
 			],
@@ -342,6 +343,18 @@
 			],
 			"dependencies": {},
 			"type": "skill"
+		},
+		"nicolasdao/tiny-gemini-video": {
+			"version": "0.2.0",
+			"ref": "refs/tags/v0.2.0",
+			"commit": "10c732171546b2c31c33ccbf7aa842da995322aedf9ffacccbbee9a7c592c8fb",
+			"integrity": "sha256-d4c3d33fa735a0778fe59aa590692644c1ad3faffc7b647a9dc167bd0296a42c",
+			"base_commit": "10c732171546b2c31c33ccbf7aa842da995322aedf9ffacccbbee9a7c592c8fb",
+			"base_integrity": "sha256-d4c3d33fa735a0778fe59aa590692644c1ad3faffc7b647a9dc167bd0296a42c",
+			"requested_by": [
+				"__root__"
+			],
+			"dependencies": {}
 		}
 	}
 }
