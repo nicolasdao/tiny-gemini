@@ -1,7 +1,7 @@
 {
 	"name": "tiny-gemini-upkeep",
-	"version": "0.1.0",
-	"description": "Audits tiny-gemini against the live Gemini API — checks the CLI schema, registry, and docs vs official sources and surfaces new models or breaking changes. Suite member of nicolasdao/tiny-gemini.",
+	"version": "0.2.0",
+	"description": "Audits tiny-gemini against the live Gemini API — verifies usage works, migrates deprecated or broken APIs, and surfaces new or removed capabilities to decide. Suite member of nicolasdao/tiny-gemini.",
 	"keywords": [
 		"ai",
 		"gemini",

@@ -5,6 +5,14 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-17
+
+### Added
+
+- **Three-class finding model (resolve / migrate / decide).** Every finding is now classified and handled by class: **Resolve** currency (still-works confirmations, metadata changes, catalog-fitting new models) → propose & apply; **Migrate** a used API that is broken, replaced, or deprecating-soon → find the recommended replacement and migrate proactively while **preserving the documented plain-English capability** (the agentic-breaking rule — changing the request shape while the capability is unchanged is low-risk, the agent adapts); **Decide** a new capability/modality, a removed capability, or a migration that can't preserve the capability → surface richly for the principal, never auto-apply.
+- **Verify-our-usage + deprecation hunt.** Phase 2 now builds an inventory of every API, endpoint, header, model, and request shape the CLI *actually uses* and checks each for still-works / changed / deprecating-soon / no-longer-possible — so upkeep migrates proactively before things break, rather than only re-reading the doc pages.
+- **Class 3 decision templates** (new-capability → what it does / how it works / value proposition / proposed integration; removed-capability → what's lost / blast radius / options) and a **Class 2 migration playbook** with the agentic-breaking test, both in `references/apply-and-verify.md`. Scope is never expanded or removed automatically — the principal decides.
+
 ## [0.1.0] - 2026-07-16
 
 ### Added

@@ -7,11 +7,14 @@ How to run the research phase — both **verifying** the known sources and **dis
 Ask each sub-agent to return findings as a list, each item carrying:
 
 - `claim` — one sentence, the concrete fact (e.g. "gemini-3.1-flash-lite-image is GA").
-- `category` — `new-model` | `status-change` | `pricing-change` | `deprecation` | `schema-change` | `new-capability` | `new-source`.
+- `category` — `new-model` | `status-change` | `pricing-change` | `deprecation` | `deprecating-soon` | `broken` | `schema-change` | `new-capability` | `removed-capability` | `new-source`.
+- `class` — the handling class (see SKILL.md "Three finding classes"): `resolve` (currency fix upkeep applies) | `migrate` (a used API is broken/replaced/deprecating-soon → migrate to the replacement, preserving the plain-English capability) | `decide` (a new or removed capability, or a migration that can't preserve the capability → surface for the principal, never auto-apply).
 - `verdict` — `confirmed-live` | `could-not-verify`.
 - `source_url` — the exact page the claim came from.
 - `verbatim` — a short exact quote when the claim is load-bearing (see discipline below).
 - `affects` — best guess at what it touches (`models.json`, `cli.js` schema, a doc, a skill, the registry).
+- For `deprecating-soon` / `broken`: the **recommended replacement** (ID or shape) and the source that names it, so Phase 6 can migrate.
+- For `new-capability`: *what it does*, *how it works*, and its *value proposition* — enough for the principal to decide integration (this feeds the Class 3 template). For `removed-capability`: *what is lost* and the source confirming it's gone.
 
 Findings with `could-not-verify` are reported, never silently dropped.
 
@@ -24,9 +27,17 @@ Rules:
 - Instruct agents to report **only what the live page says**, to attach the source URL to every claim, and to say "could not verify" rather than fill from training data.
 - When a finding contradicts one of our documented gotchas (`docs/gotchas.md`), that is a reason to verify harder, not to trust the summary.
 
-## Phase 2 — Verify known sources
+## Phase 2 — Verify our usage + hunt deprecation
 
-Read the §1 table in `docs/sources.md` and dispatch one agent per cluster. Typical clusters and what each must return:
+**First, build the usage inventory.** Read `cli.js` and `models.json` and list everything the CLI *actually depends on*: the endpoint (`/v1beta/interactions`), the headers (`x-goog-api-key`, `Api-Revision`), the default models (`MODELS`) and `SUNSET_MODELS`, every request-body shape per command (image `response_format:{type:image}`, TTS `response_format:{type:audio}`+`speech_config`, text/schema, `tools:[{google_search}]`, research `agent`+`background`), the SSE event names, and every model ID in the registry. This inventory is the checklist — the goal is a diff against *our* usage, not a survey of the docs.
+
+Then dispatch one agent per source cluster in `docs/sources.md` §1. For **every** inventory item each agent must answer four questions:
+1. **Still works?** Is it still valid on the live docs, unchanged?
+2. **Changed / replaced / already broken?** New shape, new required field, renamed, or removed.
+3. **Deprecating soon?** Hunt the deprecation signals: an announced `shutdown_on` date, a "recommended replacement" / "use X instead", a preview→GA transition that sunsets the preview, a changelog "deprecated"/"will be removed" note. A soon-to-deprecate dependency is a **`migrate`** finding *now*, before it breaks.
+4. **No longer possible?** Something the CLI does that the API no longer supports at all (a `removed-capability` → Class 3).
+
+Typical clusters and what each must return:
 
 | Agent | Pages (from `docs/sources.md` §1) | Must return |
 |-------|-----------------------------------|-------------|
@@ -52,5 +63,9 @@ Dispatch discovery agents with deliberately broad prompts (WebSearch + WebFetch)
 ## Reconciliation notes for Phase 4
 
 - Collapse duplicate claims from multiple agents; keep the one with the strongest evidence (verbatim + confirmed-live wins).
-- Rank by impact: schema/breaking changes first, then default-model or deprecation changes, then new models, then doc/source additions.
-- For each surviving finding, name the exact file(s) it touches — that list becomes the Phase 5 proposal and the Phase 6 work.
+- **Assign each finding a class** (SKILL.md "Three finding classes"):
+  - `resolve` — currency: still-works confirmations, metadata changes, and a new model that fits an existing command or the catalog.
+  - `migrate` — a used API/model that is broken, replaced, or deprecating-soon. Attach the recommended replacement. Test the migration against the **agentic-breaking rule**: if the documented plain-English capability can be preserved (only the model ID / header / body shape changes), it stays `migrate`; if the capability itself must change, promote it to `decide`.
+  - `decide` — a new capability/modality/command, a `removed-capability`, or a migration that can't preserve the capability. These are surfaced, never auto-applied.
+- Rank within-class by impact: broken-now > deprecating-soon > schema change > default-model change > new model > doc/source addition.
+- For each `resolve`/`migrate` finding, name the exact file(s) it touches (that list drives Phase 6). For each `decide` finding, gather the material the Class 3 templates need (what/how/value, or what's-lost/impact/options).

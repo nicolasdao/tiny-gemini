@@ -41,6 +41,37 @@ Every surface a finding can touch. Do not stop at the first one — a single cha
 
 The CLI refuses/​warns on sunsetting models via `SUNSET_MODELS` in `cli.js`; the registry carries the same lifecycle data in `models.json`. A deprecation finding that updates one but not the other leaves the CLI and its registry disagreeing. Update both in the same pass and re-check with `node cli.js models list --status=deprecated`.
 
+## Class 2 — Migration playbook
+
+When a used API/model is broken, replaced, or deprecating soon, migrate to the recommended replacement **without changing what the CLI can do**.
+
+1. **Confirm the replacement verbatim.** The replacement ID/shape must be pulled from an official page (not a summarizer) — it is going into code.
+2. **Map old → new at the implementation layer only** — model ID, header, request-body field/shape, endpoint. Write down the exact before/after.
+3. **Apply across every surface** (use the ownership map above) so the *documented plain-English capability is identical afterward*. Example: were `gemini-3.1-flash-image` replaced, you'd swap the ID in `MODELS` (`cli.js`), `models.json`, `docs/model-selection.md` + `api-reference.md`, and `tiny-gemini-image` — but the sentence "generate an image from a prompt" never changes. Move the retired ID into `SUNSET_MODELS` if it is now deprecated.
+4. **The agentic-breaking test — run it before you finish.** Read the skill/doc description of the affected capability *before* and *after*. If a user asking for the same thing in plain English still gets the same result, the migration is non-breaking (implementation churn the agent absorbs) → ship it. If the description had to change (the capability now does less, an output the user consumes changed, a flag's meaning shifted), STOP — this is a *true* breaking change → take it back to Phase 5 as a Class 3 decision; do not apply it silently.
+5. **Smoke-test the migrated path** live (Phase 7) — a real call proving the new shape works.
+
+## Class 3 — Decision templates (for Phase 5)
+
+Class 3 findings are **surfaced, never auto-applied**. Present each with enough for the principal to decide in one read. Do not fold them into the Class 1/2 changes.
+
+**New capability / modality / command** (e.g. video via Omni Flash):
+
+> **&lt;Name&gt;** — &lt;one-line what-it-is&gt;. *Confidence:* &lt;confirmed-live | could-not-verify&gt; · *Source:* &lt;url&gt;
+> - **What it does** — the capability in plain English (inputs → outputs).
+> - **How it works** — endpoint / model / tool + request shape at a glance; is it reachable via `raw` today?
+> - **Value proposition** — why it might be worth adding; what it unlocks for tiny-gemini users.
+> - **Proposed integration shape** — catalog entry only? a new `--flag`/command on an existing skill? a new satellite skill via `happyskills-design`? — with the rough cost of each.
+> - **Recommendation** — integrate / document-only / skip, with a one-line reason.
+
+**Removed capability** (something the CLI does that is no longer possible):
+
+> **&lt;Capability&gt;** — no longer supported. *Source:* &lt;url&gt; confirming removal.
+> - **What is lost** — the plain-English capability that no longer works.
+> - **Blast radius** — the exact command(s) / flag(s) / skill(s) that rely on it.
+> - **Options** — remove the command/flag · keep it but document it as unavailable · replace with the nearest alternative — with the trade-off of each.
+> - **Recommendation** — one line.
+
 ## Skill propagation — version + CHANGELOG
 
 For every `.agents/skills/tiny-gemini*` skill whose content you edited:
