@@ -186,7 +186,7 @@ This is `create-release-skill`'s realm. Produce a written brief that `happyskill
 **C. Form decisions already made** — pass these THROUGH so `happyskills-design` does NOT re-ask the user:
 - **Skill name** (from 3.1).
 - **Invocation model** — auto-invoke vs user-only, decided in Phase 2. Determines `disable-model-invocation`.
-- **Arguments** — always `[action, note]`, hint `[patch|minor|major|draft] ["description"]`.
+- **Arguments** — always `[action, note]`, hint `[patch|minor|major|unreleased] ["description"]`.
 - **Description inputs** — raw material for the five-slot description (design composes the final string per its grammar): the project's release *family* (Domain), what the skill does (verbs), the concrete project name (Object), trigger phrases, and whether sibling `release-*` skills exist (Negative). Detect siblings with `ls .agents/skills/ .claude/skills/ 2>/dev/null | grep '^release-'`.
 
 ### 3.3 Delegate scaffolding and structure to happyskills-design
@@ -212,8 +212,8 @@ After successful generation:
 
 1. Show the complete generated SKILL.md content
 2. Show the file structure created (tree view)
-3. Explain how to invoke: `/release-<project-name>`, `/release-<project-name> draft`, `/release-<project-name> minor "Added feature X"`
-4. Remind about Mode C: "Use `draft` to capture release notes mid-session without doing a full release"
+3. Explain how to invoke: `/release-<project-name>`, `/release-<project-name> unreleased`, `/release-<project-name> minor "Added feature X"`
+4. Remind about Mode C: "Use `unreleased` to record your changes into the `[Unreleased]` changelog ledger mid-session, without doing a full release — the next release sweeps it up. Multi-agent-safe: each agent records its own."
 
 ## Constraints
 

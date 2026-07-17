@@ -1,11 +1,15 @@
 {
 	"name": "happyskills-sync",
-	"version": "0.5.5",
+	"version": "0.6.4",
 	"requires": {
-		"happyskills": ">=0.49.0"
+		"happyskills": ">=1.13.0"
 	},
 	"type": "skill",
 	"description": "Sync local skills with the remote registry — status, pull (with rebase-style mode), diff, reconcile drift, merge-conflict resolution, and publish-after-merge intelligence.",
+	"authors": [
+		"Nicolas Dao <nic@happyskills.ai>"
+	],
+	"license": "BSD-3-Clause",
 	"keywords": [
 		"happyskills",
 		"sync",

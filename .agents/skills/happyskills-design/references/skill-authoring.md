@@ -199,7 +199,7 @@ The `description` field is the **#1 factor** in auto-invocation quality. Claude 
 |---|---|---|
 | **Domain** *(optional — see "When to drop the Domain" below)* | Scope declaration — narrows the routing surface to the topic the skill wants to serve. Serves either as a *brand anchor* (humans + LLM recognize the product) or as a *topical hard-filter* (the LLM fast-skips when the prompt is in an unrelated area). | EITHER a real product/constellation name (`HappySkills`, `Stripe`, `Figma` — CamelCase brand) OR a real topical category (`site-cloning`, `image-gen` — kebab-case matching the family's casing). One token. Followed by an em-dash. **Skip the Domain entirely** when the verb-object phrase already anchors the topic, when the skill is intentionally multi-purpose, or when the skill name itself is topical — see "When to drop the Domain" below. |
 | **Verb(s)** | The action(s) this skill performs. The primary routing signal. | One primary verb, optionally paired with closely related verbs. Imperative mood (`Install`, `Publish`, `Sync`). |
-| **Object** | What the verb acts on. The other half of the routing signal — same verb, different object often means a different skill. | The concrete thing the verb operates on (`AI agent skills`, `workspace members`, `local skills with the remote registry`). Be specific; vague objects (`things`, `data`, `items`) cause routing collisions with siblings. |
+| **Object** | What the verb acts on. The other half of the routing signal — same verb, different object often means a different skill. | The concrete thing the verb operates on (`AI agent skills`, `workspace members`, `local skills with the remote registry`). Be specific; vague objects (`things`, `data`, `items`) cause routing collisions with siblings. **If the skill is about a nameable technology, product, API, or file format, name it** — proper-noun identifiers (`Gemini`, `Postgres`, `JWT`, `.docx`) are the highest-precision routing tokens and cut both false negatives (the user names the technology and the skill fires) and false positives (a request naming a *different* technology correctly does not). Skip this for genuinely general-purpose skills — they have no proper noun to name, and inventing one narrows routing wrongly. |
 | **Triggers** | Concrete user-intent phrases the LLM should recognize as belonging here. Introduced by `Use when`. | 3–5 short phrases naming concrete user intents (`adding a skill to a project`, `signing in`, `resolving merge conflicts`). Use the user's vocabulary, not the implementation's. |
 | **Negative** | Explicit redirection away from sibling skills that own related verbs. Introduced by `Not for`. | One short clause naming the verbs/intents that belong to a sibling. This is the cross-skill disambiguator — effectively required whenever sibling skills exist. |
 
@@ -211,7 +211,7 @@ Each slot constrains the next:
 
 1. **Domain.** Decide what routing surface this skill should serve, then choose accordingly. A brand name for members of a named product/constellation. A kebab-case topical category for standalone skills with polysemous verbs (`Map`, `Clone`, `Build`, `Fetch`, `Sync`, `Run`) whose verb-object phrase doesn't already anchor the topic. **Skip the Domain entirely** when the verb-object phrase already anchors the topic, when the skill is intentionally multi-purpose, or when the skill name itself screams the topic. See "When to drop the Domain" below for the full decision rule and worked examples.
 2. **Verb(s).** Pick the *one* primary verb that names the dominant action. If you need three verbs, you probably have two skills (apply the Constellation Pattern — see [constellation-pattern.md](constellation-pattern.md)). Pair only verbs that are genuinely the same intent at different granularity (`install and update`).
-3. **Object.** Name what the verb acts on, with specificity. If two siblings share a verb, the object is what makes routing orthogonal. `Update AI agent skills` (lifecycle) vs `Update skill content based on session learnings` (authoring) are routable; `Update skills` vs `Update skills` are not.
+3. **Object.** Name what the verb acts on, with specificity. If two siblings share a verb, the object is what makes routing orthogonal. `Update AI agent skills` (lifecycle) vs `Update skill content based on session learnings` (authoring) are routable; `Update skills` vs `Update skills` are not. **If the skill is about a nameable thing (a library, API, tool, file format, or product), name that proper noun** — it is the highest-precision routing token — and carry it into the Triggers, not just here. A skill described as operating on `JWTs` routes far more precisely than one operating on `authentication tokens`. (Genuinely general-purpose skills with no nameable subject correctly skip this — forcing an identifier onto them narrows routing wrongly.)
 4. **Triggers.** List concrete user phrases that should fire this skill. Test each one: would a sibling's description plausibly also match this phrase? If yes, either tighten the trigger or add a Negative clause.
 5. **Negative.** Name the closest sibling's territory and redirect to it. Skip this only if the skill has no near-neighbors (rare — most skills in a constellation have at least one sibling).
 
@@ -689,6 +689,7 @@ Use ultrathink to analyze the architectural trade-offs...
     - **The index is load-bearing:** a gotcha file SKILL.md doesn't point to is one the agent never loads. Keep it in sync (every domain file linked, every link resolves — the Audit Workflow checks this), and don't split until the inline section is genuinely unwieldy (over-structuring three gotchas is #17 in miniature). This mirrors the hub+domain gotchas pattern the project's docs use, folded into a skill's single always-loaded entry point.
 16. **Don't state the obvious — encode only the non-default** — Claude already writes code competently and can read the codebase, so body instructions that restate what the model would do anyway spend context budget without adding signal *and* dilute the high-value content around them. Every line should push Claude off a default it would otherwise take: an org-specific convention, a taste judgment (the frontend-design skill earns its keep by steering away from the default Inter-font-and-purple-gradient look, not by explaining CSS), a non-obvious gotcha. Litmus test — if a sentence would be true of any competent engineer working with no skill loaded, cut it. This is the body-content counterpart to the description discipline in #2 and the length budget in § 5: signal density, not volume.
 17. **Give judgment room — don't railroad** — A skill is reused across situations its author never anticipated, so rigid, over-specified step sequences make it brittle: the moment reality diverges from the assumed path, the skill stalls or forces a wrong action. Prefer handing Claude the *goal plus the context it needs to decide* over a fixed script it must follow blindly. The exception is deliberate and important — where an operation is destructive, irreversible, or must be deterministic (releases, migrations, anything safety-critical, cf. #4 and #12), prescribe it tightly and verify each step; there, removing the model's discretion is the whole point. Calibrate by stakes: tight rails on the dangerous path, room to adapt everywhere else.
+18. **Grant `allowed-tools` by least privilege — never inherit the scaffold default** — `allowed-tools` is the *no-prompt* surface (the tools the skill may use without a permission prompt), not a capability grant and not a box to fill with everything. Claude can still reach for other tools; they just prompt. So list exactly the tools the skill's own workflow invokes. A read-only or CLI-dispatch skill — one that searches, lists, reports, answers questions, or only wraps a CLI and reads files — needs no `Write`/`Edit`; omitting them means an unexpected write surfaces a permission prompt instead of executing silently, which is the whole safety point. Only skills that author or mutate files carry `Write`/`Edit`. The failure mode is copy-pasting a broad set like `Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion` from a sibling skill and never narrowing it — derive the set from the workflow, don't inherit it. This is the frontmatter counterpart to the signal-density discipline in #16: grant only what earns its place.
 
 | Anti-Pattern | Problem | Fix |
 |---|---|---|
@@ -712,6 +713,7 @@ Use ultrathink to analyze the architectural trade-offs...
 | Gotchas that outgrow SKILL.md, or sit in `references/` unlinked from it | Either bloats SKILL.md toward the 500-line silent-death cap, or leaves a gotcha file the agent never loads (unlinked = invisible) | Move the detail to `references/gotchas/<domain>.md` and link it directly from a thin `## Gotchas` index in SKILL.md (one hop). See Best Practice #15 |
 | Body content that restates what Claude already does by default | Wastes context budget and dilutes the high-signal content around it | Cut it — encode only what pushes Claude off a default (conventions, taste calls, gotchas). See Best Practice #16 |
 | Rigid, over-specified steps on a non-critical path | Brittle — the skill stalls or misfires the moment the situation deviates from the author's assumed path | Give the goal plus context and let Claude adapt; reserve tight rails for destructive or deterministic operations. See Best Practice #17 |
+| Over-granted `allowed-tools` (broad scaffold default left unnarrowed) | A read-only or CLI-dispatch skill silently auto-approves `Write`/`Edit` it never legitimately uses, so an unexpected mutation runs with no prompt | Grant only the tools the workflow invokes; strip `Write`/`Edit` from any skill that doesn't author or mutate files. See Best Practice #18 |
 
 ---
 
@@ -826,26 +828,125 @@ Each skill is focused, small, and has a precise description for accurate auto-in
 
 ---
 
-### Pattern 6 — Setup via config.json (per-user configuration)
+### Configuration — declare a schema, read `skills-config.json`
 
-Some skills need setup values the author can't know in advance — a Slack channel to post to, a project ID, a dashboard URL, an account name. Hard-coding them breaks reuse; re-asking on every run is annoying. The convention is a `config.json` in the skill directory that the skill reads at the start of its workflow, fills in by asking the user the first time, and reuses thereafter.
+Some skills need setup values the author can't know in advance — a channel, a project ID, a token. **Never store these inside the skill folder**: a skill is a reinstallable artifact, so anything written into it is wiped on the next `update`. Configuration lives **outside** the skill, in a committed project-root `skills-config.json` (sibling of `skills-lock.json`) — as `.npmrc` relates to `node_modules`.
 
-```markdown
-## Setup
+1. **Author: declare the schema in `skill.json`** — a `config` block for non-secret tunables, an `env` block for the environment contract (`required: true` = activation gate; `secret: true` routes to a gitignored `.env`, name-only to `.env.example`). Full reference: `docs/skill-format.md` § 4.6 in the HappySkills source repo (not bundled with this skill). On install/update the CLI prompts the consumer and writes their choices to `skills-config.json` (keyed `owner/name`) — you write no setup code, and secret **values** never land in any committed file.
 
-At the start, read `${CLAUDE_SKILL_DIR}/config.json`.
-If `slack_channel` is missing or empty, ask the user which channel to post to
-(use the AskUserQuestion tool for a structured prompt), then write their answer
-back to config.json before continuing.
-```
+   ```json
+   { "config": { "channel": { "type": "string", "default": "#general", "description": "Channel to post to" } },
+     "env":    { "SLACK_BOT_TOKEN": { "required": true, "secret": true, "description": "Slack bot token" } } }
+   ```
 
-```json
-{ "slack_channel": "" }
-```
+   A `config` field's `type` is one of `string`, `integer`, `number`, `boolean`, **`object`**, or **`array`**. An `env` var's type is scalar only — a `.env` value is always a string, so structured data belongs in `config`, never in `env`.
 
-- **It is a convention, not a spec feature.** The Agent Skills spec defines no `config.json` — it simply permits arbitrary files in a skill directory, and `.json` is a recognized resource extension. The runtime gives the file no special meaning; your SKILL.md instructions are what make it load-and-persist setup state. (Distinct from `scripts/`, which holds executable code, and `assets/`, which holds output templates — this is mutable runtime state.)
-- **Pair it with AskUserQuestion** for the first-run prompt so the user picks from structured choices instead of typing free-text.
-- **It holds per-install state, not authored content.** Keep your own filled-in values out of the published artifact and never put secrets in it (secrets belong in `.env`, which HappySkills already excludes). See [happyskills-conventions.md § 7](happyskills-conventions.md).
+   **App-managed fields — `prompt: false`.** Some settings are not something a human can type at an install prompt: a theme object, a named palette library, anything the skill's *own* UI authors. Declare them structured and mark them `prompt: false` — install will skip them (an object/array field is never prompted anyway) and the skill writes them itself with `skills-config set` (step 3 below). Without this, install becomes a wall of unanswerable questions.
+
+   ```json
+   "config": {
+     "theme":    { "type": "object", "default": {}, "prompt": false, "description": "Workspace default theme." },
+     "palettes": { "type": "object", "default": {}, "prompt": false, "description": "Named palette library." }
+   }
+   ```
+
+   **Declare a `schema` for every structured field — this is the single highest-value thing you do when designing complex config.** Without one, HappySkills stores the value verbatim and never looks inside (content opacity), which means *nothing* can tell an agent that `palettes.Acme.palette[2]` is not a hex colour. The agent finds out at runtime, from whatever error your code happens to throw, and it cannot reliably repair the value. With a schema, `skills-config set` **refuses** the bad write and `skills-config validate` reports **every** violation with its exact path and an imperative fix — so an agent fixes and re-runs until it converges. That loop is the whole point.
+
+   ```json
+   "palettes": {
+     "type": "object", "prompt": false, "default": {},
+     "schema": {
+       "patternProperties": {
+         ".*": {
+           "type": "object",
+           "required": ["accent", "palette"],
+           "additionalProperties": false,
+           "properties": {
+             "accent":  { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+             "palette": { "type": "array", "minItems": 1, "maxItems": 8,
+                          "items": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" } }
+           }
+         }
+       }
+     }
+   }
+   ```
+
+   ```
+   ✖ palettes.Acme.palette[2] — "not-a-hex" does not match ^#[0-9a-fA-F]{6}$
+     → Replace it with a 6-digit hex colour, e.g. "#eb4a26".
+   ✖ palettes.Acme.eighth_token — unknown key; this skill's schema does not allow it
+     → Remove it, or check it for a typo. Allowed keys: accent, palette.
+   ```
+
+   **The schema is YOURS, and that is what makes it safe.** HappySkills does not invent a contract for your data — it enforces the one *you* declare, which ships inside your skill and versions with it. It therefore cannot go stale against your own code the way a validator on someone else's release cycle would. That is precisely why this does not violate content opacity: there is no second validator, just your contract, enforced on your behalf.
+
+   **Supported keywords** (a closed JSON-Schema subset — anything else is an authoring error, caught by `happyskills validate`): `type`, `enum`, `const`, `properties`, `required`, `additionalProperties`, `patternProperties`, `items`, `minItems`, `maxItems`, `pattern`, `minLength`, `maxLength`, `minimum`, `maximum`, `description`.
+
+   **Designing the schema — four rules that decide whether the loop actually converges:**
+
+   1. **Close the shape: `"additionalProperties": false`.** An open object silently accepts a typo'd key forever. Closing it turns `eighth_tokn` into a located error with the allowed keys listed.
+   2. **Constrain the leaves, not just the branches.** `"type": "string"` on a colour tells an agent almost nothing. `"pattern": "^#[0-9a-fA-F]{6}$"` tells it exactly what to write. Reach for `pattern`, `enum`, `minItems`/`maxItems`, `minimum`/`maximum` — every constraint you add is one more mistake the agent can fix by itself instead of shipping.
+   3. **Use `patternProperties` for a map with author-chosen keys** (a palette *library*, a named-profile map). Use `properties` + `required` for a fixed record (a theme). Getting this backwards is the most common mistake: a fixed record under `patternProperties` validates nothing useful.
+   4. **Keep the schema and your runtime validator in agreement — ideally make the schema the source of truth.** Two independently-maintained validators *will* diverge, and then a config that HappySkills accepts blows up in your code. If your skill already has a validator, derive it from the schema or delete it in favour of it.
+
+   **Keep it configuration, not application state.** A committed `skills-config.json` is meant to be read in a pull request. A theme, a palette library, a set of thresholds — fine. Documents, layouts, caches, edit history — not fine; those belong in your own storage. The CLI warns past 64 KB, which is the smell, not the rule.
+
+   `happyskills validate` warns (advisory, never blocking) when a structured field declares no schema — omitting one is a legitimate decision for a value that is genuinely opaque to everyone but your skill, but it should be a *decision*, not an oversight.
+
+   **Constellation secrets — `sharedEnv`.** If you are authoring a **constellation** whose members share a secret (the common case — e.g. one API token read by the core and its satellites), declare `sharedEnv: true` on the **core** so install scaffolds ONE `./secrets/<core>.env` for all members instead of an identical file each. Opt-in, core-only, invalid on kits. See [constellation-pattern.md § 1.1](constellation-pattern.md) and `docs/skill-format.md` § 4.6 in the HappySkills source repo (not bundled with this skill).
+
+   **Post-install manual setup — `setupGuide` (detect this proactively).** A required secret is only half the story: *how does the consumer obtain it?* When getting the credential needs **human-only steps the agent cannot do** — create a scoped API token in a provider dashboard, register an OAuth app, grant a lengthy permission list — attach a **`setupGuide`** (a path to a reference file that explains how) to that `env`/`config` entry:
+
+   ```json
+   "env": { "CLOUDFLARE_API_TOKEN": { "required": true, "secret": true,
+            "setupGuide": "references/token-model.md",
+            "verify": "node scripts/cf.js rest GET /user/tokens/verify" } }
+   ```
+
+   On install, when that required field is unset, the CLI emits `next_step.action: complete_manual_setup` pointing at the guide, so the agent walks the human through it (and re-surfaces until done). **As an author or reviewer, actively watch for this need:** whenever a skill declares a `required: true` **secret** — especially one obtained from a provider dashboard / console / OAuth flow — ask *"can the agent get this itself?"* If not, it wants a `setupGuide`. `validate` flags the common case (a required secret with no `setupGuide`, in a skill whose text mentions dashboards/tokens/OAuth) as an advisory warning — but you are the precision layer: when you detect it, **offer to research and draft the guide** (a provider's exact dashboard steps + required permissions), then wire `setupGuide` in. First automate whatever the agent *can* do; the guide covers only the irreducibly-human residue. Full contract: `docs/skill-format.md` § 4.6 in the HappySkills source repo (not bundled with this skill).
+
+2. **Consumer-side read: embed this canonical snippet verbatim in your SKILL.md.** There is exactly **one** correct way to resolve config — follow it, do not invent your own. Identical wording in every skill is what keeps agents from re-deriving it (and getting it subtly wrong):
+
+   > **Resolve configuration before using any default — there is one correct way; follow it, don't improvise.** Prefer `happyskills skills-config get <owner>/<name> --json`: it returns the merged non-secret `config`, the resolved `envFile`, the required-secret names, and a present/absent flag. If the CLI is unavailable, do the **same** resolution by hand, in this exact order:
+   >
+   > 1. **Find the project root.** Search upward from your current directory for the nearest `skills-config.json` or `skills-lock.json`, stopping at a `.git` boundary. That directory is the project root.
+   > 2. **Read the config.** In that project root, read `skills-config.json` (then the global `~/.agents/skills-config.json`) under the key `<owner>/<name>`. Anything unset falls back to this skill's hardcoded defaults.
+   > 2b. **ABSENT ≠ CORRUPT — never `catch { return null }`.** A *missing* `skills-config.json` legitimately means "nothing configured yet" → fall back to defaults. A file that *exists but does not parse* means the consumer's settings are **unreadable**, and quietly treating that as "nothing configured" is a silent failure: the skill runs with the wrong settings and reports success. **Stat the path first**: absent → defaults; present-but-unparseable → **throw**, naming the file and telling the user to run `npx -y happyskills skills-config validate --json` (which reports the exact line, column, and how to fix it) — and to repair it **in place**, never to delete it, because it holds every configured skill's settings.
+   > 3. **Resolve `envFile` against the directory of the `skills-config.json` that declared it — NOT your current directory.** Use the project file's `envFile` if it declares one; otherwise the global file's. The `envFile` value (e.g. `./secrets/x.env`) is relative to the directory holding the `skills-config.json` it came from: a value from the project file resolves against the project root (step 1); a value from the global `~/.agents/skills-config.json` resolves against `~/.agents`. Join it to that directory to get the real path — never to the directory you happen to be running from. **This is the one step that is easy to get wrong: resolving it against your current working directory makes the skill work from the project root but fail from any subdirectory. Anchor it to the declaring config file's own directory and it works from anywhere.**
+   > 4. **Never read a secret's value into your own context.** Do not `Read`, `cat`, `echo`, or open the `envFile` to inspect a secret, and never inline a secret into a `fetch`/`curl`/command string. The value must pass straight from the `.env` into the process that needs it: run the skill's script or CLI with the `envFile` loaded into that child process's environment (e.g. `set -a; . ./secrets/<skill>.env; set +a; <tool> …`, or a `scripts/*.mjs` that reads `process.env`), so that only the subprocess — never you — ever sees the token. An ambient environment variable of the same name takes precedence over the file.
+   > 5. **Check presence, not value.** Use the `secretsPresent` flag from `skills-config get` to decide whether you can run (CLI-less, test that the variable is non-empty) — never print or echo it. If a required secret is missing, **STOP** and tell the user exactly which variable to set and in which file.
+
+3. **Consumer-side write: `skills-config set` — never hand-edit the JSON.** When your skill (or its UI) needs to *persist* a setting — the user clicks "Save palette" — write it through the CLI. It is atomic, key-scoped and locked: every other skill's block, your other keys, and `envFile` all survive untouched, and a concurrent `install` cannot erase your write.
+
+   ```bash
+   # scalar
+   npx -y happyskills skills-config set <owner>/<name> format --value a4 --json
+   # object / array — the only way to set a structured field
+   npx -y happyskills skills-config set <owner>/<name> theme --json-value '{"preset":"forest"}' --json
+   # large value — pipe it rather than quoting it into a shell
+   cat palettes.json | npx -y happyskills skills-config set <owner>/<name> palettes --json-value - --json
+   # remove
+   npx -y happyskills skills-config unset <owner>/<name> theme --json
+   ```
+
+   `set` writes the **whole key** — it does not deep-merge into the previous value. Do your own read-modify-write: `get`, change the one entry, `set` the result back.
+
+   **Choose the scope deliberately.** By default the write lands in the project's `skills-config.json`. Two flags exist for when that is wrong, and picking the right one is a design decision, not a detail:
+
+   | Flag | Writes to | Use when |
+   |---|---|---|
+   | *(none)* | The nearest project's `skills-config.json` | The setting is about **this project** |
+   | `--global` | `~/.agents/skills-config.json` | The setting is about **this user** — brand colors, a default theme. It should follow them into every project, and it is the right answer for a tool launched from an arbitrary directory. |
+   | `--root <dir>` | `<dir>/skills-config.json`, created if absent | You know the workspace root and the cwd is not a HappySkills project (a tool run via `npx` from anywhere) |
+
+   **`set` refuses to write a key you declared `secret: true`** (`FORBIDDEN_FIELD`). That is not a limitation to work around — `skills-config.json` is committed, and a secret in it is a leak. Secrets go in the `envFile`, always.
+
+   **The consumer file is checkable: `happyskills skills-config validate --json`.** It reports every problem with its exact location (the field path; for a syntax error the line, column, and the offending source line) and a `fix` for each — including a hard error if a declared secret has ended up in the committed file. Every read and write refuses with `VALIDATION_FAILED` while the file is corrupt, so a broken file fails loudly instead of silently resolving to "nothing configured". Point users at `validate` rather than at a text editor, and **never** repair it by deleting the file: it holds *every* skill's settings, not just yours.
+
+4. **Design the skill so a subprocess — never the model — consumes the credential.** If your skill calls an authenticated API or CLI, ship a thin wrapper (as the `cloudflare` skill's `scripts/cf.js` and this repo's `database/migrate.js` both do): it reads the secret from its own `process.env`, uses it, and prints **only** results — the token's value never crosses the shell or the context boundary. The agent handles names and a present/absent check; the value stays inside the child process. This is the same secret-hiding contract the repo already applies to its own credentials — do not hand-roll a different one, and never let the agent bridge the `.env` and the API call by reading the value itself.
+
+Reads and writes are both **CLI-preferred, file-fallback** — a skill stays portable and works with no CLI installed. The read fallback above is the **same** logic `skills-config get` runs; if you must write without the CLI, do what `set` does: read the file, replace only your own `<owner>/<name>` key, and write it back atomically (write a temp file, then rename) so a reader never sees a torn file and no other skill's block is disturbed. One recipe, two ways to reach it, never a bespoke resolver per skill. Secrets live only in the `.env` the `envFile` points at — never in `skills-config.json`, never in the skill folder (HappySkills already excludes `.env`).
 
 ---
 

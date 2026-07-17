@@ -55,7 +55,7 @@ Before doing anything, classify what the user needs:
 | `Dockerfile` / `docker-compose.yml` | Deployment targets, infrastructure |
 | `CLAUDE.md` | Project conventions, constraints, architecture decisions |
 
-**Always run:** `npx happyskills list --json` — this shows already-installed skills. You MUST know what's installed to avoid recommending duplicates and to identify gaps.
+**Always run:** `npx happyskills list --all-scopes --json` (CLI `1.13.0+`) — this shows already-installed skills across **both** project-local and global scopes. You MUST know what's installed to avoid recommending duplicates and to identify gaps; a globally-installed skill counts as installed (it loads in this project too). Note `data.skills` is an **array** in `--all-scopes` mode — match dedup candidates on `name`.
 
 **For targeted/contextual searches:** You may already know the tech stack from the current session. Don't re-read files you've already seen — use what you know.
 
@@ -144,7 +144,7 @@ After all searches complete:
 
 1. **Merge results** across all domain searches into a single list
 2. **Deduplicate** — same skill appearing in multiple searches is a strong signal; keep it, don't list it twice
-3. **Filter already-installed** — compare against the `list --json` output from Stage 2
+3. **Filter already-installed** — compare against the `list --all-scopes --json` output from Stage 2 (match on `name`; this excludes both locally- and globally-installed skills)
 4. **Evaluate fit** — for each remaining skill, ask: "Does this actually help with THIS user's specific situation?" A skill might rank high in search but not fit the user's exact context.
 5. **Rank** — order by your assessment of value to the user, not raw relevance score
 

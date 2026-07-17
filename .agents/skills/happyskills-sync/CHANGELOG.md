@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.6.4] - 2026-07-08
+
+### Added
+- Declared `authors` and `license` (BSD-3-Clause) in `skill.json`.
+
+### Changed
+- Raised the `requires` floor to `happyskills >=1.13.0` to match the `list --all-scopes` feature the skill uses (below 1.13 the disambiguation silently no-ops).
+
+### Fixed
+- Corrected a stale section pointer in `references/merge-workflows.md` (Section 10 → Section 5, the Diagnostic Decision Tree).
+
+## [0.6.3] - 2026-06-30
+
+### Changed
+- Disambiguate against the new `happyskills match` command so "which of my local skills exist in the catalog" intents route to `happyskills-search` (its Section 4.5), not sync. Add a Section 1 routing row plus a linked-vs-unlinked disambiguation rule, and sharpen the description object to "installed skills" with a `Not for ... matching an unlinked local folder (use match)` boundary. Sync stays scoped to skills already linked to a remote (an entry in `skills-lock.json`); discovering whether an unlinked folder has a catalog counterpart is `match`.
+
+## [0.6.2] - 2026-06-29
+
+### Changed
+- Disambiguate a `not_found` sync target with `list --all-scopes` (CLI `1.13.0+`), preferring the `scope: "local"` entry — you sync the copy in this project. `data.skills` is an array in that mode.
+
+## [0.6.1] - 2026-06-13
+
+### Changed
+- Raise the minimum CLI requirement from `happyskills >=0.49.0` to `happyskills >=1.11.0`. The 0.6.0 conflict-resolution and review recipes depend on CLI behavior shipped in 1.11.0 — re-pull with `--theirs`/`--ours` resolving pending markers locally, and `pull --rebase --json --full-report` emitting the review payload. On an older CLI those recipes silently no-op, so the requirement is now enforced.
+
+## [0.6.0] - 2026-06-12
+
+### Added
+- **Mandatory post-merge coherence review (Section 3.5).** After any `merged` pull — or once conflict resolution completes — the skill must read each merged file and verify internal coherence, fidelity to the skill's purpose, and harness intactness before routing to publish.
+
+### Changed
+- **Section 3 pull invocations now default to `--full-report`** (both `--rebase` and 3-way modes). The merge report is produced only by the pull that performs the merge and cannot be requested afterwards, so it is requested up front.
+- **Section 7 reframed** from a standalone "run this to review" command into the payload the coherence review consumes, with a disk + `diff --remote` fallback for when an earlier pull ran without `--full-report`.
+- **Section 10 now permits read-only `npx happyskills validate` after a merge** to confirm structural integrity locally; `publish`/`bump`/`convert`/`fork` remain routed to this skill.
+- **Conflict-resolution recipes corrected.** Re-pull with `--theirs`/`--ours` now resolves pending markers locally and clears `conflict_files`; a bare re-pull surfaces the pending conflict state instead of reporting up-to-date. Removed the dead "bare re-pull to obtain a report" recipe from SKILL.md Section 7 and `references/merge-workflows.md`.
+
 ## [0.5.5] - 2026-06-06
 
 ### Changed

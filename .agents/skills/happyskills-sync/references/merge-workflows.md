@@ -1,6 +1,6 @@
 # Merge & Sync Workflows
 
-Detailed playbooks for diagnosing and resolving merge-related scenarios. SKILL.md Section 10 has the quick decision tree — this file has the full procedures.
+Detailed playbooks for diagnosing and resolving merge-related scenarios. SKILL.md Section 5 has the quick decision tree — this file has the full procedures.
 
 ---
 
@@ -122,18 +122,23 @@ npx happyskills pull <skill> --theirs --json
 npx happyskills pull <skill> --ours --json
 ```
 
+This resolves the pending markers **locally** — it reads each conflicted file, keeps the chosen side (`--theirs` → remote, `--ours` → local), strips the marker lines, recomputes integrity, and clears `conflict_files` from the lock. No registry merge happens; the conflicted pull already advanced the base to the remote head. The response status is `merged` when every conflicted file had a strategy, or `conflicts` when some were left without one. A **bare** re-pull (no `--theirs`/`--ours`) does NOT silently report `up_to_date` while markers are pending — it reports the pending conflict state with the `conflict_files` list so you know resolution is still owed.
+
 **Option 3 — Per-file strategy**: If some files should take remote and others should keep local:
 
 ```
 npx happyskills pull <skill> --theirs SKILL.md --ours references/custom.md --json
 ```
 
+Files named with a strategy are resolved; files left out of both lists stay in `conflict_files` and the status stays `conflicts` until you resolve them too.
+
 ### After Resolution
 
-Once all conflict markers are removed from files:
-- Run `npx happyskills status <skill> --json` to verify status is no longer `conflicts`
-- The lock's `conflict_files` is cleared on the next successful pull
-- Publish creates a single-parent commit (rebase semantics — no merge commit when conflicts were involved)
+Once all conflict markers are resolved:
+- If you resolved via `--theirs`/`--ours` (Option 2/3), `conflict_files` is cleared by that resolving pull itself, and the status returns to clean.
+- If you resolved markers by hand (Option 1), run `npx happyskills status <skill> --json` to confirm the status is no longer `conflicts`.
+- Then run the Post-Merge Coherence Review (below) before publishing.
+- Publish creates a single-parent commit (rebase semantics — no merge commit when conflicts were involved).
 
 ### skill.json Merge Suggestions
 
@@ -178,27 +183,34 @@ Rare but possible: someone publishes between your pull and your publish.
 
 ---
 
-## Using --full-report for AI Review
+## Post-Merge Coherence Review
 
-The `--full-report` flag (requires `--json`) enriches pull output for intelligent merge review:
+This is the full procedure for SKILL.md Section 3.5. It is **mandatory** after any pull that returns `status: merged`, and after conflict resolution completes (status back to clean). A merge can be mechanically clean yet semantically incoherent — diff3 stitches line regions together without reading meaning — so a clean merge is not a green light to publish on its own.
+
+### Where the report comes from
+
+The `--full-report` payload (requires `--json`) is emitted **only by the pull that performs the merge** — request it on that pull (Section 3 always does):
 
 ```
+npx happyskills pull owner/name --rebase --json --full-report
 npx happyskills pull owner/name --json --full-report
 ```
 
-Each file entry in `report.files` includes:
-- `base_content` — the common ancestor version
-- `local_content` — what the user had locally
-- `remote_content` — what the remote has
-- `merged_content` — the result after merge
+Each file entry in `report.files` includes inline content — `base_content`, `local_content`, `remote_content`, `merged_content` — plus a `resolution_steps` array (`resolve_conflict_markers`, `review_json_suggestions`, `semantic_review`, `verify`). The inline content lets you review without extra file reads.
 
-The response also includes `resolution_steps` — an array of action-typed steps:
-- `resolve_conflict_markers` — files with markers that need manual resolution
-- `review_json_suggestions` — auto-applied JSON field defaults to verify
-- `semantic_review` — all modified/added files to check for cross-file logical contradictions
-- `verify` — run `happyskills status` to confirm resolution
+### The review
 
-**When to use**: Use `--full-report` when you need to reason about the merge — e.g., checking if the merged SKILL.md still makes logical sense after combining two sets of changes. The inline content lets you review without extra file reads.
+For each modified/added file the `semantic_review` step names, read `merged_content` and check:
+
+1. **Internal coherence** — no half-sentences, no contradictory instructions stitched from both sides, no duplicated or orphaned sections.
+2. **Fidelity to purpose** — the merged text still serves the skill's stated purpose, judged against `skill.json`'s `description` and the SKILL.md frontmatter.
+3. **Harness intactness** — frontmatter present and well-formed, no leftover `<<<<<<<` / `=======` / `>>>>>>>` marker lines, every referenced file still exists.
+
+Optionally run `npx happyskills validate <skill> --json` (read-only) to confirm structural integrity locally. Then give the user a verdict — *"the merge is coherent — safe to publish"* or *"these passages need attention: …"* — **before** routing to publish.
+
+### Fallback — no report was captured
+
+If an earlier pull already merged without `--full-report`, you **cannot** recover the report by re-pulling: the merge is done, so a bare re-pull reports `up_to_date` (or the pending conflict state if markers remain) — never a report. Review the merged files on disk directly instead: read each modified/added file, and run `npx happyskills diff <skill> --remote --json` to see what the registry side contributed, then apply the same three checks. **Never instruct a bare re-pull to obtain a report.**
 
 ---
 
@@ -247,10 +259,7 @@ Present the file classifications, then ask the user how they want to proceed.
 
 ### "I pulled and it merged, but I want to review the result"
 
-Use the full report mode:
+Reviewing the merge is **not optional** — it is the mandatory Post-Merge Coherence Review (above).
 
-```
-npx happyskills pull <skill> --json --full-report
-```
-
-Review the `merged_content` for each file. Check `resolution_steps` for any items that need attention. If satisfied, proceed to publish.
+- **If you pulled with `--full-report`** (you should always do this — Section 3): review the `merged_content` for each file the `semantic_review` step names, run the three coherence checks, then give a verdict before publishing.
+- **If the merge already happened without `--full-report`**: you cannot re-request the report — a bare re-pull will only report `up_to_date` (or the pending conflict state), never a report. Use the disk + `diff --remote` fallback from the Post-Merge Coherence Review section. **Do not** re-pull hoping to get a report.

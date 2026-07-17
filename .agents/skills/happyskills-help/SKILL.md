@@ -1,6 +1,6 @@
 ---
 name: happyskills-help
-description: HappySkills — Explain how HappySkills works, list its optional skills, route to the right family skill, install missing opt-in skills, sign in, and send feedback. Use when asking what HappySkills can do, which skill handles a task, which optional or opt-in skills exist, collaboration or workspace members, usage or statistics, signing in, or sending feedback. Not for searching or installing a known skill.
+description: HappySkills — Explain how it works, list and install optional opt-in skills, route requests to the right family skill, sign in, and send feedback. Use when asking what HappySkills can do, which skill handles a task, collaboration or workspace members, or usage and statistics. Not for searching or installing a known skill.
 allowed-tools: Bash, Read, AskUserQuestion
 argument-hint: "[your question about HappySkills]"
 ---
@@ -31,6 +31,7 @@ The user's request is: `$ARGUMENTS`
 | "which agents are supported", "does it work with Cursor", "how many agents" | Feature Routing (Section 3) — read [references/feature-map.md](references/feature-map.md) for the multi-agent answer. |
 | "invite someone to my workspace", "manage workspace members", "grant access", "set permissions", "list members", "create a group" | Opt-in satellite (`happyskills-collab`). Go to **Section 3.5** — identify the satellite from its table and offer to install it directly. |
 | "how am I using HappySkills", "show my usage stats", "my install or search history", "how many people installed my skills", "downloads of my skills", "reach of my skills" | Opt-in satellite (`happyskills-stats`). Go to **Section 3.5** — identify the satellite from its table and offer to install it directly. |
+| "configure a skill", "change a skill's settings", "how do I set X's channel or model or theme", "where do a skill's secrets go", "how do I give a skill my API key", "my skills-config.json is broken" | Core hand-off: *"That's `happyskills` (core) — say it directly (e.g. `'configure acme/slack-notify'`) and it will handle it."* Core owns `skills-config` (`get`/`set`/`unset`/`validate`). Do not hand-edit `skills-config.json` yourself. |
 | "sign in", "log in", "log me in", "how do I authenticate" | Authentication (Section 4) |
 | "I found a bug", "give feedback", "feedback", "feature request", "I wish HappySkills could", "thank the team", "compliment", "I have a suggestion for HappySkills", "report a bug", "report this" | Feedback (Section 5) |
 | Any other "how / what / why / which" question about HappySkills | Read [references/family-overview.md](references/family-overview.md) and [references/feature-map.md](references/feature-map.md), then answer. |
@@ -65,7 +66,7 @@ HappySkills' LLM interface is a **family** of focused skills in two tiers. Expla
 
 | Bundled skill | What it does |
 |---|---|
-| `happyskills` (core) | install, update, list, and remove skills; sign in; configure agents |
+| `happyskills` (core) | install, update, list, and remove skills; sign in; configure agents; **configure an installed skill** (its settings and where its secrets live) |
 | `happyskills-design` | design, audit, and update skills and kits |
 | `happyskills-publish` | publish and release skills to the registry |
 | `happyskills-sync` | sync local skills with the registry — pull, diff, resolve conflicts |
@@ -112,7 +113,7 @@ When the user's request matches a row and that satellite is not installed, run t
 
 **Steps:**
 
-1. **Confirm it isn't already installed.** Run `npx happyskills list --json` and check `data.skills` for `happyskillsai/<satellite>`. If it IS already installed, do not offer to install — route normally by stating the trigger phrase (Section 1/3) so the satellite fires.
+1. **Confirm it isn't already installed.** Run `npx happyskills list --all-scopes --json` (CLI `1.13.0+`) so the check covers **both** project-local and global installs — a satellite installed globally is available here too, and offering to install it again would be wrong. In `--all-scopes` mode `data.skills` is an **array**, so check with `data.skills.find(s => s.name === 'happyskillsai/<satellite>')` (not object-key access). If it IS already installed in either scope, do not offer to install — route normally by stating the trigger phrase (Section 1/3) so the satellite fires.
 2. **Explain briefly.** Tell the user plainly what the satellite owns and that it isn't installed yet — e.g. *"Workspace member and access management live in `happyskills-collab`, an opt-in skill that isn't installed yet."*
 3. **Offer via AskUserQuestion** with exactly three options:
    - **"Install it"** → run `npx happyskills install <install target> -y --json` (the `-y` is safe — you've confirmed here, so it avoids a double prompt). On success: *"Installed. Restart Claude Code to activate it, then re-ask your question and `<satellite>` will handle it."*

@@ -1,18 +1,19 @@
 ---
 name: happyskills-search
-description: HappySkills — Find, recommend, and star skills, browse versions and changelogs, and search your favorites. Use when looking for a skill, exploring what is available, starring favorites, or picking a version. Not for installing.
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
+description: HappySkills — Find, recommend, and star skills, browse versions, and match a local folder of skills against the catalog. Use when looking for a skill, picking a version, or checking which local skills exist in HappySkills. Not for installing.
+allowed-tools: Bash, Read, Glob, Grep, AskUserQuestion
 argument-hint: "[what you're looking for, or a skill name]"
 ---
 
 # HappySkills Search (Discovery)
 
-You are the discovery surface for HappySkills. You handle four kinds of requests:
+You are the discovery surface for HappySkills. You handle five kinds of requests:
 
 1. **"Find me a skill for X" / "help me figure out what I need"** — search the marketplace and recommend skills to install. This is the bulk of what you do.
 2. **"What versions of X exist? When did feature Y ship in X?"** — list a skill's version history or print its changelog so the user can pick the right version before installing.
 3. **"Install `happyskills-collab`"** (or another opt-in satellite the user has been routed to from elsewhere) — confirm and install, then hand back. Default-bundled satellites already exist; never offer to install them.
 4. **"Star this / save it to my favorites" / "show me my favorites" / "unstar X"** — star or unstar a skill (the curation half of favorites — Section 7), or search the skills the user has already starred via the `--favorites` scope (Section 2 Step B.5 + Section 3). Favorites is a discovery loop: find → star → re-find.
+5. **"Which of my local skills are already on HappySkills?" / "match this folder of skills against the catalog"** — fingerprint a folder of **unlinked** local skills and match each against the catalog into tiers (Section 4.5). This is reverse-discovery: local → catalog. (Reconciling a skill that is *already installed/linked* to a remote is `happyskills-sync`, not this.)
 
 The user's request is: `$ARGUMENTS`
 
@@ -56,12 +57,14 @@ Build a one-paragraph mental model of the user's project. Sources, in priority o
 
 The model you build should cover: language/runtime, framework, deployment target, external services, and any in-progress concerns visible in the project.
 
-### Step B — Run `npx happyskills list --json`
+### Step B — Run `npx happyskills list --all-scopes --json`
 
 Always. Two reasons:
 
-1. You need it to dedupe recommendations against what's already installed.
+1. You need it to dedupe recommendations against what's already installed — and a **globally-installed** skill is just as installed as a local one (it loads in this project too), so dedup MUST span both scopes or you'll recommend something the user already has. `--all-scopes` (CLI `1.13.0+`) covers both.
 2. It tells you what capability areas the user has already covered vs left open.
+
+**Shape note:** with `--all-scopes`, `data.skills` is an **array** (not an object keyed by `owner/name`); each entry carries `scope` (`local`/`global`) and `native`. Build your installed-set for dedup from every bucket — `data.skills` + `data.drafts` + `data.external` + `data.agent_orphans` — matching on `name`.
 
 Handle special statuses gracefully:
 
@@ -86,7 +89,7 @@ Before formulating the query, examine the user's request for **workspace scope i
 
 **Default to `--mine`** for any ambiguous "my workspace(s)" / "my skills" phrasing — it covers personal AND every org in a single call. Reserve `--personal` for cases where the user explicitly excludes their orgs ("only personal", "not my org skills").
 
-**Auth gate — hard fail, no silent fallback.** `--mine`, `--personal`, and `--favorites` require authentication. If the user named such a scope but is logged out (Step B's `list --json` returns no installed-skill workspaces hinting at a session, or the search itself returns `AUTH_REQUIRED`):
+**Auth gate — hard fail, no silent fallback.** `--mine`, `--personal`, and `--favorites` require authentication. If the user named such a scope but is logged out (Step B's `list --all-scopes --json` returns no installed-skill workspaces hinting at a session, or the search itself returns `AUTH_REQUIRED`):
 
 1. **Stop.** Do not search.
 2. Tell the user plainly: *"Searching your workspaces requires login. Run `npx happyskills login --browser` and re-ask, or say 'log me in' and I'll route you."*
@@ -317,6 +320,49 @@ Public skills require no auth. For `workspace`/`private` visibility, run `npx ha
 
 ---
 
+## Section 4.5 — Match a local folder against the catalog
+
+Reverse-discovery: the user has a folder of **local** skills (a directory, or skills installed globally for Claude/Codex/etc.) and wants to know which already exist in HappySkills and how their copy differs. This is `happyskills match` — read-only, makes no changes.
+
+**When this — and not `happyskills-sync`.** `match` is for **unlinked** local skills (an arbitrary folder, possibly never published — no entry in `skills-lock.json`). It *discovers whether a catalog counterpart exists at all*. `sync` is the opposite: it reconciles a skill that is **already installed/linked** to a remote (it's in the lock). Linked skill that diverged → route to `happyskills-sync`. A folder / "which of my skills exist on HappySkills" → `match`, here.
+
+### 4.5.1 — Run it
+
+```
+npx happyskills match <folder> --json
+```
+
+Optional flags: `--concurrency <N>` (parallel catalog lookups, default 6) and `--threshold <N>` (0..1 identical-file fraction above which a name match counts as `near`, default 0.5). It needs no login for public catalog matches; sign in only to match the user's own private skills.
+
+### 4.5.2 — Read the envelope
+
+`data` is an object with one array per tier plus `errored[]` and a `summary` of counts. Each local skill lands in exactly one tier:
+
+| Tier | Meaning | Present to the user as |
+|---|---|---|
+| `certified` | Byte-identical to a catalog skill (same tree hash) at the **exact** version `match.version` | When `match.is_latest` is `true`: "already on HappySkills, unchanged". When `match.is_latest` is `false`: "already on HappySkills at `match.version` — but that's an older release; you're behind the latest (`match.latest_version`)" |
+| `near` | Same skill, some files differ — entry carries `differing_files` | "on HappySkills, with local edits to: <differing_files>" |
+| `likely` | Name match only, content differs | "a same-named skill exists; content differs" |
+| `possible` | Loose semantic match | "might correspond to <match> (low confidence)" |
+| `unmatched` | Nothing comparable in the catalog | "not found — could be published" |
+
+**Certified is version-precise.** A `certified` match is byte-identical to one **specific published version**, named in `match.version` — which may be older than the latest. Read `match.is_latest` (and `match.latest_version`) and surface the gap: a copy identical to an *older* release is still certified (it's a real, exact match — never call it drift or "modified"), but the user should know they're behind. Never present a behind certified match as flatly "unchanged" — that hides the version gap.
+
+For a `near` skill, **always surface its `differing_files` list** — that precise "only `LICENSE` differs" is the load-bearing signal, not the similarity %. Surface `errored[]` too (local skills that couldn't be read) — never drop them.
+
+### 4.5.3 — Dispatch on `next_step`
+
+When there is anything matched, the envelope carries a `next_step` of `action: organize_matched_skills` (`kind: decision`). Present the matched skills and let the principal choose what to do with each — `match` itself does nothing further:
+
+- **Favorite the keepers** → `star` (Section 7): `npx happyskills star <owner/name>`.
+- **Organize them into a kit** → route to `happyskills-collab` (opt-in satellite, Section 5).
+- A skill that is `unmatched` and the user authored → route to `happyskills-publish` to publish it.
+- A `certified` skill that is **behind** (`match.is_latest` is `false`) → if the user wants the newest content, they can pull the latest with `npx happyskills install <owner/name>` (this is an unlinked folder, so it's a fresh install of the latest version, not a `sync`).
+
+Boundary: `match` reports; it never stars, installs, publishes, or organizes on its own. Route each follow-up to the owning skill.
+
+---
+
 ## Section 5 — Install-on-Recommendation (opt-in satellites)
 
 Some satellites are **opt-in** — not installed with core. When the user is routed here for one (e.g. from `happyskills-help`), or asks to install it directly, offer to install it. Current opt-in satellites:
@@ -341,6 +387,18 @@ Some satellites are **opt-in** — not installed with core. When the user is rou
 After running any command, parse the JSON output and present human-friendly results.
 
 **Search results** → table with Skill | Description | Version | Quality, in the exact order returned by `postlex`'s `data.final_ordering` (when rerank applied) or `data.results` (otherwise). Prefix with one of the two literal lines from Step H. Group by domain when results come from a decomposition fan-out.
+
+**Gloss the Quality column in plain English — lead with the meaning, quote the raw value only if asked.** A bare `quality_tier` word or `quality_score` number tells the user nothing on its own. At render time, translate each row's tier into its plain-English meaning (grounded in [references/smart-search.md § Quality Tiers](references/smart-search.md), not invented). Either render the Quality cell as the meaning (with the raw `quality_tier`/`quality_score` in parentheses), or drop a one-line "what the tiers mean" key beside the table:
+
+| `quality_tier` (`quality_score`) | Plain-English meaning (lead with this) |
+|---|---|
+| High quality (80-100) | Well-structured, rich content, strong documentation |
+| Good (60-79) | Solid skill with decent documentation |
+| Fair (40-59) | Functional, but the documentation could be better |
+| Low quality (20-39) | Minimal documentation or structure |
+| _(no label)_ (< 20) | Very poor — still shown if it's the only match |
+
+**Framing rule:** lead with the plain-English quality meaning; quote the raw `quality_tier` / `quality_score` only if the user asks. Quality is informational (it ranks, it never filters — Section 8) — so gloss it, never hide a row for it.
 
 **Result ordering — strict rule:**
 

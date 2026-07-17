@@ -70,11 +70,11 @@ What core owns: install, uninstall, list, check, update (lifecycle), enable/disa
 |---|---|---|
 | "install acme/deploy-aws" | (already there — core fires) | `npx happyskills install acme/deploy-aws -y --json` |
 | "remove acme/deploy-aws" | (core fires) | `npx happyskills uninstall acme/deploy-aws -y --json` |
-| "list my installed skills" / "how many skills" | (core fires) | `npx happyskills list --json` |
+| "list my installed skills" / "how many skills" | (core fires) | `npx happyskills list --all-scopes --json` (local + global) |
 | "are my skills up to date" | (core fires) | `npx happyskills check --json` |
 | "update everything" / "refresh skills" | (core fires) | `npx happyskills update --all -y --json` |
 | "log in" / "who am I" | (core fires) | `npx happyskills login --json --browser` / `whoami --json` |
-| "are my skills happy" | (core fires) | `npx happyskills list --json` (then friendly summary) |
+| "are my skills happy" | (core fires) | `npx happyskills list --all-scopes --json` (then friendly summary) |
 | "make my skills happy" | (core buckets unmanaged skills: drafts route to publish for `release`; externals route to publish for `convert` + publish) | `npx happyskills release <name> --workspace <slug> --json` for drafts; `npx happyskills convert <name> -y --json` then publish for externals (both lives in publish) |
 
 If the user asks "how do I X" for any of these, just answer with the trigger phrase. They don't need to know which skill fires — they just need to say it.
@@ -117,7 +117,7 @@ What publish owns: bump, validate, the atomic `release` primitive (snapshot + va
 | "convert pulumi-docs" / "I cloned this skill from elsewhere, register it" | "Say 'convert pulumi-docs' and publish will convert it and run post-convert enrichment. (Convert is only for genuinely foreign skills under `data.external[]` — skills scaffolded by `happyskills init` are drafts, not external, and publish directly via `release`.)" |
 | "fork acme/deploy-aws" | "Say 'fork acme/deploy-aws' and publish will fork it and run post-fork enrichment." |
 | "delete acme/deploy-aws from the registry" | "Say 'delete acme/deploy-aws from the registry' — publish will confirm and delete." |
-| "make acme/deploy-aws public" / "change visibility" | "Say 'set visibility of acme/deploy-aws to public' — publish will handle it." |
+| "make acme/deploy-aws public" / "share with my team" / "change visibility" | "Say 'set visibility of acme/deploy-aws to <private\|workspace\|public>' — `happyskills-publish` runs the `visibility` command. Three tiers: **private** (only people you explicitly grant), **workspace** (every member of the owning workspace can find and install it — internal team sharing, not public), **public** (listed in the public catalog for anyone)." |
 
 ---
 

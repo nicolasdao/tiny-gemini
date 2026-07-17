@@ -14,7 +14,7 @@ Every generated release skill uses:
 
 ```yaml
 arguments: [action, note]
-argument-hint: "[patch|minor|major|draft|auto] [\"description\"]"
+argument-hint: "[patch|minor|major|unreleased|auto] [\"description\"]"
 ```
 
 ### $action (optional, position 0)
@@ -24,7 +24,7 @@ argument-hint: "[patch|minor|major|draft|auto] [\"description\"]"
 | `patch` | Explicit patch bump, full release |
 | `minor` | Explicit minor bump, full release |
 | `major` | Explicit major bump, full release |
-| `draft` | Mode C — write unreleased notes only, no version bump or tag |
+| `unreleased` | Mode C — record changes into the `[Unreleased]` changelog ledger only, no version bump or tag (the multi-agent-safe way to record work between releases) |
 | `auto` | AI determines bump (use when $note is also provided) |
 | omitted | Same as `auto` |
 
@@ -60,24 +60,33 @@ New session with no prior context for the target project.
 4. Run `git log <last-tag>..HEAD -- <project-path>` to find changes
 5. If no tags exist, use all commits touching the project path
 6. For unclear commits, examine actual diffs (`git diff <last-tag>..HEAD -- <project-path>`)
-7. Check for existing `[Unreleased]` notes in CHANGELOG.md (from a previous Mode C draft)
+7. Check for existing `[Unreleased]` notes in CHANGELOG.md (from a previous Mode C (`unreleased`) run)
 8. Before classifying, pause and ask the user: "I don't have session context for this project. Here's what I found from git. Is there anything the commits don't capture — intent, trade-offs, or context I should know?"
 
-### Mode C — Draft (Context Snapshot)
+### Mode C — Unreleased (the ledger)
 
-User passed `draft` as $action.
+User passed `unreleased` as $action. The skill records **its own** changes into the `## [Unreleased]` section so the next real release (Mode A/B) sweeps them up. **No version bump, no tag, no modification of the version file.** This is the multi-agent-safe way to record work *between* releases — see the multi-agent note below.
 
 **Behavior**:
-1. Analyze changes using the same process as Mode A or B (depending on session richness)
-2. Write or update the `## [Unreleased]` section in CHANGELOG.md with classified change notes
-3. Do NOT bump version, create tags, or modify the version file
-4. Stage CHANGELOG.md
-5. Commit with message: `docs(<project-name>): update unreleased changelog notes`
-6. Show the user what was written
+1. Identify **your own** changes (session context + `$note` + your commits since the last release). In a multi-agent repo, do NOT try to inventory other agents' work — each agent records its own.
+2. Classify them (Keep a Changelog categories) and **create-or-amend** the `## [Unreleased]` section of CHANGELOG.md:
+   - If `## [Unreleased]` is missing, create it directly below the header, above the newest version entry.
+   - Ensure the relevant `### <Category>` subsection exists (create if missing), and **append** your bullet(s).
+   - **Amend, never replace.** Leave intact any bullets other agents already recorded under `[Unreleased]`. If your change duplicates one that is already there, skip it.
+3. Do NOT bump the version, create tags, or modify the version file. Use no date and no version number — those are stamped only when a real release promotes the section.
+4. Stage **only** CHANGELOG.md.
+5. Commit with message: `docs(changelog): record unreleased <project-name> change(s) — <short summary>`.
+6. Hand off: show the user which bullet(s) were added under which category, and that the change is recorded in `[Unreleased]` awaiting the next release.
 
-**Pre-flight exception**: Mode C relaxes the clean-directory check. Uncommitted changes are expected because the user is mid-work. Only verify that CHANGELOG.md itself is not in a conflicting state (e.g., unstaged changes to CHANGELOG.md that would be overwritten).
+**Pre-flight exception**: Mode C relaxes the clean-directory check. Uncommitted changes are expected because the user is mid-work. Only verify that CHANGELOG.md itself is not in a conflicting state (e.g., unstaged changes to CHANGELOG.md that would be overwritten). Recommend committing feature/fix code first, though — a ledger entry for uncommitted code is misleading.
 
-**When a full release later finds [Unreleased] notes**: Use them as a starting point but cross-reference against git to catch anything added after the draft. The draft is a head start, not a contract — new commits since the draft must also be captured.
+**Sharing the ledger (push posture)**: the ledger is only useful once it is visible to the session that eventually cuts the release. Whether Mode C pushes follows the **same push posture as this project's real release** (the post-release actions decided in requirements gathering): if the real release auto-pushes, Mode C may push too; if it leaves push manual, Mode C only commits and reminds. **If the project auto-deploys on push** (e.g., a static site built on every push), warn the user that a changelog-only push triggers a no-op redeploy of the same version, and let them choose to push or hold. If a push is rejected because another agent pushed, `git pull --rebase`; if the `[Unreleased]` block conflicts, **keep BOTH agents' bullets**.
+
+**When a full release later finds [Unreleased] notes**: Use them as the primary description of what ships, but cross-reference against git to catch anything added after the last `unreleased` run. The ledger is a head start, not a contract — new commits since must also be captured.
+
+### Multi-agent note — why Mode C exists
+
+When several agents work one shared branch in parallel and releases are cut by whichever session is shipping, that releasing session otherwise has to reconstruct every other agent's scope from `git log` at release time — which is how changes ship unrecorded in the changelog. Mode C fixes this at the source: each agent records its own changes into the shared `## [Unreleased]` ledger as it finishes, and the real release just promotes the whole section (§7 "Stamping a Release"). Appends to *different* categories merge cleanly; two agents editing the *same* category may hit a small `CHANGELOG.md` git conflict — resolve it by keeping both bullets. A generated skill should always create the `[Unreleased]` section if it is missing, so the first agent to record bootstraps the ledger for the rest.
 
 ---
 
@@ -85,7 +94,7 @@ User passed `draft` as $action.
 
 **This is a hard gate for Mode A and Mode B. The skill MUST NOT offer a "proceed anyway" option.**
 
-**Mode C exception:** Section 2 (Mode C — Draft) relaxes the clean-directory check because the user is mid-work. See Mode C's "Pre-flight exception" note below.
+**Mode C exception:** Section 2 (Mode C — Unreleased) relaxes the clean-directory check because the user is mid-work. See Mode C's "Pre-flight exception" note below.
 
 Release skills only commit release-specific files (version file + CHANGELOG.md). They do NOT commit feature/fix code. If there are uncommitted changes in the project directory, the release produces a tag whose commit does not contain the changes it ships — a silent, high-blast-radius bug.
 
@@ -111,7 +120,7 @@ Commit your changes first, then re-run the release skill.
 
 ### Exception
 
-Mode C (draft) skips the full clean-directory check. See Mode C section above.
+Mode C (`unreleased`) skips the full clean-directory check. See Mode C section above.
 
 ---
 
@@ -121,7 +130,7 @@ Mode C (draft) skips the full clean-directory check. See Mode C section above.
 
 1. **Session context** (Mode A only) — highest quality, understands intent
 2. **$note argument** — explicit user-provided description, always respected
-3. **Existing [Unreleased] notes** in CHANGELOG.md — from a previous Mode C draft
+3. **Existing [Unreleased] notes** in CHANGELOG.md — from a previous Mode C (`unreleased`) run
 4. **Git log** — commits since last release tag, filtered to project scope
 5. **Git diff** — when commit messages are unclear, examine actual file changes
 
@@ -237,7 +246,7 @@ If CHANGELOG.md does not exist, create it with the header shown above before add
 
 ### Stamping a Release
 
-When doing a full release (not draft):
+When doing a full release (not the `unreleased` ledger mode):
 1. Move all content from `## [Unreleased]` into a new versioned section
 2. Leave `## [Unreleased]` empty (but present) at the top
 3. Add the version number and today's date

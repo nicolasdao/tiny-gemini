@@ -1,11 +1,15 @@
 {
 	"name": "happyskills-publish",
-	"version": "0.5.5",
+	"version": "0.6.2",
 	"requires": {
 		"happyskills": ">=0.49.0"
 	},
 	"type": "skill",
 	"description": "HappySkills publishing — atomic release pipeline (snapshot + validate + bump + changelog + publish), bump, validate, convert external skills, fork managed skills, delete, and change visibility.",
+	"authors": [
+		"Nicolas Dao <nic@happyskills.ai>"
+	],
+	"license": "BSD-3-Clause",
 	"keywords": [
 		"happyskills",
 		"publish",

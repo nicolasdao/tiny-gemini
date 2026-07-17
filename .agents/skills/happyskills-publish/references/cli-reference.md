@@ -30,8 +30,9 @@ npx happyskills release my-skill --workspace <slug> --json
 # Apply a bump first
 npx happyskills release my-skill --workspace <slug> --bump patch --json
 
-# First publish — specify visibility
-npx happyskills release my-skill --workspace <slug> --bump patch --private --json
+# First publish — specify visibility (private is the default; workspace shares with the
+# whole owning workspace; public lists it openly)
+npx happyskills release my-skill --workspace <slug> --bump patch --visibility workspace --json
 
 # Validate + plan only, no mutation
 npx happyskills release my-skill --workspace <slug> --dry-run --json
@@ -46,7 +47,8 @@ npx happyskills release my-skill --workspace <slug> --dry-run --json
 | `--bump <type\|version>` | `patch` / `minor` / `major` / explicit semver. Omit if `skill.json` is already `ahead`. |
 | `--no-bump` | Refuse to bump; require disk to be already ahead. |
 | `--changelog-from <file>` | Read CHANGELOG entry from file and prepend to CHANGELOG.md. |
-| `--public` / `--private` | Visibility on first publish only. |
+| `--visibility <value>` | Visibility on first publish only: `private` (default), `workspace` (every member of the owning workspace can find and install it — internal, not public), or `public` (listed for anyone). |
+| `--public` | Shorthand for `--visibility public`. First-publish only. |
 | `--dry-run` | Validate + plan, do not mutate. Snapshot is captured and then restored. |
 
 **JSON shape — success:**
@@ -143,8 +145,9 @@ Errors may include a `recommendations` array — follow those steps in order and
 # ALWAYS include --workspace
 npx happyskills publish my-skill --workspace <slug> --json
 
-# Publish as public on first publish
-npx happyskills publish my-skill --workspace <slug> --public --json
+# Set visibility on first publish (private is the default; workspace shares with the
+# whole owning workspace without going public; public lists it for anyone)
+npx happyskills publish my-skill --workspace <slug> --visibility workspace --json
 
 # Auto-bump before publishing
 npx happyskills publish my-skill --workspace <slug> --bump patch --json
@@ -156,7 +159,8 @@ npx happyskills publish my-skill --workspace <slug> --bump patch --json
 |---|---|
 | `<skill-name>` | Positional. The skill to publish. |
 | `--workspace <slug>` | **Required**. Workspace to publish into. |
-| `--public` | First-publish only. Make the skill public in the catalog. NEVER default. |
+| `--visibility <value>` | First-publish only. `private` (default), `workspace` (whole owning workspace, not public), or `public` (catalog-listed). Confirm before `public`; NEVER default to `public`. |
+| `--public` | Shorthand for `--visibility public`. First-publish only. NEVER default. |
 | `--bump <patch\|minor\|major>` | Auto-bump version before publishing. (Prefer `release` instead — it adds snapshot, validate, changelog verification, and structured failure envelopes around the same call.) |
 
 **JSON shape:**
@@ -327,14 +331,14 @@ Used by the Workspace Resolution procedure ([workflows.md § Workspace Resolutio
 ## list (used internally for first-publish classification)
 
 ```bash
-npx happyskills list --json
+npx happyskills list --all-scopes --json   # CLI 1.13.0+; spans local + global
 ```
 
-Used by Section 3's first-publish classification step to bucket the target skill:
+Used by Section 3's first-publish classification step to bucket the target skill. In `--all-scopes` mode `data.skills` is an **array** (each entry carries `scope` + `native`), so match by `name`. Publishing acts on the copy in **this project** — when the target name appears in both scopes, classify and publish the `scope: "local"` instance:
 
-- `data.skills["<ws>/<name>"]` → already managed; normal release path.
-- `data.drafts[]` (entry with `name === <skill-name>`) → scaffolded by `init`, never published. **First publish via `release` directly — no `convert`.** `release` claims the workspace atomically.
-- `data.external[]` (entry with `name === <skill-name>`) → genuinely foreign (no HappySkills-shaped `skill.json`). Route to Section 7 (`convert`) first.
+- `data.skills.find(s => s.name === "<ws>/<name>" && s.scope === "local")` → already managed; normal release path.
+- `data.drafts[]` (entry with `name === <skill-name>`, prefer `scope: "local"`) → scaffolded by `init`, never published. **First publish via `release` directly — no `convert`.** `release` claims the workspace atomically.
+- `data.external[]` (entry with `name === <skill-name>`, prefer `scope: "local"`) → genuinely foreign (no HappySkills-shaped `skill.json`). Route to Section 7 (`convert`) first.
 
 `list` is owned by `happyskills` (core) — call it as a one-off for this classification but route the user to core for general "what's installed" queries.
 

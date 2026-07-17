@@ -1,6 +1,6 @@
 ---
 name: happyskills-sync
-description: HappySkills — Sync local skills with the remote registry. Use when your edits diverge from remote, pulling updates, diffing local vs remote, or resolving merge conflicts after a rejected publish. Not for first install or routine publish.
+description: HappySkills — Sync installed skills with the registry. Use when edits diverge from remote, pulling updates, diffing local vs remote, or resolving merge conflicts. Not for first install, publish, or matching an unlinked local folder (use match).
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 argument-hint: "[your sync request]"
 ---
@@ -24,10 +24,11 @@ The user's request is: `$ARGUMENTS`
 | "keep my version for all conflicts" | `pull --ours` (Section 3) |
 | "discard my changes and get remote" | `pull --force` (Section 3 — destructive, confirm first) |
 | "diff", "what changed", "compare local and remote", "show differences", "show changes" | `diff` (Section 4) |
+| "which of my local skills are on the catalog", "match this folder of skills", "do my local skills exist in HappySkills", "scan a folder against the registry" | **NOT sync** → route to `happyskills match` (owned by `happyskills-search`, Section 4.5) |
 | "show all changes", "three-way diff" | `diff --full` (Section 4) |
 | "why can't I publish", "publish rejected", "diverged", "publish failed" | Diagnostic Decision Tree (Section 5) |
 | "merge conflict", "resolve conflicts", "I have conflicts", "conflict markers" | Conflict Resolution (Section 6) |
-| "review the merge result", "AI merge review" | `pull --full-report` (Section 7) |
+| "review the merge result", "AI merge review", "is the merge OK" | Post-Merge Coherence Review (Section 3.5 — mandatory after every merge) |
 
 **Disambiguation rules:**
 
@@ -35,6 +36,7 @@ The user's request is: `$ARGUMENTS`
 - "Diff" alone → `diff` (sync). Not the same as comparing two skill versions in the registry.
 - "Pull" alone → `pull` (sync), even if the user means "I want to update" — clarify if they mean refreshing installed skills (route them to core's `update`) vs merging remote changes (sync's `pull`).
 - "Sync" alone → ambiguous. If the user says "sync acme/X", they likely mean pull. If they say "sync my skills", they likely mean update — route them to core ("say 'update my skills' and core will refresh").
+- **Linked vs unlinked is the line between sync and `match`.** Sync only operates on skills that already have a remote identity — an entry in `skills-lock.json`. "Diff local vs remote" here means an **installed** skill against *its* remote baseline. If the user instead has a **folder of unlinked skills** (never installed/published, no lock entry) and wants to know which already exist in the catalog and how they differ, that is reverse-discovery — route to `happyskills match` (`happyskills-search`, Section 4.5), not `diff`/`status`.
 
 For the full set of merge scenario playbooks, read [references/merge-workflows.md](references/merge-workflows.md). For exact CLI syntax and JSON response shapes, read [references/cli-reference.md](references/cli-reference.md).
 
@@ -101,7 +103,7 @@ npx happyskills status -g --json                        # global skills
 | `outdated` | Someone else published a newer version since you last installed this skill — your local files are behind the registry. | Run `pull` (fast-forward). Then publish if needed. |
 | `diverged` | Someone else published since you last pulled, AND you have local edits — both sides need to be reconciled. | Run `pull` to merge. If conflicts → resolve. Then publish. |
 | `conflicts` | A previous merge left unresolved conflict markers in some files; they need to be resolved before anything else. | Show which files have conflicts (`conflict_files` in status output). Guide user to resolve markers or use `pull --theirs`/`--ours`. |
-| `not_found` | This skill isn't in the lock file yet — either a draft (scaffolded by `init`, not yet published) or an external skill (hand-rolled, foreign shape). | Disambiguate via `npx happyskills list --json`: if it's under `data.drafts[]`, route to `happyskills-publish` ("say 'publish this skill'") — `release` claims the workspace atomically. If it's under `data.external[]`, route to `happyskills-publish` ("say 'convert this skill' to register it"). Never use "external" / "convert" wording for a draft. |
+| `not_found` | This skill isn't in the lock file yet — either a draft (scaffolded by `init`, not yet published) or an external skill (hand-rolled, foreign shape). | Disambiguate via `npx happyskills list --all-scopes --json` (CLI `1.13.0+`; prefer the `scope: "local"` entry — you sync the copy in this project): if it's under `data.drafts[]`, route to `happyskills-publish` ("say 'publish this skill'") — `release` claims the workspace atomically. If it's under `data.external[]`, route to `happyskills-publish` ("say 'convert this skill' to register it"). Never use "external" / "convert" wording for a draft. |
 | `drift` | Genuine inconsistency in the local install record — `regression` (disk version semver-LESS than lock), `missing_skill_json`, or `missing_dir`. The baseline is broken. | Route to Section 2.5 (Drift Repair), which wraps `reconcile`. **Do NOT recommend `pull` — pull cannot fix this.** Pull is for remote-vs-local divergence; drift is local-vs-local. |
 
 After the plain-English opener, present the supporting detail as a table: Skill | Status | Local Modified | Remote Updated. Show conflict files if status is `conflicts`. For drift, show lock_version and disk_version from the `drift` object. Summarize: "N clean, M modified, K diverged, J drifted".
@@ -145,11 +147,13 @@ Pull merges remote changes into local files. **For LLM-driven operations, prefer
 
 ```bash
 # LLM-preferred — snapshot-backed; structured rejection envelope on failure
-npx happyskills pull owner/name --rebase --json
+npx happyskills pull owner/name --rebase --json --full-report
 
 # Standard 3-way merge (writes conflict markers to files on overlap)
-npx happyskills pull owner/name --json
+npx happyskills pull owner/name --json --full-report
 ```
+
+**Always pass `--full-report`.** The merge report (inline `merged_content` per file plus `resolution_steps`) is produced *only* by the pull that performs the merge — it cannot be requested afterwards. You need it for the mandatory coherence review (Section 3.5), so request it on the pull itself, every time. It works in both `--rebase` and 3-way modes.
 
 **Flags:**
 
@@ -175,6 +179,22 @@ npx happyskills pull owner/name --json
 | `conflicts` | Some files couldn't be auto-merged — conflict markers have been written and need manual resolution before publishing. | List affected files and offer the three resolution options (Section 6). |
 
 Do **not** open with the raw status value (`status: merged`) or the JSON field names (`merge_parents`, `conflict_files`). Translate first, then quote the detail only if the user asks.
+
+---
+
+## Section 3.5 — Mandatory Post-Merge Coherence Review
+
+A mechanically clean merge is not necessarily a *coherent* one: diff3 interleaves line regions without reading meaning, so the merged text can be syntactically fine yet semantically broken. **Whenever a pull returns `status: merged` — or after you finish resolving conflicts and `status` returns to clean — you MUST run a coherence review before suggesting publish.** This is the operator's job: the CLI supplies the `--full-report` payload, you supply the judgment.
+
+For each modified/added file in the report (the `semantic_review` step lists them), read `merged_content` and check:
+
+- **(a) Internal coherence** — no half-sentences, no instructions stitched from both sides that now contradict each other, no duplicated or orphaned sections.
+- **(b) Fidelity to purpose** — the merged text still serves the skill's stated purpose, judged against `skill.json`'s `description` and the SKILL.md frontmatter.
+- **(c) Harness intactness** — frontmatter present and well-formed, no leftover `<<<<<<<` / `=======` / `>>>>>>>` marker lines, every referenced file still exists.
+
+Then surface a verdict to the user **before** routing to publish — either *"the merge is coherent — safe to publish"* or *"these passages need attention: …"* naming the specific files/passages. You MAY run `npx happyskills validate <skill> --json` (read-only) to confirm structural integrity locally as part of this step.
+
+Full procedure and the no-report fallback: [references/merge-workflows.md](references/merge-workflows.md) § Post-Merge Coherence Review.
 
 ---
 
@@ -252,6 +272,7 @@ When status is `conflicts` or pull returns `conflicts`:
    - **"Take all remote (--theirs)"** — Run `npx happyskills pull <skill> --theirs --json`.
    - **"Keep all my changes (--ours)"** — Run `npx happyskills pull <skill> --ours --json`.
 3. After resolution, re-run `npx happyskills status <skill> --json` to verify status is no longer `conflicts`.
+4. Then run the mandatory Post-Merge Coherence Review (Section 3.5) before routing to publish. A `--theirs`/`--ours` re-pull resolves markers locally and does not emit a merge report, so use the disk + `diff --remote` fallback described there.
 
 **skill.json field-level suggestions:** The `json_conflicts` array contains advisory suggestions from the structured JSON merge — these are NOT conflict markers (skill.json is always valid JSON after merge). Present them to the user for review; they may want to adjust the merged values.
 
@@ -261,23 +282,20 @@ For full conflict-marker formats, per-scenario playbooks, and TOCTOU handling, r
 
 ---
 
-## Section 7 — Full Report Mode (AI Merge Review)
+## Section 7 — The Full Report Payload (input to the coherence review)
 
-When the user wants to review what a merge actually produced before accepting it, or when you need to reason about cross-file logical contradictions in a merge result, use `--full-report`:
+The `--full-report` payload is produced by the pull in Section 3 — it is the input the mandatory coherence review (Section 3.5) consumes, not something you run separately afterwards. A report **cannot be requested after the fact**: only the pull that performs the merge emits one. That is why Section 3 always pulls with `--full-report`.
 
-```bash
-npx happyskills pull owner/name --json --full-report
-```
+What the payload carries, per file in `report.files`:
 
-This enriches the response with:
-- Inline file content per file: `base_content`, `local_content`, `remote_content`, `merged_content`
+- Inline content: `base_content`, `local_content`, `remote_content`, `merged_content`.
 - `resolution_steps` — an array of action-typed steps:
   - `resolve_conflict_markers` — files with markers needing manual resolution
   - `review_json_suggestions` — auto-applied JSON field defaults to verify
   - `semantic_review` — modified/added files to check for cross-file logical contradictions
   - `verify` — run `happyskills status` to confirm resolution
 
-Use this when the user asks "review the merge result" or after any non-trivial three-way merge where you need to reason about the merge without extra file reads.
+**Fallback — an earlier pull already ran without `--full-report`.** You cannot recover the report by re-pulling: the merge is already done, so a bare re-pull reports `up_to_date` (or, if markers remain, the pending conflict state) — never a report. Instead, review the merged files on disk directly: read each modified/added file, and run `npx happyskills diff <skill> --remote --json` to see what the registry side contributed. Then apply the same (a)/(b)/(c) checks from Section 3.5. **Never instruct a bare re-pull to obtain a report.**
 
 ---
 
@@ -324,7 +342,7 @@ Then retry the original command.
 - **NEVER** suggest publishing when `conflict_files` are present — guide resolution first.
 - **NEVER** recommend `pull` to fix a `drift` status — pull operates on remote-vs-base divergence, drift is local lock-vs-disk disagreement. Route drift to Section 2.5 (Drift Repair) instead.
 - **NEVER** modify skill files directly during sync operations — let `pull` write conflict markers and let the user (or `--theirs`/`--ours`) resolve them.
-- **NEVER** invoke `publish`, `validate`, `bump`, `convert`, or `fork` yourself — those live in `happyskills-publish`. When the user needs them, route by stating the trigger phrase.
+- **NEVER** invoke `publish`, `bump`, `convert`, or `fork` yourself — those live in `happyskills-publish`; when the user needs them, route by stating the trigger phrase. The **one exception** is read-only `npx happyskills validate <skill> --json`, which you MAY run after a merge (or after conflict resolution) to confirm structural integrity locally before handing off to publish — it mutates nothing and closes the unvalidated pull→publish window. `validate` invoked for any other reason still routes to `happyskills-publish`.
 - **PREFER** showing the user `diff` output before they decide on a pull strategy when the situation is ambiguous.
 - **STOP if `diff` output contradicts ground truth.** If the diff reports a file as modified that you have strong reason to believe was not touched (e.g., the user just opened a fresh session, the file is in a `references/` subdirectory the user didn't mention editing, the session log shows no edits to that path), do **not** silently treat the diff as authoritative and propose reconciliation. Verify against an independent source first — the cleanest check is to install the same version into a temp directory (`mktemp -d && cd $TMPDIR && mkdir -p .claude && echo '{}' > .claude/settings.json && npx happyskills install <owner>/<skill>@<version> --json -y`) and run `diff -rq <temp>/.claude/skills/<skill> <project>/.claude/skills/<skill>`. If the byte-level comparison disagrees with what `happyskills diff` reports, the registry returned bad content — treat it as the registry-side error class in Section 4 (do not reconcile, surface as transient, recommend retry). Cache-shaped failures look exactly like local modifications until you eliminate the possibility of bad registry data. This is a real failure mode (see the May 2026 CloudFront cache-key incident that led to `0.45.0` integrity checks); when in doubt, verify before acting.
 - **NEVER** recommend or invoke `npx happyskills install <skill>@<version> --fresh` as part of drift repair, or in any flow where `<version>` may not be present in the registry. The CLI silently falls back to the latest published version when `<version>` is missing and overwrites every file in the skill directory with the registry's content. There is no error in the JSON envelope — it reports success at the fallback version. Recovery requires manually reconstructing the lost edits. Use local reconciliation instead (`Edit` + `bump` for version drift; `git checkout` for missing files; non-destructive `install` without `--fresh` for missing-version restoration). The full safe recipes are in Section 2.5 above. This rule supersedes any older guidance that recommended `install --fresh` for drift cases.

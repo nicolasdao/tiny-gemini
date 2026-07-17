@@ -1,19 +1,12 @@
 {
 	"name": "happyskills-design",
-	"version": "0.11.1",
+	"version": "0.14.0",
 	"type": "skill",
 	"description": "HappySkills skill design and quality — author new skills, audit existing ones, update from session learnings, and create kits with full Claude Code spec + HappySkills conventions.",
-	"keywords": [
-		"happyskills",
-		"design",
-		"audit",
-		"authoring",
-		"review",
-		"skill-authoring",
-		"quality",
-		"kit",
-		"ai"
+	"authors": [
+		"Nicolas Dao <nic@happyskills.ai>"
 	],
+	"license": "BSD-3-Clause",
 	"dependencies": {},
 	"capabilities": [
 		{

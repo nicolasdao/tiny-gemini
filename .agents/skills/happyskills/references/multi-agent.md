@@ -170,7 +170,7 @@ Skills can be disabled without uninstalling them. Disabling removes the symlinks
 ```
 npx happyskills disable deploy-aws monitoring --json    # disable multiple skills
 npx happyskills enable deploy-aws --json                # re-enable
-npx happyskills list --json                             # see enabled/disabled status
+npx happyskills list --all-scopes --json                # see enabled/disabled status (local + global)
 ```
 
 ---

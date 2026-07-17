@@ -24,7 +24,9 @@ The publish skill owns the First-Time Publish procedure (auth + workspace resolu
 
 ## Post-Init Enrichment
 
-After the Authoring Workflow (SKILL.md Section 2, steps 1–9) completes, the skill has a well-designed SKILL.md but its `skill.json` only has `name` and `version`. Run this enrichment to complete the HappySkills ecosystem metadata and make the skill publish-ready.
+After the Authoring Workflow (SKILL.md Section 2, steps 1–9) completes, the skill has a well-designed SKILL.md but its `skill.json` has only the scaffold fields (`name`, `version`, empty `description`, `type`, empty `dependencies`). Run this enrichment to complete the HappySkills ecosystem metadata and make the skill publish-ready.
+
+> **Do NOT add a `keywords` field.** `keywords` is a deprecated, platform-ignored `skill.json` field — HappySkills derives all discovery labels server-side from the skill's `description` + `SKILL.md` content (the platform-owned taxonomy), so an author-supplied keyword list has zero effect on search, ranking, or filtering. Never populate `keywords` during enrichment (or authoring, conversion, fork, or update). If a scaffold or existing manifest already contains a `keywords` array, leave it untouched — do not fill it. See [happyskills-conventions.md § 3](happyskills-conventions.md).
 
 1. **Read the SKILL.md** — Understand what the skill does, its domain, and target audience.
 2. **MANDATORY — Verify SKILL.md frontmatter has `name` and `description`** — The Authoring Workflow (step 6) should have set these, but verify they are present and non-empty. If the `description` is still the placeholder ("Describe what this skill does and when to invoke it"), replace it with a proper description following the canonical format from spec 260501-mega-skill-refactor: `<Namespace> — <verb-led action>. Use when <specific trigger context>. Not for <where to redirect>.` Target 80-180 chars (250 soft cap, 1024 hard cap). Use em-dash, not colon, for the namespace separator. Use only safe characters (no semicolons, colons, hashes, quotes, brackets per current validator). See [skill-authoring.md § 5](skill-authoring.md) for the full description format guide. Ask the user to confirm. NON-NEGOTIABLE — the CLI will warn on publish if description is missing.
@@ -64,7 +66,7 @@ After the Authoring Workflow (SKILL.md Section 2, steps 1–9) completes, the sk
 8. **Initialize CHANGELOG.md** — If none exists, create one with the initial version entry.
 9. **Check for embedded executable code** — Scan SKILL.md and any files in `references/` for code blocks containing executable logic intended to be run as part of the skill's workflow (not documentation examples). All executable code MUST be in `scripts/` as actual files. If executable code is found embedded in markdown, extract it into `scripts/` and replace the code block with a reference: `${CLAUDE_SKILL_DIR}/scripts/<filename>`. Use AskUserQuestion to confirm the extraction.
 10. **Run validation (MANDATORY)** — Run `npx happyskills validate <skill-name> --json`. If `data.valid` is `false`, fix all errors per Section 7 of SKILL.md. Present warnings to the user. Final quality gate — do NOT skip.
-11. **Optional publish** — Use AskUserQuestion: "Would you like to publish this skill now, or test it first?" If publish, route to `happyskills-publish` ("say 'publish <skill-name>'"). If test first, tell the user they can publish later via the publish skill. The skill at this point is a **draft** in HappySkills terms (per `happyskills@0.51.0+`: it lives under `data.drafts[]` in `npx happyskills list --json`). The publish skill ships drafts via the atomic `release` primitive in a single step — no `convert` detour, no "external skill" / "claim workspace" language to the user. If the user asks "why does it say external" in any tool output they look at, the answer is "it doesn't anymore — drafts are a separate category from external skills; only skills you hand-rolled outside the tool show up as external."
+11. **Optional publish** — Use AskUserQuestion: "Would you like to publish this skill now, or test it first?" If publish, route to `happyskills-publish` ("say 'publish <skill-name>'"). If test first, tell the user they can publish later via the publish skill. The skill at this point is a **draft** in HappySkills terms (per `happyskills@0.51.0+`: it lives under `data.drafts[]` in `npx happyskills list --all-scopes --json`). The publish skill ships drafts via the atomic `release` primitive in a single step — no `convert` detour, no "external skill" / "claim workspace" language to the user. If the user asks "why does it say external" in any tool output they look at, the answer is "it doesn't anymore — drafts are a separate category from external skills; only skills you hand-rolled outside the tool show up as external."
 
 ---
 
@@ -180,16 +182,22 @@ For each area, note the file, location, and specific recommendation.
 
 10. **skill.json completeness** (if HappySkills-managed) — Are `description`, `dependencies`, and `systemDependencies` set correctly? Does the skill.json `description` differ from the SKILL.md `description` (they serve different purposes)?
 
+11. **Config-drift check** (if the skill declares `config`/`env`) — Cross-check the declared schema against how the skill actually reads its configuration. There is no `happyskills audit` CLI command, so run this as a text scan yourself. Flag two mismatches as **warnings** (heuristic, non-blocking):
+    - **Declared-but-unused** — a `config` field or `env` variable named in `skill.json` that never appears anywhere in `SKILL.md` or `references/`. Either the skill forgot to read it, or the declaration is stale.
+    - **Used-but-undeclared** — a plausible config/env token the skill reads (an `UPPER_SNAKE_CASE` env name, or a `skills-config get` config key) that is **not** declared in the `config`/`env` schema. Undeclared config never gets prompted or scaffolded on install.
+
+    Also confirm the SKILL.md embeds the canonical "resolve configuration before using any default" snippet (see [skill-authoring.md § Configuration](skill-authoring.md)) — a configurable skill that hard-codes defaults without reading `skills-config.json` is a drift risk.
+
 ### Phase 4 — Report and Offer Fixes
 
-11. **Present the audit report** — Summarize findings grouped by severity:
+12. **Present the audit report** — Summarize findings grouped by severity:
     - **Errors** — Issues that break functionality (missing description, forbidden characters, oversized files)
     - **Warnings** — Issues that degrade quality (vague description, DRY violations, missing constraints, mega-skill symptoms)
     - **Suggestions** — Improvements that would strengthen the skill (better trigger phrases, file reorganization)
 
     For each issue, provide the specific file, the problem, and the recommended fix.
 
-12. **Offer to fix** — Use AskUserQuestion: "Would you like me to fix these issues now?"
+13. **Offer to fix** — Use AskUserQuestion: "Would you like me to fix these issues now?"
     - **"Yes, fix all"** — Transition to the Skill Update Workflow to apply all fixes.
     - **"Fix errors only"** — Apply only error-level fixes via the Update Workflow.
     - **"No, just the report"** — Done. The user can act on the report manually or later.
@@ -302,6 +310,8 @@ When a skill has grown into a **mega-skill** — its description can no longer r
 
     Do NOT declare opt-in satellites here. Opt-in satellites are surfaced through the concierge, not bundled. Use AskUserQuestion to confirm version ranges with the user — `^0.1.0` is appropriate for new satellites starting at `0.1.0`.
 
+18b. **Share secrets across the constellation (`sharedEnv`).** If the members share a secret — i.e. two or more declare the same `env` credential (the common case for a domain constellation) — add **`sharedEnv: true`** to the core's `skill.json`. Install then scaffolds ONE `./secrets/<core>.env` for every member instead of an identical secrets file each. Opt-in and core-only; never on a kit (a validation error). Skip it only when the members genuinely need isolated secrets. See [constellation-pattern.md § 1.1](constellation-pattern.md).
+
 ### Phase 7 — Validate Each Member
 
 19. **Validate every constellation member.** For each member (core + satellites), run `npx happyskills validate <name> --json`. Fix all errors per Section 7 of `happyskills-design`'s SKILL.md. Present warnings.
@@ -326,7 +336,7 @@ When the user wants to create a kit (a meta-package that bundles multiple skills
 
 **Step 1: List installed skills**
 
-Run `npx happyskills list --json` and parse the response. Extract candidate kit members from all three buckets: `data.skills` (managed — already in the registry, can be referenced as deps directly), `data.drafts` (scaffolded by `init`, never published — eligible to be bundled but will need to be published first via `release` before the kit can install cleanly), and `data.external` (genuinely foreign — same caveat: needs `convert` + publish before kit installation works). Display a formatted numbered list showing: number, owner/name (or just `name` for drafts/external), version, source label (managed / draft / external), and description. If no skills exist in any bucket, tell the user they need installed or scaffolded skills to create a kit and stop.
+Run `npx happyskills list --all-scopes --json` (CLI `1.13.0+`) and parse the response — this includes candidate members installed **globally**, which are valid to bundle (a kit references members by `owner/name`, and a globally-installed member resolves the same way). In `--all-scopes` mode `data.skills` is an **array** and each entry carries `scope` + `native`. Extract candidate kit members from all buckets: `data.skills` (managed — already in the registry, can be referenced as deps directly), `data.drafts` (scaffolded by `init`, never published — eligible to be bundled but will need to be published first via `release` before the kit can install cleanly), and `data.external` + `data.agent_orphans` (genuinely foreign — same caveat: needs `convert` + publish before kit installation works). When the same `owner/name` appears in both scopes, list it once. Display a formatted numbered list showing: number, owner/name (or just `name` for drafts/external), version, scope (local/global), source label (managed / draft / external), and description. If no skills exist in any bucket, tell the user they need installed or scaffolded skills to create a kit and stop.
 
 **Step 2: Search cloud registry (optional)**
 
@@ -369,7 +379,7 @@ Ask via AskUserQuestion how the kit should handle skill versions:
 Explain the difference in friendly terms before asking.
 
 Store the user's choice:
-- **Pin** → use `^major.minor.0` ranges (based on the installed version from `happyskills list`; for cloud-selected, use the search version)
+- **Pin** → use `^major.minor.0` ranges (based on the installed version from `happyskills list --all-scopes` — `data.skills` is an array there, match on `name`; for cloud-selected, use the search version)
 - **Always latest** → use `*` for every dependency
 
 **Step 7: Review and iterate**
@@ -447,7 +457,7 @@ Only proceed past this step for meaning (1). Never assume meaning (1) without ch
 
 **Step 1: Identify the target kit**
 
-Run `npx happyskills list --json`. A kit is the `_kit-`-prefixed entry (the prefix is enforced by the CLI); managed (`data.skills`) and draft (`data.drafts`) entries additionally carry `type: "kit"`. **Record which bucket the kit is in** — `data.skills` (managed, lock-tracked) vs `data.drafts` (created locally, never published) — Step 2 branches on it. If the user named the kit, match it. If exactly one kit exists, use it. If more than one exists and the user was not specific, ask which one via AskUserQuestion — never guess.
+Run `npx happyskills list --all-scopes --json` (CLI `1.13.0+`). A kit is the `_kit-`-prefixed entry (the prefix is enforced by the CLI); managed (`data.skills`, an **array** in `--all-scopes` mode) and draft (`data.drafts`) entries additionally carry `type: "kit"`. **Record which bucket and which `scope` the kit is in** — `data.skills` (managed, lock-tracked) vs `data.drafts` (created locally, never published) — Step 2 branches on the bucket. If the user named the kit, match it. If exactly one kit exists, use it. If the SAME kit appears in both `local` and `global` scope, edit the **local** copy unless the user explicitly says global (you mutate the kit in this project). If more than one *distinct* kit exists and the user was not specific, ask which one via AskUserQuestion — never guess.
 
 **Step 2: Pre-flight divergence check (managed kits only)**
 
@@ -468,7 +478,7 @@ Read the kit's `skill.json` (the `dependencies` map is the source of truth) and 
 **Step 4: Gather the change set**
 
 From the user's request, determine the exact mutations:
-- **Add a member** — resolve its current version: if installed, read it from `npx happyskills list --json`; if from the registry, run `npx happyskills search "<owner/name>" --json --limit 10` (single-slug or `workspace/skill` form, typo-tolerant; **`--limit` is required** — `search` errors without it) and confirm the match with the user. Apply the kit's existing version strategy to form the range.
+- **Add a member** — resolve its current version: if installed, read it from `npx happyskills list --all-scopes --json` (`data.skills` is an array — match on `name`; a globally-installed member counts); if from the registry, run `npx happyskills search "<owner/name>" --json --limit 10` (single-slug or `workspace/skill` form, typo-tolerant; **`--limit` is required** — `search` errors without it) and confirm the match with the user. Apply the kit's existing version strategy to form the range.
 - **Remove a member** — confirm the exact `owner/name` key to drop.
 - **Swap a member** — a remove + an add, presented together.
 - **Change a range** — confirm the new range and that it is intentional (e.g. widening `^1.2.0` to `*`).

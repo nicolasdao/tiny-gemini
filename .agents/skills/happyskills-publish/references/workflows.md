@@ -91,21 +91,23 @@ Resolve the target workspace for publishing by running `npx happyskills whoami -
 
 Use this procedure when publishing a skill for the first time. There are two valid first-time paths, and they look almost identical to the user:
 
-- **Draft path** (most common — skill scaffolded by `happyskills init`): the skill appears under `data.drafts[]` in `npx happyskills list --json`. **Use `release` directly** — it atomically claims the workspace, validates, and publishes. There is no separate "claim" or "convert" step. Do NOT mention "external", "convert", "claim", or "lock file" to the user — call it a publish, because that's what it is.
+- **Draft path** (most common — skill scaffolded by `happyskills init`): the skill appears under `data.drafts[]` in `npx happyskills list --all-scopes --json` (prefer the `scope: "local"` entry — you publish the copy in this project). **Use `release` directly** — it atomically claims the workspace, validates, and publishes. There is no separate "claim" or "convert" step. Do NOT mention "external", "convert", "claim", or "lock file" to the user — call it a publish, because that's what it is.
 - **Convert path** (rare — skill is genuinely foreign, e.g. hand-rolled `.claude/skills/<name>/SKILL.md` cloned from GitHub): the skill appears under `data.external[]`. Run `convert` first (Section 7 of SKILL.md), then Post-Convert Enrichment, then this First-Time Publish procedure.
 
 For releasing updates to already-published skills, use the `release` primitive (Section 3 of SKILL.md) — it wraps the whole pipeline atomically.
 
 1. **Authenticate** — Run the auth flow (Section 2 of SKILL.md).
 2. **Resolve workspace** — Run the **Workspace Resolution** procedure above. `release` will accept the resolved slug via `--workspace`.
-3. **Visibility** — Ask with exactly these options in this order:
-   1. **"Private (Recommended)"** — MUST be the FIRST option. Description: "Only visible to members of your workspace."
-   2. **"Public"** — MUST be the SECOND option. Description: "Visible in the public catalog to all users."
+3. **Visibility** — Ask with exactly these three options in this order:
+   1. **"Private (Recommended)"** — MUST be the FIRST option. Description: "Only people you explicitly grant access to — nobody else, not even the rest of your workspace, until you grant them."
+   2. **"Workspace"** — MUST be the SECOND option. Description: "Everyone in the owning workspace can find and install it — share an internal skill with your whole team without going public."
+   3. **"Public"** — MUST be the THIRD option. Description: "Listed in the public catalog — anyone can find and install it."
 
    NEVER present "Public" as the first or default option.
 4. **Publish via release** — Run the appropriate command (ALWAYS include `--workspace`):
    - Private (default): `npx happyskills release <skill-name> --workspace <slug> --json`
-   - Public: `npx happyskills release <skill-name> --workspace <slug> --public --json`
+   - Workspace: `npx happyskills release <skill-name> --workspace <slug> --visibility workspace --json`
+   - Public: `npx happyskills release <skill-name> --workspace <slug> --visibility public --json`
 
    For a draft (no lock entry), `release` treats the disk version as the ahead-equivalent and publishes it directly — no bump is needed on first publish, no `--bump` flag required. If `release` returns `next_step.action: provide_changelog` (CHANGELOG.md missing or stale for the version on disk), write the entry per Section 3 step 3 and re-invoke. The bare `publish` command works too (and is what `release` delegates to internally), but `release` is the canonical entry point because it snapshots first and returns structured `next_step` envelopes on any failure.
 

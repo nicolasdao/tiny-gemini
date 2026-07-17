@@ -118,6 +118,8 @@ A **kit** is a dependency manifest — a skill whose value comes entirely from i
 }
 ```
 
+> **This minimal manifest is correct only because `my-skill` invokes no external binaries and depends on no other skill.** "Unpublished / local" exempts you from *registry/publish* metadata (authors, license, repository) — it does **not** exempt you from dependency correctness. The moment the skill (or a script under `scripts/`) calls a non-POSIX binary, you MUST add a `systemDependencies` entry for it (see § 4), and if it relies on another HappySkills skill, a `dependencies` entry too — local or not. A skill runs on hosts that are not your dev machine.
+
 ---
 
 ## 3. Keywords (deprecated)
@@ -322,14 +324,14 @@ Before publishing a skill:
 4. **Dependencies are published** — all skills in `dependencies` must be published to the registry first
 5. **No secrets** — `.env`, credentials, and sensitive files are automatically excluded
 6. **Size limit** — total skill content must be under 50MB
-7. **Visibility** — skills are **private by default** (workspace only). Pass `--public` to make the skill visible in the public catalog. Always confirm with the user before publishing publicly.
+7. **Visibility** — skills are **private by default**: only people you explicitly grant access to can see them (not even the rest of your workspace, until you grant them). Two other tiers exist, chosen on first publish via `--visibility <value>` (or changed later with `happyskills visibility <owner/name> <value>`): **workspace** — every member of the owning workspace can find and install it, the way to share an internal skill with your whole team without going public; and **public** — listed in the public catalog for anyone. Always confirm with the user before publishing **public**.
 
 **Auto-excluded from publishing:**
 ```
 node_modules, .git, .env, .env.*, .DS_Store, .tmp, *.log
 ```
 
-> **Per-user `config.json` is NOT auto-excluded.** If a skill uses the config.json setup pattern ([skill-authoring.md § 11, Pattern 6](skill-authoring.md)), that file holds per-install values (a channel, a project ID) — not authored content. Publish an empty or template config (or omit the file), never your own filled-in values, and never secrets — secrets belong in `.env`, which *is* excluded.
+> **Per-install configuration lives OUTSIDE the skill, in `skills-config.json`.** A configurable skill declares a `config`/`env` schema in `skill.json` and reads the consumer's values from the project-root `skills-config.json` (the sibling of `skills-lock.json`) — never from a file inside the skill folder, which the next `update` would wipe. A `config` field may hold a structured value (`type: "object"` / `"array"`), and a field the skill's own UI authors rather than a human at an install prompt should declare `prompt: false`; the skill then persists it with `happyskills skills-config set` (never by hand-editing the JSON). See [skill-authoring.md § Configuration](skill-authoring.md) for the schema, the canonical read snippet, and the write path. Secret **values** never belong in `skills-config.json` (which is committed) — they live in the gitignored `.env` its `envFile` points at, and `skills-config set` refuses to write a key you declared `secret: true`.
 
 ---
 

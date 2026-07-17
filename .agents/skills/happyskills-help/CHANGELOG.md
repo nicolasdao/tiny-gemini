@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.8.4] - 2026-07-13
+
+### Fixed
+- **Route configuration intents to core.** The routing table covered "configure agents" but never *configure a skill*, so a user asking "how do I set X's theme?", "where do this skill's secrets go?" or "my skills-config.json is broken" was routed nowhere. Those intents now hand off to `happyskills` (core), which owns `skills-config` (`get` / `set` / `unset` / `validate`). The family-roster row for core now names configuring an installed skill.
+
+## [0.8.3] - 2026-07-08
+
+### Added
+- Declared `authors` and `license` (BSD-3-Clause) in `skill.json`.
+
+### Changed
+- Trimmed the SKILL.md `description` from 407 to 323 chars — removed verb/trigger duplication while preserving the load-bearing `collaboration or workspace members` and `usage or statistics` catch-and-route triggers.
+- Refreshed the stale `skill.json` description to reflect current scope (opt-in skill install/list, routing, feedback).
+
+### Fixed
+- Corrected the family roster in `references/family-overview.md` — "bundled five" → "bundled six", added the missing `happyskills-stats` row, and annotated `docs/cli-skill.md` as not bundled with this skill.
+
+## [0.8.2] - 2026-06-29
+
+### Changed
+- Check whether an opt-in satellite is already installed with `list --all-scopes` (CLI `1.13.0+`), so a satellite installed globally isn't offered for reinstall. `data.skills` is an array in that mode — match with `data.skills.find(s => s.name === 'happyskillsai/<satellite>')`, not object-key access.
+
+## [0.8.1] - 2026-06-21
+
+### Fixed
+- Correct the visibility routing row in `references/feature-map.md`, which modeled only public/private and claimed "publish will handle it." It now covers all three tiers (private / workspace / public), explains what **workspace** visibility means (every member of the owning workspace can find and install it, not public), and routes "share with my team" / "change visibility" to the `visibility` command.
+
 ## [0.8.0] - 2026-06-07
 
 ### Added

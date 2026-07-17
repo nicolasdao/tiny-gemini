@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.6.2] - 2026-07-08
+
+### Added
+- Declared `authors` and `license` (BSD-3-Clause) in `skill.json`.
+- **Restored per-status plain-English framing (BP#14)** — release results, validate results, and a visibility meaning table now lead with a plain-English sentence before any raw envelope fields, recovering the narration that was dropped when Section 4 folded into Section 3.
+
+## [0.6.1] - 2026-06-29
+
+### Changed
+- First-publish classification now reads `list --all-scopes` (CLI `1.13.0+`), where `data.skills` is an array — find the target by `name`. Because publishing acts on the copy in this project, when a target name appears in both `local` and `global` scope, classify and publish the `local` instance.
+
+## [0.6.0] - 2026-06-21
+
+### Added
+- Surface a third first-publish visibility option, **Workspace**, mapped to the new `release --visibility workspace` flag — so the publish flow can ship a skill as discoverable and installable by every member of the owning workspace (but not public) in a single step, instead of publishing private and then running a separate `visibility` command.
+
+### Fixed
+- Correct the visibility guidance that described **private** as "only visible to members of your workspace" — that is the definition of the *workspace* tier, not private. The first-publish question and Section 10 now state the three tiers distinctly (private = only people you explicitly grant; workspace = every member of the owning workspace, not public; public = listed in the catalog), and `references/cli-reference.md` + `references/workflows.md` are aligned. Replace the never-functional `--private` examples (always a silent no-op, since private is the default) with `--visibility`.
+
 ## [0.5.5] - 2026-06-06
 
 ### Changed

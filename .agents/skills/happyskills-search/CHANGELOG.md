@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.4.2] - 2026-07-08
+
+### Added
+- Declared `authors` and `license` (BSD-3-Clause) in `skill.json`.
+- **Plain-English quality-tier gloss (BP#14)** at render time for the search-results table, grounded in `references/smart-search.md`, with "lead with the meaning, quote the raw `quality_tier`/`quality_score` only if asked" framing.
+
+### Changed
+- Narrowed `allowed-tools` to least privilege (`Bash, Read, Glob, Grep, AskUserQuestion`) — removed unused `Write`/`Edit` from this read-only skill.
+- Refreshed the stale `skill.json` description to include matching a local folder of skills against the catalog.
+
+## [0.4.1] - 2026-06-30
+
+### Changed
+- Teach the `match` handler (Section 4.5.2/4.5.3) that `certified` is now **version-precise**: a match is byte-identical to one specific published version, named in `match.version`, which may be older than the latest. Read `match.is_latest` / `match.latest_version` and surface the gap — present a behind match as "already on HappySkills at `<version>` — you're behind the latest (`<latest_version>`)" instead of flatly "unchanged", and offer to pull the newest with `install <owner/name>`. A copy identical to an older release is still certified (a real exact match), never drift. Requires CLI 1.14.x (with the cross-version tree probe) and API 5.18.0 or newer.
+
+## [0.4.0] - 2026-06-30
+
+### Added
+- Teach the skill the new `happyskills match <folder>` command (Section 4.5) — reverse-discovery that fingerprints a folder of **unlinked** local skills and matches each against the catalog into tiers (`certified`/`near`/`likely`/`possible`/`unmatched`), reading each `near` entry's `differing_files` and dispatching the `organize_matched_skills` next_step to `star` / `happyskills-collab`. Add the named "match a local folder of skills against the catalog" trigger to the description and the `find-skills` capability intents (plus the `match` command), and a fifth request-kind to the intro. Stays distinct from `happyskills-sync`, which reconciles already-linked skills. Requires CLI 1.14.0 and API 5.17.0 or newer.
+
+## [0.3.3] - 2026-06-29
+
+### Changed
+- Run the install-dedup pre-flight (Section 2 Step B) with `list --all-scopes` so a globally-installed skill is recognized as already installed and not re-recommended — a global skill loads in the project too (CLI `1.13.0+`). In that mode `data.skills` is an array; build the installed-set for dedup from every bucket, matching on `name`.
+
 ## [0.3.2] - 2026-06-06
 
 ### Changed

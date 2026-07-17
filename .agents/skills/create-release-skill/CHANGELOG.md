@@ -5,6 +5,13 @@ All notable changes to this skill are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this skill adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+## [0.4.0] - 2026-06-23
+
+### Changed
+- Rename the Mode C `draft` argument to `unreleased` and enrich it into an explicitly multi-agent-safe `[Unreleased]` ledger mode in `references/release-skill-spec.md`: generated release skills now create-or-amend the `[Unreleased]` section (preserving other agents' bullets, deduping), follow the project's release push posture for sharing the ledger (with an auto-deploy-on-push caveat), and a new "Multi-agent note" explains why the mode exists. Aligns generated skills with the `unreleased` convention now standardized across the HappySkills `release-api` / `release-web` / `release-cli` skills. The behavior (no version bump, no tag, promote-on-release) is unchanged — only the argument name and the multi-agent guidance.
+
 ## [0.3.0] - 2026-05-31
 
 ### Changed

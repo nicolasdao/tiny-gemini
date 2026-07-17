@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.7.0] - 2026-07-13
+
+### Added
+- **Core now OWNS the `skills-config` command** (new `configure-installed-skills` capability in `skill.json`, plus `SKILL.md` § 10 and a full reference in `references/cli-reference.md`). Until now no skill in the constellation declared it: `happyskills schema` reported `owner_skill: null`, so no agent routed to it and nobody knew how to pilot it. Adds a routing-table row ("configure a skill", "change a skill's settings", "where do a skill's secrets go") and quick-reference rows for `skills-config get` / `set` / `unset` / `validate`.
+- **The write path.** `set`/`unset` persist one config key atomically (key-scoped and locked, so a concurrent `install` cannot erase it). Rules the agent must follow: `--value` for scalars, `--json-value` for objects/arrays (`--json-value -` reads a large value from stdin); choose the scope deliberately and say which was chosen (`--global` for a user-level preference that follows the user across projects; `--root <dir>` when the working directory is not a HappySkills project).
+- **Never put a secret in `skills-config.json`.** That file is committed; the CLI refuses a key the skill declared `secret: true` with `FORBIDDEN_FIELD`, and the agent must not route around it. `get` returns secret *names* and a present/absent boolean by design — never read a secret's value into context.
+- **Corrupt-file repair protocol.** On `VALIDATION_FAILED` against `skills-config.json`, run `skills-config validate --json`, apply the located fixes **in place**, and **never delete the file** — it holds *every* configured skill's settings, so "starting clean" destroys configuration the agent does not own. Every result carries the exact location (field path; line/column/source line for a syntax error) and an imperative `fix`.
+- **Schema-violation loop.** When a skill declares a `schema` for a config field, `set` refuses a bad value and returns `error.details[]` with a `path` (e.g. `palettes.Acme.palette[2]`) and a `fix` per violation. Apply every fix and retry until it converges — do not hand-edit the file to route around it, since `validate` enforces the same schema.
+
+## [2.6.1] - 2026-07-08
+
+### Added
+- Declared `authors` and `license` (BSD-3-Clause) in `skill.json`.
+- **Plain-English status-meaning tables (BP#14)** for `list` and `check` results, covering every status value (`installed`/`ahead`/`drift`/`missing` and `up-to-date`/`outdated`/`conflicts`/`no-access`/`unknown`/`error`), with "lead with the plain-English meaning, quote the raw JSON status only if asked" framing.
+
+## [2.6.0] - 2026-07-06
+
+### Added
+- **Install completion gate for manual setup** (`SKILL.md` § 6). After every install/update the agent must inspect the envelope's `next_step`; when `action` is the new `complete_manual_setup`, one or more skills need a credential a human must set up manually (the agent can't) — the agent reads each `context.pending[].guide`, walks the user through it, runs `verify`, and only then reports the install complete. Never report an install finished while a `complete_manual_setup` is pending. The state re-surfaces on subsequent commands until resolved.
+
+## [2.5.4] - 2026-06-29
+
+### Changed
+- Make `list` default to `--all-scopes` (CLI `1.13.0+`), so "list / show my skills" reports **both** project-local and global skills in one table tagged with scope (local/global) and native (native HappySkills vs manually-added). Narrow only when the user is explicit ("local only" → `list`; "global only" → `list -g`). Happy-status (Section 5) now spans both scopes and reads the array-shaped `data.skills` across all four buckets (skills / drafts / external / agent_orphans).
+- Add `update` scope routing — a write defaults to LOCAL (a write should not touch shared global state implicitly): "globally" → `update --all -g`, "local and global" / "both" / "everywhere" → `update --all --all-scopes`. Require an `AskUserQuestion` confirmation before any global-scope update (global skills are shared across every project), and report the per-scope `data.scopes[]` result separately.
+
 ## [2.5.3] - 2026-06-06
 
 ### Changed

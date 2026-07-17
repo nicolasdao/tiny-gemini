@@ -42,7 +42,7 @@ This Git-aligned design means HappySkills behaves like a real version-control sy
 
 ## The HappySkills Skill Family
 
-HappySkills ships as a **family of focused skills**, one per task domain. Most users only ever interact with the bundled five — `happyskills-collab` is opt-in.
+HappySkills ships as a **family of focused skills**, one per task domain. Most users only ever interact with the bundled six — `happyskills-collab` and `happyskills-stats` are opt-in.
 
 | Skill | What it does | Bundled? |
 |---|---|---|
@@ -53,10 +53,11 @@ HappySkills ships as a **family of focused skills**, one per task domain. Most u
 | `happyskills-search` | Find skills for your project, list versions, browse changelogs, and recommend the right skills based on what you actually need. The discovery layer. | **Yes** (auto-installed with core) |
 | `happyskills-help` (concierge — this skill) | Explain HappySkills, route to the right family-member skill, and help you sign in. The front door for Q&A. | **Yes** (auto-installed with core) |
 | `happyskills-collab` | Workspace membership (people), groups, and skill access permissions. | **Opt-in** — install when you need it |
+| `happyskills-stats` | Your usage stats and the reach of skills you authored — how you use HappySkills, install and search history, and how many people install the skills you made. | **Opt-in** — install when you need it |
 
 **Why a family instead of one big skill?** The original `happyskills` was a single 57-intent monolith. Past a certain size, large descriptions degrade auto-invocation reliability — capabilities get added but new features can't fit in the description, and the LLM stops firing on them. Decomposition keeps each skill's API surface tight, predictable, and growable.
 
-**The Constellation Pattern.** HappySkills is built using the **Constellation Pattern** — a novel architectural pattern that uses the package manager's own dependency mechanism to bundle a coordinated family of skills (one core + satellites) while preserving routing precision per skill via the **five-slot description grammar** (Domain / Verb(s) / Object / Triggers / Negative) and the load-bearing **orthogonal verb ownership** rule (every `<verb, object>` pair has exactly one owner). HappySkills is the first AI-skill ecosystem to ship this pattern end-to-end. If a user is facing the mega-skill problem in their own skills, route them to `happyskills-design` ("say 'decompose this mega-skill'" or "'audit this skill'") — the design skill implements the full Constellation Decomposition Workflow. For the canonical reference, see `docs/cli-skill.md` in the HappySkills repo.
+**The Constellation Pattern.** HappySkills is built using the **Constellation Pattern** — a novel architectural pattern that uses the package manager's own dependency mechanism to bundle a coordinated family of skills (one core + satellites) while preserving routing precision per skill via the **five-slot description grammar** (Domain / Verb(s) / Object / Triggers / Negative) and the load-bearing **orthogonal verb ownership** rule (every `<verb, object>` pair has exactly one owner). HappySkills is the first AI-skill ecosystem to ship this pattern end-to-end. If a user is facing the mega-skill problem in their own skills, route them to `happyskills-design` ("say 'decompose this mega-skill'" or "'audit this skill'") — the design skill implements the full Constellation Decomposition Workflow. For the canonical reference, see `docs/cli-skill.md` in the HappySkills source repo (not bundled with this skill).
 
 ---
 

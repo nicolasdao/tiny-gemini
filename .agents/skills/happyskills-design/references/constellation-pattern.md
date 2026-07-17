@@ -2,7 +2,7 @@
 
 This document is the operational guide for applying the **Constellation Pattern** when designing or refactoring HappySkills skills. It is loaded on demand by `happyskills-design` when a user is decomposing a mega-skill, planning a multi-skill product, or auditing a skill suspected of being a mega-skill.
 
-For the canonical, citation-grade explanation of the pattern (with the full reasoning, failure-mode analysis, and academic references), read `docs/cli-skill.md` in the HappySkills repo. This file focuses on **what to do**, not **why it works** — if you need the underlying reasoning, follow the link.
+This reference focuses on **what to do**, not **why it works**. The canonical, citation-grade explanation of the pattern (full reasoning, failure-mode analysis, academic references) lives in `docs/cli-skill.md` in the HappySkills source repo — it is **not bundled with this skill**, so treat it as external background you cannot load at runtime, not a file to read on demand.
 
 ---
 
@@ -16,7 +16,17 @@ The **Constellation Pattern** is the canonical way to overcome the **mega-skill 
 
 Result: each member's description fits inside its own 250-character soft cap, routing precision per skill stays high, and the user still gets the "one product, one install" experience.
 
-> **Naming.** "Constellation" is the formal noun for the architectural pattern; "family" is the informal everyday noun for the resulting group of skills. HappySkills itself ships as a 6-member constellation — see `docs/cli-skill.md` for the reference implementation.
+> **Naming.** "Constellation" is the formal noun for the architectural pattern; "family" is the informal everyday noun for the resulting group of skills. HappySkills itself ships as a 6-member constellation — see `docs/cli-skill.md` in the HappySkills source repo (not bundled with this skill) for the reference implementation.
+
+### 1.1 Shared secrets — `sharedEnv`
+
+A constellation's members are facets of one product, so they typically share a **config/secret namespace** — one API token, one set of credentials. When they do, declare **`sharedEnv: true` on the core** (a top-level `skill.json` field). Installing the constellation then scaffolds a **single** `./secrets/<core>.env` for every member, instead of an identical secrets file per skill — which is redundant, and drift-prone to rotate (N copies of the same token to keep in sync).
+
+- **Opt-in, and only on the core.** Absent the flag, each member scaffolds its own `.env` (unchanged behaviour). The core already owns the constellation identity (it declares the members as dependencies), so it is the single place to declare the intent — satellites declare nothing. This is deterministic: read the core's manifest, know the behaviour. Do **not** rely on auto-detection.
+- **Kits never share.** `sharedEnv` is invalid on a kit (a validation error). A kit bundles *unrelated* skills, which keep isolated secrets — the kit-vs-constellation line is exactly the secret-sharing boundary.
+- **Safe by construction.** A consumer-set `envFile` overrides the shared default; a satellite installed standalone still gets its own file; and install warns if two members declare the same secret name with a different type.
+
+**Rule:** whenever the constellation members share any secret (the common case — e.g. a `cloudflare` core + `cloudflare-deploy`/`cloudflare-config` satellites all reading one `CLOUDFLARE_API_TOKEN`), set `sharedEnv: true` on the core. Full contract: `docs/skill-format.md` § 4.6 in the HappySkills source repo (not bundled with this skill).
 
 ## 2. The Load-Bearing Rule — Orthogonal Verb Ownership
 
@@ -250,4 +260,4 @@ The framework as documented before this case study would have audited L1 only �
 - For the full procedural workflow that uses this reference (the 8-step Constellation Decomposition Workflow), see `references/workflows.md`.
 - For description format mechanics (validator-forbidden characters, em-dash vs colon, length budgets, anti-patterns at the single-skill level), see `references/skill-authoring.md`.
 - For HappySkills-specific conventions (skill.json shape, dependencies, naming, keywords), see `references/happyskills-conventions.md`.
-- For the canonical/citation-grade explanation of why the Constellation Pattern works (academic references, the full failure-mode analysis, the reference implementation), see `docs/cli-skill.md` in the HappySkills repo.
+- For the canonical/citation-grade explanation of why the Constellation Pattern works (academic references, the full failure-mode analysis, the reference implementation), see `docs/cli-skill.md` in the HappySkills source repo (not bundled with this skill).

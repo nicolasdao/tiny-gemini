@@ -1,8 +1,12 @@
 {
 	"name": "happyskills-search",
-	"version": "0.3.2",
+	"version": "0.4.2",
 	"type": "skill",
-	"description": "HappySkills — Find, recommend, and star skills, browse versions and changelogs, and search your favorites. Use when looking for a skill, exploring what is available, starring favorites, or picking a version. Not for installing.",
+	"description": "HappySkills — Find, recommend, and star skills, browse versions and changelogs, and match a local folder of skills against the catalog. Use when searching for a skill, exploring what is available, starring favorites, picking a version, or checking which local skills exist in HappySkills. Not for installing.",
+	"authors": [
+		"Nicolas Dao <nic@happyskills.ai>"
+	],
+	"license": "BSD-3-Clause",
 	"keywords": [
 		"happyskills",
 		"search",
@@ -27,11 +31,14 @@
 				"search the registry",
 				"recommend skills for my project",
 				"what skills exist for X",
-				"discover a skill to do Y"
+				"discover a skill to do Y",
+				"match a local folder of skills against the catalog",
+				"which of my local skills already exist in HappySkills"
 			],
 			"commands": [
 				"search",
-				"postlex"
+				"postlex",
+				"match"
 			]
 		},
 		{

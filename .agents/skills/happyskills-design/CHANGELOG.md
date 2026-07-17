@@ -1,5 +1,90 @@
 # Changelog
 
+## [0.14.0] - 2026-07-13
+
+### Added
+- **How to design COMPLEX configuration** (`references/skill-authoring.md` § Configuration). A `config` field's `type` may now be `object` or `array`, not just a scalar — so a skill can declare a setting that has no scalar form (a theme, a named palette library). An `env` var stays scalar-only: a `.env` value is always a string. A field authored by the skill's **own UI** rather than by a human at an install prompt declares **`prompt: false`** and is skipped at install (an object/array field is never prompted regardless) — without it, installing such a skill was a wall of unanswerable questions.
+- **The opt-in author-declared `schema`** — the single highest-value thing an author does when designing complex config. Without one, HappySkills stores the value verbatim and never looks inside, so nothing can tell an agent that `palettes.Acme.palette[2]` is not a hex colour; it finds out at runtime and cannot reliably repair it. With one, `skills-config set` **refuses** the bad write and `skills-config validate` reports **every** violation with an exact path and an imperative fix, so an agent repairs and re-runs until it converges. **This does not violate content opacity:** the schema ships *inside* the skill and versions *with* it, so it cannot drift from the skill's real contract the way a validator on HappySkills' release cycle would. There is no second validator — one schema, declared once, enforced on the author's behalf.
+- **Four design rules that decide whether the repair loop converges:** close the shape (`additionalProperties: false`) so a typo'd key becomes a located error rather than silent acceptance; constrain the **leaves**, not just the branches (`"type": "string"` on a colour tells an agent nothing — `"pattern": "^#[0-9a-fA-F]{6}$"` tells it exactly what to write); use `patternProperties` for an author-keyed map and `properties` + `required` for a fixed record (getting this backwards is the common mistake); and keep the schema as the **single source of truth** rather than maintaining a second validator that will diverge.
+- **The consumer-side write path** — `skills-config set` / `unset`: atomic, key-scoped, locked, whole-key semantics (no deep-merge — do your own read-modify-write), the scope decision table (`--global` / `--root`), and that `set` refuses a key declared `secret: true`. Plus `skills-config validate`, which checks the consumer file itself.
+
+### Changed
+- **Hardened the canonical config-resolution recipe: ABSENT ≠ CORRUPT (new step 2b).** A *missing* `skills-config.json` means "nothing configured yet" → fall back to defaults. A file that *exists but does not parse* means the consumer's settings are **unreadable**, and quietly treating that as "nothing configured" is a silent failure — the skill runs with the wrong settings and reports success. Never `catch { return null }`: stat the path first, and on a present-but-unparseable file **throw**, naming the file and pointing at `happyskills skills-config validate`, and telling the user to repair it in place rather than delete it.
+- Drew the **configuration vs application-state** boundary: `skills-config.json` is committed and meant to be read in a pull request. A theme, a palette library, thresholds — fine. Documents, layouts, caches, edit history — not fine. The CLI warns past 64 KB, which is the smell, not the rule.
+
+## [0.13.5] - 2026-07-08
+
+### Added
+- Declared `authors` and `license` (BSD-3-Clause) in `skill.json`.
+- **Least-privilege `allowed-tools` guidance** — a new Best Practice #18 (plus an anti-pattern row) in `references/skill-authoring.md`, and prescriptions in the Authoring Workflow (step 6) and Audit Workflow (step 7): `allowed-tools` is the no-prompt surface and must be scoped to what the skill actually invokes; a read-only or CLI-dispatch skill carries no `Write`/`Edit`, and the broad scaffold default must never be inherited unnarrowed.
+
+### Changed
+- Reworded the forbidden-YAML-character constraint to match the validator: `description` (and `compatibility`) are scanned unconditionally, quoted `argument-hint` is exempt, and `name` is pattern-restricted — instead of the over-broad "all frontmatter values".
+
+### Fixed
+- Marked out-of-bundle `docs/*` references in `references/constellation-pattern.md` and `references/skill-authoring.md` as "not bundled with this skill" so the agent no longer treats them as loadable on-demand references.
+
+## [0.13.4] - 2026-07-06
+
+### Added
+- **Teach the `setupGuide` authoring pattern and its proactive detection** (`references/skill-authoring.md` § Configuration). When a required credential needs human-only setup the agent can't do (mint a token in a dashboard, register an OAuth app, grant permissions), the author attaches a `setupGuide` (a reference file) + optional `verify` to the `env`/`config` entry, and install surfaces a `complete_manual_setup` next_step. Guidance directs the author/reviewer to actively watch for this (any required secret obtained from a dashboard/OAuth is a candidate), notes that `validate` flags the common case, and — the key move — to **offer to research and draft the guide**, automating whatever the agent can first. Full contract: `docs/skill-format.md` § 4.6.1.
+
+## [0.13.3] - 2026-07-06
+
+### Added
+- **Prescribe safe runtime consumption of secrets — keep credential values out of the agent's context window.** The Configuration guidance covered where a secret is *stored* (git-ignored `.env`, pointer in `skills-config.json`) and how to check *presence* (`secretsPresent`), but said nothing about the moment a skill actually *uses* a credential — and its step 4 ("Load secrets from the resolved `envFile`") could be read as "the agent opens the `.env` and reads the value," the exact leak. The canonical embed-verbatim recipe in `references/skill-authoring.md` § Configuration now (1) rewrites step 4 to forbid the agent from reading a secret's value into its own context (no `Read`/`cat`/`echo` of the `.env`, no inlining into a `fetch`/`curl`), directing the value straight from the `.env` into a subprocess's environment; (2) rewrites step 5 to check presence, not value; and (3) adds an authoring directive to ship a thin in-process wrapper (the pattern the `cloudflare` skill's `scripts/cf.js` and this repo's `database/migrate.js` already use) so a subprocess — never the model — consumes the credential. Mirrored as a one-line contract in `docs/skill-format.md` § 4.6 and as a new "Using a secret when the skill runs" section on the public docs-site secrets page.
+
+## [0.13.2] - 2026-07-06
+
+### Added
+- **Teach `sharedEnv` for constellation secrets.** When a constellation's members share a secret (the common case — e.g. a `cloudflare` core + satellites all reading one `CLOUDFLARE_API_TOKEN`), the author now declares `sharedEnv: true` on the core so install scaffolds ONE `./secrets/<core>.env` for every member instead of an identical secrets file each. Added to `references/constellation-pattern.md` (new § 1.1), `references/skill-authoring.md` § Configuration, and the Constellation Decomposition Workflow in `references/workflows.md` (step 18b — set it alongside the dependency-as-bundle wiring). Opt-in, core-only, invalid on a kit. Full contract: `docs/skill-format.md` § 4.6.
+
+## [0.13.1] - 2026-07-05
+
+### Fixed
+- **Correct `envFile` resolution in the canonical config-resolution recipe (`references/skill-authoring.md` § Configuration).** Step 3 previously over-simplified to "resolve `envFile` against the project root", which is wrong for a secrets pointer declared in the **global** `~/.agents/skills-config.json`. It now resolves `envFile` against the directory of the `skills-config.json` that *declared* it — a project-layer pointer against the project root, a global-layer pointer against `~/.agents` — with project-first precedence, matching the CLI's `skills-config get` resolver. Also notes that the CLI's `happyskills validate` now statically lints config usage (warns when a config/env-declaring skill omits the `skills-config get` recipe or declares a field/var it never uses).
+
+## [0.13.0] - 2026-07-05
+
+### Changed
+- **Replace the in-skill `config.json` setup pattern (Pattern 6) with the `skills-config.json` convention.** Configuration now lives OUTSIDE the skill, in a committed project-root `skills-config.json` — a reinstallable skill's own folder is wiped on every update, so anything stored inside is lost. `references/skill-authoring.md` drops Pattern 6 and gains a "Configuration" section covering the author-declared `config`/`env` schema in `skill.json` and the canonical, verbatim SKILL.md read snippet every configurable skill embeds (prefer `happyskills skills-config get`, fall back to reading the file with a walk-up to the project root, stopping at `.git`). Rewrote the now-dangling cross-references in `references/happyskills-conventions.md` and `SKILL.md` to point at the new convention.
+
+### Added
+- **Add a config-drift check to the Skill Audit Workflow (`references/workflows.md`).** For a skill that declares `config`/`env`, the audit now flags declared-but-unused fields and used-but-undeclared config/env tokens, and confirms the SKILL.md embeds the canonical "resolve configuration before using any default" snippet. Implemented as skill guidance — there is no `happyskills audit` CLI command.
+
+## [0.12.2] - 2026-07-03
+
+### Changed
+- **Added an explicit "Do NOT add `keywords`" guard to Post-Init Enrichment (`references/workflows.md`).** Even though the "keywords is deprecated" guidance already lived in `references/happyskills-conventions.md § 3`, the enrichment *workflow* the agent runs never mentioned `keywords` — so an agent completing `skill.json` metadata would populate the empty `keywords: []` field out of habit. The guard now sits inline in the workflow: never populate `keywords` during enrichment/authoring/conversion/fork/update; leave any existing array untouched. Also refreshed the stale intro that claimed a fresh `skill.json` "only has `name` and `version`" (it has the full scaffold set).
+- **Removed the skill's own populated `keywords` array from `skill.json`.** The design skill was carrying a 9-item `keywords` list, contradicting its own deprecation guidance. Removed for self-consistency now that the CLI scaffold (`happyskills init`/`fork`, CLI ≥ 1.16.x) no longer emits the field at all.
+
+## [0.12.1] - 2026-06-29
+
+### Changed
+- Update inventory reads to `list --all-scopes` (CLI `1.13.0+`) so they span **both** project-local and global skills — a globally-installed sibling loads in the project too. The cross-skill orthogonality check, kit identification, kit-member version resolution, and the draft-publish note now use it; `data.skills` is an array in that mode (iterate / match on `name`), and when a kit appears in both scopes the local copy is the edit target. Merged with the 0.12.0 dependency-declaration rework — neither change diluted.
+
+## [0.12.0] - 2026-06-29
+
+### Changed
+- **Dependency declaration is now a first-class, mandatory authoring step (`SKILL.md` Section 2, steps 5/8/10).** Step 5's "does this skill execute code?" question now also asks which external binaries the code or `scripts/` invoke, and routes them to `systemDependencies`. Step 8 is rewritten from "Verify skill.json basics" to "Set skill.json basics AND declare both kinds of dependency (MANDATORY — runs before validate, NOT deferred to publish)", covering the `systemDependencies` detection scan (object shape + per-platform install + Confidence Gate) and the `dependencies` check, and calling out the common CLI-vs-skill conflation (invoking a CLI is a `systemDependency`; depending on another skill is a `dependency`). Step 10 (Post-Init Enrichment) is rescoped to publish-facing metadata and states that skipping enrichment for an unpublished skill is never a reason to skip dependency declaration.
+- **Removed a contradiction in `references/happyskills-conventions.md`.** A callout under the "Minimal Example (Unpublished / Local)" now clarifies that "unpublished / local" exempts a skill from registry/publish metadata only — never from dependency correctness.
+
+### Rationale
+Surfaced by a real failure: a skill that shells out to `gws` and `python3` was authored end-to-end through this skill and shipped with `dependencies: {}` and no `systemDependencies`. The MANDATORY detection scan already existed in `references/workflows.md` § Post-Init Enrichment, but was gated behind a publish-flavored step that is rational to skip for local skills, while the one inline authoring trigger (step 5) dead-ended at `scripts/` and the word `systemDependencies` never appeared anywhere in the authoring path. These edits co-locate the trigger with the moment of recognition, make the dependency scan run before `validate`, and decouple it from the publish decision.
+
+## [0.11.3] - 2026-06-22
+
+### Added
+- **"Unique identifiers" guidance in the five-slot description grammar (`references/skill-authoring.md` § 5 — Object slot + composition recipe step 3, with a one-line echo in `SKILL.md` Section 2 step 4).** Authors are now told to name the concrete proper-noun identifier a skill is about — a library, API, tool, file format, or product (`Gemini`, `Postgres`, `JWT`, `.docx`) — directly in the description's object and triggers, because proper nouns are the highest-precision routing tokens and cut both false negatives (the user names the technology and the skill fires) and false positives (a request naming a *different* technology correctly does not). Worked contrast: `JWTs` routes more precisely than `authentication tokens`. The guidance **explicitly excludes genuinely general-purpose skills** — they have no proper noun to name, and inventing one narrows routing wrongly (guardrail stated at all three insertion points).
+
+### Rationale
+Distilled from a comparison of three 2026 agent-skill research papers (SkillSmith arXiv:2605.15215, SkillJuror arXiv:2606.11543, SkillReducer arXiv:2603.29919) against this framework — SkillReducer makes unique identifiers one of only three routing signals a description needs. Of the gaps the comparison surfaced, only this one was adopted: it improves triggerability in both directions at near-zero risk and minimal footprint (no new section, no SKILL.md line growth). The remaining candidate gaps were deliberately rejected as marginal, redundant with existing best practices (e.g. #16), or impractical, to avoid over-optimizing the skill.
+
+## [0.11.2] - 2026-06-21
+
+### Fixed
+- Correct the Publishing Checklist visibility item in `references/happyskills-conventions.md`, which described skills as "private by default (workspace only)" — conflating the *private* and *workspace* tiers. It now states the three distinct tiers (private = only people you explicitly grant; workspace = every member of the owning workspace, not public; public = listed in the catalog) and references the `--visibility` flag for choosing among them at first publish.
+
 ## [0.11.1] - 2026-06-10
 
 ### Changed

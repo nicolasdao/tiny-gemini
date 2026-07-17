@@ -28,7 +28,7 @@ The user's request is: `$ARGUMENTS`
 **Disambiguation rules:**
 
 - "Publish" or "release" → Section 3 (`release` primitive). It handles snapshot + validate + bump + changelog verification + publish + lock update atomically. No separate "full Release Workflow" exists anymore — `release` IS the workflow.
-- **A skill scaffolded by `happyskills init` is not "external" — it is a draft.** `npx happyskills list --json` lists drafts under `data.drafts[]` (separate from `data.external[]`). Drafts publish directly through Section 3 (`release`) on first publish — DO NOT route them through `convert`. `release` handles the workspace claim atomically as part of the first publish. Only route to `convert` (Section 7) when the user has a hand-rolled foreign skill (no `skill.json`, or one with a foreign shape) that appears under `data.external[]`.
+- **A skill scaffolded by `happyskills init` is not "external" — it is a draft.** `npx happyskills list --all-scopes --json` (CLI `1.13.0+`) lists drafts under `data.drafts[]` (separate from `data.external[]`). Drafts publish directly through Section 3 (`release`) on first publish — DO NOT route them through `convert`. `release` handles the workspace claim atomically as part of the first publish. Only route to `convert` (Section 7) when the user has a hand-rolled foreign skill (no `skill.json`, or one with a foreign shape) that appears under `data.external[]`.
 - "Update" with a skill name and a version → it's `update` (CLI lifecycle command, owned by core). Route the user: "say 'upgrade owner/X' and core will handle it." But "update this skill based on what we did" is content modification — route to `happyskills-design`.
 - "Delete" alone → could mean uninstall (core) or registry delete. Ask which: "Do you want to uninstall locally (just remove from this project), or delete from the registry (irreversible)?"
 - "Convert" alone → `convert` (Section 7). Always followed by Post-Convert Enrichment. Only applies to genuinely foreign skills under `data.external[]`.
@@ -63,7 +63,7 @@ If a command fails with exit code 3 (`AUTH_REQUIRED`), trigger the auth flow and
 
 When the user wants to ship a skill update — bare publish, full release with bump + changelog, or just push an already-bumped skill — invoke the `release` primitive. It atomically snapshots, validates, applies the bump (or recognizes the `ahead` state and skips re-bumping), verifies the CHANGELOG, resolves the workspace, and publishes. On any failure it restores the snapshot and returns a structured `next_step` envelope you read and route on.
 
-**First-publish classification (run before any other branching).** If the user has just scaffolded a skill (or it's unclear whether the target is already managed), run `npx happyskills list --json` once and check where the target appears:
+**First-publish classification (run before any other branching).** If the user has just scaffolded a skill (or it's unclear whether the target is already managed), run `npx happyskills list --all-scopes --json` (CLI `1.13.0+`) once and check where the target appears. In `--all-scopes` mode `data.skills` is an **array** and every entry carries `scope` (`local`/`global`); find the target by `name`. **You publish the skill in THIS project — so when the target name appears in both `local` and `global` scope, classify and act on the `local` instance.** (`data.drafts` / `data.external` are arrays in both modes; filter to `scope: "local"` for the publish target unless the user explicitly named the global one.)
 
 - Under `data.skills` (managed) → already published before; this is a normal release. Proceed with the steps below.
 - Under `data.drafts` (scaffolded, never published) → this is a first publish. Proceed with the steps below using `release` — it claims the workspace atomically. **Do NOT mention "convert", "external", or "claim" to the user.** Narrate it as a publish, because that's what it is.
@@ -80,12 +80,13 @@ npx happyskills release <skill-name> --workspace <slug> --json
 # Need a bump first:
 npx happyskills release <skill-name> --workspace <slug> --bump <patch|minor|major> --json
 
-# First publish — specify visibility (Private is recommended for first ships):
-npx happyskills release <skill-name> --workspace <slug> --bump patch --private --json
+# First publish — specify visibility (Private is recommended; omit the flag for private,
+# --visibility workspace to share with the team, --visibility public to list it openly):
+npx happyskills release <skill-name> --workspace <slug> --bump patch --visibility <private|workspace|public> --json
 ```
 
 3. **Read the canonical envelope** (`ok`, `data`, `error`, `next_step`, `warnings`, `meta`) and dispatch on `next_step.action`:
-   - **`ok === true` AND `next_step` is empty (`{}`) AND `data.published === true`** → release complete. Surface the result: skill, version, workspace, commit. Note `data.ahead_recognized` when true (the disk version was published as-is without a re-bump).
+   - **`ok === true` AND `next_step` is empty (`{}`) AND `data.published === true`** → release complete. **Lead with one plain-English sentence** — *"Published `<skill>` v`<version>` to `<workspace>`."* (from `data.skill`, `data.version`, `data.workspace`) — then, only if the user asks for detail, show the raw fields (`commit`, `ref`). Do **not** open with the raw envelope fields or JSON field names; translate first. Note `data.ahead_recognized` when true (the disk version was published as-is without a re-bump).
    - **`error.code: VALIDATION_FAILED` / `next_step.action: fix_validation_errors`** → surface `error.validation_errors`; follow Section 11 (Validate Error Handling); after fixes, re-invoke step 2.
    - **`next_step.action: specify_bump_type`** → AskUserQuestion with `next_step.context.options` (`patch` / `minor` / `major`); re-invoke with `--bump <choice>`.
    - **`next_step.action: provide_changelog`** → CHANGELOG.md is missing a `## [<next_step.context.target_version>]` entry. Write one (read recent diff + commit messages to draft it); re-invoke step 2.
@@ -96,12 +97,15 @@ npx happyskills release <skill-name> --workspace <slug> --bump patch --private -
    - **Unrecognised `next_step.action` or `error.code`** (forward-compat: newer CLI, older skill) → surface `next_step.instructions` (or `error.message`) verbatim and **stop; do not improvise**.
    - **`warnings[]` non-empty** → surface each entry to the user (non-fatal advisories), even on success.
 
-**First-publish visibility — non-negotiable.** When release reports a first publish (or the operator detected one via `npx happyskills check`), AskUserQuestion with these EXACT options in this order:
+**First-publish visibility — non-negotiable.** When release reports a first publish (or the operator detected one via `npx happyskills check`), AskUserQuestion with these EXACT three options in this order:
 
-1. **"Private (Recommended)"** — FIRST. "Only visible to members of your workspace."
-2. **"Public"** — SECOND. "Visible in the public catalog to all users."
+1. **"Private (Recommended)"** — FIRST. "Only people you explicitly grant access to can see it — nobody else, not even the rest of your workspace, until you grant them."
+2. **"Workspace"** — SECOND. "Everyone in the owning workspace can find and install it. Use this to share an internal skill with your whole team without putting it on the public internet."
+3. **"Public"** — THIRD. "Listed in the public catalog — anyone can find and install it."
 
-NEVER present "Public" as first or default on a first publish. On subsequent publishes, do NOT ask — the server preserves existing visibility automatically.
+Map the choice to the publish/release flag: **Private** → omit the flag (it is the default), **Workspace** → `--visibility workspace`, **Public** → `--visibility public`.
+
+NEVER present "Public" as first or default on a first publish. On subsequent publishes, do NOT ask — the server preserves existing visibility automatically; to change it later, use Section 10 (`visibility`).
 
 **Parsing tip.** Don't pipe release/publish through strict JSON parsers; the CLI prints progress text to stdout before the envelope. Either let stdout stream to the terminal or capture full output and parse only the trailing JSON object.
 
@@ -133,13 +137,20 @@ npx happyskills validate my-skill -g --json
 
 JSON response: `data.valid` (boolean), `data.errors` (array), `data.warnings` (array), `checks_passed`, `checks_failed`, `checks_warned`. Exit 0 = all pass, exit 1 = errors found.
 
-If `data.valid` is `false`, present each error with file/field/message, follow Section 11 (Validate Error Handling), and offer to fix automatically. Warnings are advisory.
+**Presenting the result — lead with the plain-English meaning, then the detail.** Translate the envelope into one opening sentence before you list any raw fields; quote the raw `checks_failed` / `errors` shape only if the user asks.
+
+| Result | Plain-English meaning (use as your opening sentence) |
+|---|---|
+| `data.valid === true` | This skill passed all checks and is ready to publish. (Surface any `data.warnings` as advisory notes.) |
+| `data.valid === false` | The skill isn't ready to publish yet — N check(s) failed: (N = `checks_failed`, then list each error's file / field / message). |
+
+If `data.valid` is `false`, after that opening sentence present each error with file/field/message, follow Section 11 (Validate Error Handling), and offer to fix automatically. Warnings are advisory.
 
 ---
 
 ## Section 7 — Convert (Foreign skill → Managed)
 
-Convert a genuinely foreign skill into a HappySkills-managed skill. **Use only when the skill came from outside the HappySkills toolchain** — typically a hand-rolled `.claude/skills/<name>/SKILL.md` cloned from GitHub or copied from another project, with no `skill.json` or a foreign-shaped one. These appear under `data.external[]` in `npx happyskills list --json`.
+Convert a genuinely foreign skill into a HappySkills-managed skill. **Use only when the skill came from outside the HappySkills toolchain** — typically a hand-rolled `.claude/skills/<name>/SKILL.md` cloned from GitHub or copied from another project, with no `skill.json` or a foreign-shaped one. These appear under `data.external[]` in `npx happyskills list --all-scopes --json`.
 
 **Do NOT run `convert` on a skill scaffolded by `happyskills init`.** Those skills already have a HappySkills-shaped `skill.json` and show up under `data.drafts[]`, not `data.external[]`. They publish directly through Section 3 (`release`) on first publish — `release` claims the workspace atomically as part of the first push, without an intermediate `convert` step. Routing a draft through `convert` is the legacy detour that introduced the "external skill" jargon to users who had just created their skill with the official tool. The fix is to send drafts straight to `release`.
 
@@ -189,11 +200,21 @@ Confirm with AskUserQuestion before running — this is irreversible. Show "Dele
 ## Section 10 — Visibility
 
 ```bash
-npx happyskills visibility owner/name --json                  # get current
-npx happyskills visibility owner/name public --json            # set: public/private/workspace
+npx happyskills visibility owner/name --json                   # get current
+npx happyskills visibility owner/name workspace --json          # set: private | workspace | public
 ```
 
-Show "Visibility for owner/name is public" (get) or "Visibility for owner/name set to public" (set).
+The three tiers: **private** (only people you explicitly grant), **workspace** (every member of the owning workspace can find and install it — internal team sharing, not public), **public** (listed in the public catalog for anyone). Confirm with AskUserQuestion before changing to **public**.
+
+**Presenting visibility — lead with the plain-English meaning, then the raw value.** `data.visibility` is a closed set of three values; open with the sentence below (use it verbatim or close to it), not the bare value, then quote the raw value only if the user asks:
+
+| `data.visibility` | Plain-English meaning (use as your opening sentence) |
+|---|---|
+| `private` | Only people you explicitly grant access to can see or install this skill — not even the rest of your workspace. |
+| `workspace` | Every member of the owning workspace can find and install this skill; it is not listed publicly. |
+| `public` | This skill is listed in the public catalog — anyone can find and install it. |
+
+Show "Visibility for owner/name is workspace" (get) or "Visibility for owner/name set to workspace" (set).
 
 ---
 
