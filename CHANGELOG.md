@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-07-17
+
 ### Added
 
 - **New `video` command — text/image → video generation and editing** via Gemini Omni Flash (`gemini-omni-flash-preview`). `video "prompt"` generates a 720p 24fps MP4 (3–10s); `--file` animates input image(s); `video edit <file> "prompt"` edits an existing video/image (input up to 10s); `--previous=<interaction-id>` refines a prior clip conversationally. Supports `--aspect-ratio` (16:9/9:16), `--count` concurrent candidates, `--dry-run`, `--preview`, and a `--json` envelope. Uses the same synchronous `/v1beta/interactions` endpoint (no background polling); the clip is returned as a downloadable file URI (`delivery: "uri"`), which the CLI fetches (following the 302 redirect) and writes as `.mp4`. Cost is reported **from actual usage tokens** (video ≈ $0.10/second of 720p). Live-verified end-to-end against the API on 2026-07-17
