@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-07-17
+
 ### Fixed
 
 - **Migrated request bodies to the current Interactions schema** — Google's May 2026 migration removed the `response_modalities` field (legacy schema permanently removed 2026-06-08). The CLI now declares output modality via `response_format`: image sub-commands always send `response_format: { type: 'image', … }`, and `tts` sends `response_format: { type: 'audio' }` (with `speech_config` remaining in `generation_config`). Previously image/TTS bodies still carried `response_modalities`, and a bare `image "…"` sent *only* that field with no `response_format`. Verified against the live API on 2026-07-16 (image + TTS round-trip both succeed under the new shape)
@@ -20,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Model registry refreshed and verified against the live Google docs (2026-07-16)** — `models.json` snapshot date bumped to 2026-07-16; all shipped model IDs and the Gemini 2.5-family shutdown dates re-confirmed accurate against the models/deprecations/pricing pages
 - **`Api-Revision: 2026-05-20` documented as inert** — the migration completed 2026-06-08 and the API now ignores the header; it is kept only as a harmless explicit marker (there is no newer value to adopt)
-- **Docs + skill constellation updated** — `docs/` (api-reference, commands, gotchas, model-selection, prompt-engineering) and the HappySkills skills (`tiny-gemini` 2.0.5, `tiny-gemini-image` 0.3.3, `tiny-gemini-tts` 0.1.4, `tiny-gemini-models` 0.1.4) now reflect the `response_format`-based schema, the new models, and the fact that the extreme aspect ratios (`1:4`/`1:8`/`4:1`/`8:1`) and `512px` are `gemini-3.1-flash-image`-only. The README "Reference Material" section is now a monitored list of official source URLs with a "last verified" date
+- **Docs + skill constellation updated** — the `docs/` set and the HappySkills skill constellation now reflect the `response_format` schema, the new models, and the per-model aspect-ratio limits (the extreme `1:4`/`1:8`/`4:1`/`8:1` ratios and `512px` are `gemini-3.1-flash-image`-only). Added `docs/sources.md` (a monitored registry of official source URLs) and a new `tiny-gemini-upkeep` skill that audits the CLI + models against the live Gemini docs
 - **Streaming TTS + adjacent surfaces documented** — noted that the API added streaming TTS for `gemini-3.1-flash-tts-preview` (2026-06-17, the CLI's `tts` stays non-streaming), and recorded the newer Gemini surfaces reachable via `raw` but without a dedicated command (Managed Agents / Antigravity `antigravity-preview-05-2026`, the Computer Use tool, and Omni Flash video `gemini-omni-flash-preview`) in `docs/sources.md` §1b and the core skill's `raw-api.md`. Corrected a stale "deprecated" label on `gemini-2.5-flash-preview-tts` (it is active Preview)
 
 ## [2.2.0] - 2026-06-18
