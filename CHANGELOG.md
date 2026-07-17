@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **New `video` command — text/image → video generation and editing** via Gemini Omni Flash (`gemini-omni-flash-preview`). `video "prompt"` generates a 720p 24fps MP4 (3–10s); `--file` animates input image(s); `video edit <file> "prompt"` edits an existing video/image (input up to 10s); `--previous=<interaction-id>` refines a prior clip conversationally. Supports `--aspect-ratio` (16:9/9:16), `--count` concurrent candidates, `--dry-run`, `--preview`, and a `--json` envelope. Uses the same synchronous `/v1beta/interactions` endpoint (no background polling); the clip is returned as a downloadable file URI (`delivery: "uri"`), which the CLI fetches (following the 302 redirect) and writes as `.mp4`. Cost is reported **from actual usage tokens** (video ≈ $0.10/second of 720p). Live-verified end-to-end against the API on 2026-07-17
+- **`gemini-omni-flash-preview` added to `models.json`** (new `video` type; Preview; $1.50 in / $17.50 video-out / $9.00 text-out per 1M; no free tier) and surfaced by `tiny-gemini models list --type=video`
+- **New satellite skill `tiny-gemini-video`** teaching agents the `video` command; declared as a dependency of the `tiny-gemini` core so installing the core pulls it in. `extractOutputs` now recognizes `video` output parts (both `uri` and inline `data`)
+- **Reference-image steering for the `video` command** (Omni best practices, mined from the official docs). `--first-frame <img>` animates from a starting frame (`<FIRST_FRAME>`); `--file <img>` (repeatable) supplies style/subject reference images bound to `<IMAGE_REF_0..N>` by order — the CLI prints the tag→file mapping and auto-appends a legend when the prompt has no tags. Adds `--task` (`text_to_video`/`image_to_video`/`reference_to_video`/`edit`, auto-selected from inputs; `video_config.task` — live-verified `reference_to_video` round-trip 2026-07-17). Image parts are now sent **before** the text part (per Google's examples), and requests carry the documented `background:false, stream:false` speed best-practice. The `--json` envelope gained `task` and `references`
+
+### Changed
+
+- Docs + skill constellation updated for the video command and the Omni model: `docs/commands.md`, `docs/api-reference.md` (video output type + Video Models), `docs/model-selection.md`, `docs/gotchas.md` (URI-delivery gotcha), the core `tiny-gemini` and `tiny-gemini-models` skills, and `README.md`. `docs/sources.md` §1b now records the `video` command wrapping Omni, plus the File Search tool and DeepMind model hub sources (Last verified 2026-07-17)
+
 ## [2.3.0] - 2026-07-17
 
 ### Fixed

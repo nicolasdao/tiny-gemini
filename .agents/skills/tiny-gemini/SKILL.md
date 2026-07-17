@@ -17,6 +17,7 @@ This skill is the entry point. Other capabilities live in dedicated satellite sk
 | **Text Q&A, summarize, extract, search-grounded, raw JSON** | `tiny-gemini` (this skill) | "ask Gemini", "summarize", "extract structured data", "search the web", "send raw JSON" |
 | **Image generation, editing, understanding** | `tiny-gemini-image` | "generate / make / create image", "edit photo", "describe image", "icon", "diagram", "pattern" |
 | **Text-to-speech (WAV)** | `tiny-gemini-tts` | "speak this", "convert to speech", "narrate", "read aloud" |
+| **Text/image → video generation and editing (MP4)** | `tiny-gemini-video` | "generate / make a video", "animate this photo", "edit / restyle this video" |
 | **Multi-minute Deep Research agents** | `tiny-gemini-research` | "research X in depth", "comprehensive analysis", "multi-minute report" |
 | **Offline model registry, pricing, deprecations** | `tiny-gemini-models` | "what Gemini models exist", "how much does X cost", "which model should I use" |
 
@@ -100,8 +101,8 @@ The CLI adds the `Api-Revision: 2026-05-20` header so responses use the post-202
 
 | Flag | Where it works | What it does |
 |------|----------------|--------------|
-| `--json-output` | All API-bound commands (`prompt`, `image`, `tts`, `search`, `research`, `raw`) | Prints the **raw** API response JSON instead of human-formatted output |
-| `--json` | `models` (registry JSON) and `image` generation (a **structured result envelope** — paths, dimensions, cost; owned by `tiny-gemini-image`) | A curated, machine-readable result, not the raw API response |
+| `--json-output` | All API-bound commands (`prompt`, `image`, `tts`, `video`, `search`, `research`, `raw`) | Prints the **raw** API response JSON instead of human-formatted output |
+| `--json` | `models` (registry JSON), `image` generation, and `video` generation (a **structured result envelope** — paths, sizes, cost; owned by `tiny-gemini-image` / `tiny-gemini-video`) | A curated, machine-readable result, not the raw API response |
 
 The `models` command also accepts `--json-output` as an alias for convenience.
 
@@ -153,5 +154,5 @@ npx tiny-gemini "Fix bugs in screenshot" --file screenshot.png --prompt-file src
 - ALWAYS check that Node.js >= 18 is available before first use
 - The `raw` command sends JSON directly to the API with no body modification (the CLI does add the `Api-Revision: 2026-05-20` header)
 - Streaming (`--stream`) only captures text deltas, not images or audio
-- For image / audio / research / model lookup, **route to the sibling skill** — don't try to handle them via `raw`
+- For image / audio / video / research / model lookup, **route to the sibling skill** — don't try to handle them via `raw`
 - Before recommending a specific model, route to `tiny-gemini-models` so the user gets the live registry, not a hardcoded answer

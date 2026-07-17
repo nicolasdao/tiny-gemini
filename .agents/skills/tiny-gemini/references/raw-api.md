@@ -132,7 +132,9 @@ The CLI wraps the common cases, but `raw` reaches 100% of the API — including 
 | Surface | ID / entry point | Docs |
 |---------|------------------|------|
 | Managed Agents (autonomous stateful agents in a sandbox) + the Antigravity agent | `agent: "antigravity-preview-05-2026"` | ai.google.dev/gemini-api/docs/custom-agents, .../docs/agents |
-| Gemini Omni Flash (text/image → short video) | `model: "gemini-omni-flash-preview"` | ai.google.dev/gemini-api/docs/omni |
+| Veo (higher-fidelity / longer cinematic video with native audio) | `veo-3.1-generate-preview` via the `:predictLongRunning` endpoint (a *different* API from Omni — use `--api-base`) | ai.google.dev/gemini-api/docs/video |
+
+Note: short-clip text/image → video (Gemini **Omni Flash**, `gemini-omni-flash-preview`) now has a dedicated **`video` command** (owned by `tiny-gemini-video`) — use that instead of `raw`. Veo above is the separate, raw-only path.
 
 These are also catalogued in `docs/sources.md` for monitoring. Confirm the exact request body against the live docs before use.
 

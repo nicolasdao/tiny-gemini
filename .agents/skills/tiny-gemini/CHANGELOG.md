@@ -5,6 +5,16 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-07-17
+
+### Added
+
+- **New satellite: `tiny-gemini-video`** for the CLI's `video` command (Gemini Omni Flash text/image → video). Added it to the Suite Members table and as a bundled `dependencies` entry so installing the core pulls it in. Video generation/editing intents ("make a video", "animate this photo", "edit this video") now route to the new sibling instead of falling through to `raw`.
+
+### Changed
+
+- Documented the `video` command in the shared `--json-output` / `--json` tables (video generation emits the same kind of structured envelope as image), and added video to the "route to the sibling skill" constraint.
+
 ## [2.1.0] - 2026-07-17
 
 ### Changed

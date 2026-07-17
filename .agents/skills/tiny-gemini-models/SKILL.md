@@ -15,7 +15,7 @@ This skill owns every "ask about the Gemini API" verb (vs "use" the API):
 | User intent | Command |
 |-------------|---------|
 | "what Gemini models exist?" | `models list` |
-| "list image / audio / text / embedding / agent models" | `models list --type=<type>` |
+| "list image / audio / video / text / embedding / agent models" | `models list --type=<type>` |
 | "show only GA / preview / deprecated models" | `models list --status=<status>` |
 | "how much does Gemini Pro cost?" | `models pricing` |
 | "give me the model registry as JSON" | `models list --json` |
@@ -45,6 +45,7 @@ npx tiny-gemini models list
 npx tiny-gemini models list --type=text
 npx tiny-gemini models list --type=image
 npx tiny-gemini models list --type=audio
+npx tiny-gemini models list --type=video
 npx tiny-gemini models list --type=embeddings
 npx tiny-gemini models list --type=agent
 npx tiny-gemini models list --status=ga
@@ -93,13 +94,14 @@ Apply in order. The FIRST match is your answer.
 3. **Generating images at the lowest possible cost/latency, 1K acceptable?** → `gemini-3.1-flash-lite-image` (GA; the deprecated `gemini-2.5-flash-image` still serves until shutdown 2026-10-02)
 4. **Generating speech from text?** → `gemini-3.1-flash-tts-preview`
 5. **Native speech-in / speech-out (not TTS)?** → `gemini-2.5-flash-native-audio-preview-12-2025`
-6. **Multi-minute autonomous research?** → `deep-research-preview-04-2026` (or `-max-` for comprehensive)
-7. **Multimodal embeddings?** → `gemini-embedding-2`
-8. **Need Remote MCP integration?** → `gemini-2.5-flash` (Gemini 3 doesn't support it; this model shuts down 2026-10-16)
-9. **Maximum reasoning quality regardless of cost?** → `gemini-3.1-pro-preview`
-10. **Cheapest text generation?** → `gemini-3.1-flash-lite`
-11. **Need a GA (non-preview) flash model for agentic/coding, cost no object?** → `gemini-3.5-flash` (GA, $1.50/$9.00; the official replacement for `gemini-2.5-flash`)
-12. **Everything else (text, multimodal understanding, function calling, structured output, streaming)?** → `gemini-3-flash-preview` (best value, the CLI's text default)
+6. **Generating or editing short video (720p, from text or an image)?** → `gemini-omni-flash-preview` (CLI `video` default; Veo `veo-3.1-generate-preview` via `raw` for higher-fidelity/longer clips)
+7. **Multi-minute autonomous research?** → `deep-research-preview-04-2026` (or `-max-` for comprehensive)
+8. **Multimodal embeddings?** → `gemini-embedding-2`
+9. **Need Remote MCP integration?** → `gemini-2.5-flash` (Gemini 3 doesn't support it; this model shuts down 2026-10-16)
+10. **Maximum reasoning quality regardless of cost?** → `gemini-3.1-pro-preview`
+11. **Cheapest text generation?** → `gemini-3.1-flash-lite`
+12. **Need a GA (non-preview) flash model for agentic/coding, cost no object?** → `gemini-3.5-flash` (GA, $1.50/$9.00; the official replacement for `gemini-2.5-flash`)
+13. **Everything else (text, multimodal understanding, function calling, structured output, streaming)?** → `gemini-3-flash-preview` (best value, the CLI's text default)
 
 ## Sunset Calendar
 

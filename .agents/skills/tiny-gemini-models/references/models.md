@@ -11,13 +11,14 @@ Follow these rules in order. The FIRST match is your answer.
 3. **Generating images at the lowest possible cost/latency (1K resolution acceptable)?** Use `gemini-3.1-flash-lite-image` (GA "Nano Banana 2 Lite"; the deprecated `gemini-2.5-flash-image` still serves until shutdown 2026-10-02).
 4. **Generating speech from text?** Use `gemini-3.1-flash-tts-preview`.
 5. **Native speech-in / speech-out conversation (not TTS)?** Use `gemini-2.5-flash-native-audio-preview-12-2025`.
-6. **Running deep research (multi-minute autonomous investigation)?** Use `deep-research-preview-04-2026` (speed-optimized) or `deep-research-max-preview-04-2026` (comprehensive). Agents, not models — set the request `agent` field, not `model`.
-7. **Generating multimodal embeddings?** Use `gemini-embedding-2`.
-8. **Need Remote MCP tool integration?** Use `gemini-2.5-flash` (Gemini 3 models do not support Remote MCP yet). Note: `gemini-2.5-flash` will be shut down on 2026-10-16.
-9. **Need maximum reasoning quality regardless of cost?** Use `gemini-3.1-pro-preview`.
-10. **Need the cheapest possible text generation?** Use `gemini-3.1-flash-lite`.
-11. **Need a GA (non-preview) flash model for agentic/coding, cost no object?** Use `gemini-3.5-flash` (GA, replaces `gemini-2.5-flash`).
-12. **Everything else (text, multimodal understanding, function calling, structured output, streaming)?** Use `gemini-3-flash-preview` (best value, the CLI's text default).
+6. **Generating or editing video (short 720p clips from text or an image)?** Use `gemini-omni-flash-preview` (Omni Flash) — the CLI's `video` command default.
+7. **Running deep research (multi-minute autonomous investigation)?** Use `deep-research-preview-04-2026` (speed-optimized) or `deep-research-max-preview-04-2026` (comprehensive). Agents, not models — set the request `agent` field, not `model`.
+8. **Generating multimodal embeddings?** Use `gemini-embedding-2`.
+9. **Need Remote MCP tool integration?** Use `gemini-2.5-flash` (Gemini 3 models do not support Remote MCP yet). Note: `gemini-2.5-flash` will be shut down on 2026-10-16.
+10. **Need maximum reasoning quality regardless of cost?** Use `gemini-3.1-pro-preview`.
+11. **Need the cheapest possible text generation?** Use `gemini-3.1-flash-lite`.
+12. **Need a GA (non-preview) flash model for agentic/coding, cost no object?** Use `gemini-3.5-flash` (GA, replaces `gemini-2.5-flash`).
+13. **Everything else (text, multimodal understanding, function calling, structured output, streaming)?** Use `gemini-3-flash-preview` (best value, the CLI's text default).
 
 ## All Models
 
@@ -38,6 +39,7 @@ Follow these rules in order. The FIRST match is your answer.
 | `gemini-2.5-flash-preview-tts` | Audio (Preview) | Older, lower-cost 2.5-family TTS. Still active (not deprecated). |
 | `gemini-2.5-pro-preview-tts` | Audio (Preview) | Higher-tier 2.5-family TTS ($1.00/$20.00, no free tier). `gemini-3.1-flash-tts-preview` is the newer default. |
 | `gemini-2.5-flash-native-audio-preview-12-2025` | Audio | Native speech-in / speech-out (distinct from TTS). |
+| `gemini-omni-flash-preview` | Video (Preview) | Text/image → short 720p video (3–10s, 24fps) + conversational editing. CLI `video` default. ~$0.10/s of 720p output, no free tier. Codename: Omni Flash. |
 | `gemini-embedding-2` | Embeddings (GA) | Multimodal: text, image, video, audio, PDF. |
 | `deep-research-preview-04-2026` | Agent | Autonomous deep research (speed-optimized). Requires `background: true`, uses `agent` field (not `model`). |
 | `deep-research-max-preview-04-2026` | Agent | Autonomous deep research (comprehensive variant). Requires `background: true`. |
@@ -50,6 +52,7 @@ Follow these rules in order. The FIRST match is your answer.
 | `image` (generate, edit, story, icon, pattern, diagram) | `gemini-3.1-flash-image` |
 | `image describe` | `gemini-3-flash-preview` |
 | `tts` | `gemini-3.1-flash-tts-preview` |
+| `video` (generate, edit) | `gemini-omni-flash-preview` |
 | `search` | `gemini-3-flash-preview` |
 | `research` | `deep-research-preview-04-2026` |
 

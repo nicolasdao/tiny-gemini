@@ -5,6 +5,12 @@ All notable changes to this skill will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-07-17
+
+### Added
+
+- Documented the new **video** model type and `gemini-omni-flash-preview` (Omni Flash): a decision rule (#6, "generating/editing video → Omni Flash"), an All-Models row, and a `video` CLI-default entry. Mirrors the `models.json` catalog entry and the new `tiny-gemini-video` command.
+
 ## [0.1.5] - 2026-07-16
 
 ### Added

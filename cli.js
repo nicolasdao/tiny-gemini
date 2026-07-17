@@ -18,6 +18,7 @@ const MODELS = {
 	text: 'gemini-3-flash-preview',
 	image: 'gemini-3.1-flash-image',
 	tts: 'gemini-3.1-flash-tts-preview',
+	video: 'gemini-omni-flash-preview',
 	research: 'deep-research-preview-04-2026',
 };
 
@@ -47,8 +48,9 @@ const SUNSET_MODELS = {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MODELS_JSON_PATH = join(__dirname, 'models.json');
 
-const COMMANDS = ['prompt', 'image', 'tts', 'search', 'research', 'raw', 'models'];
+const COMMANDS = ['prompt', 'image', 'tts', 'video', 'search', 'research', 'raw', 'models'];
 const IMAGE_SUBS = ['generate', 'edit', 'describe', 'story', 'icon', 'pattern', 'diagram'];
+const VIDEO_SUBS = ['generate', 'edit'];
 const MODELS_SUBS = ['list', 'pricing'];
 
 // The image API returns exactly one image per call — there is no candidate_count
@@ -229,6 +231,7 @@ COMMANDS
   prompt [text]       Text generation (default — command name optional)
   image [sub] [args]  Image generation, editing, and understanding
   tts [text]          Text-to-speech (saves .wav file)
+  video [sub] [args]  Text/image → video generation and editing (saves .mp4)
   search [query]      Google Search-grounded generation
   research [topic]    Deep Research agent (background task)
   raw [json]          Raw JSON passthrough to Interactions API
@@ -264,6 +267,7 @@ EXAMPLES
   ${NAME} image "a cat on the moon"
   ${NAME} image edit photo.png "add sunglasses"
   ${NAME} tts "Hello world" --voice=kore
+  ${NAME} video "a paper boat sailing down a rain gutter"
   ${NAME} search "latest news on AI"
   ${NAME} research "history of quantum computing"
 `.trim();
@@ -362,6 +366,60 @@ EXAMPLES
   ${NAME} tts "Bonjour" --voice=kore --language=fr-fr
 `.trim();
 
+const HELP_VIDEO = `
+${NAME} video — Text/image → video generation and editing (Gemini Omni Flash)
+
+USAGE
+  ${NAME} video [sub-command] [args] [options]
+
+SUB-COMMANDS
+  generate [prompt]     Generate video from text/images (default)
+  edit <file> [prompt]  Edit/restyle an existing video or image (input up to 10s)
+
+OPTIONS
+  --first-frame <path>  Image to animate FROM (becomes <FIRST_FRAME>, the start frame)
+  --file <path>         Reference image (repeatable) → <IMAGE_REF_0>, <IMAGE_REF_1>, …
+                        Prefix with a label to name it: --file style=art.png
+  --aspect-ratio <r>    16:9 (default) or 9:16 (only these two are supported)
+  --task <t>            text_to_video | image_to_video | reference_to_video | edit
+                        (auto-selected from your inputs; the model also infers)
+  --count <n>           Number of candidate clips to generate (default: 1)
+  --concurrency <n>     Max parallel generations in a batch (default: ${DEFAULT_IMAGE_CONCURRENCY})
+  --previous <id>       Refine a prior clip conversationally (its interaction id)
+  --out <name>          Base output filename (an index is appended for batches)
+  --json                Print a structured envelope (paths, bytes, actual cost, ids)
+  --dry-run             Print the cost note and exit without generating
+  --preview             Open the .mp4 after saving
+  --model <model>       Model (default: ${MODELS.video})
+
+REFERENCE IMAGES & PROMPT TAGS
+  Supply reference images with --file (bound to <IMAGE_REF_0>, <IMAGE_REF_1>, … in
+  order) and refer to each in the prompt where it should be used, e.g.
+  "in the style of <IMAGE_REF_0>, <IMAGE_REF_1> walks through rain". Use
+  --first-frame to animate from a specific starting image. The CLI prints the
+  tag → file mapping so you know which tag is which.
+
+PROMPTING TIPS (Omni)
+  • Audio is generated too — describe it: "soft ambient music", "no dialogue".
+  • Time cuts with [0-3s] … [3-6s] … segments.
+  • Direct the shot: framing, lens, lighting, motion. "single continuous shot".
+  • No negative-prompt field — phrase exclusions in the prompt ("No text on screen").
+
+OUTPUT
+  Saves an .mp4 (720p, 24fps, 3–10s, with audio) to --output-dir. Video output is
+  billed per token (~$0.10/second of 720p); the actual cost is printed from the
+  response. All clips carry an invisible SynthID watermark.
+
+EXAMPLES
+  ${NAME} video "a paper boat sailing down a rain gutter, slow motion, gentle rain sounds"
+  ${NAME} video "make this photo come alive" --first-frame scene.png
+  ${NAME} video "in the style of <IMAGE_REF_0>, <IMAGE_REF_1> dances" --file style.png --file dancer.png
+  ${NAME} video "a neon skyline" --aspect-ratio=9:16
+  ${NAME} video "[0-3s] a seed sprouts [3-6s] it blooms [6-10s] petals fall" --count=2 --json
+  ${NAME} video edit clip.mp4 "make it night-time, keep everything else the same"
+  ${NAME} video "add falling snow" --previous=v1_abc123
+`.trim();
+
 const HELP_SEARCH = `
 ${NAME} search — Google Search-grounded generation
 
@@ -417,7 +475,7 @@ USAGE
   ${NAME} models list             Human-readable model table
   ${NAME} models pricing          Pricing-only table
   ${NAME} models list --json      Machine-readable JSON
-  ${NAME} models list --type=text Filter by type (text|image|audio|embeddings|agent)
+  ${NAME} models list --type=text Filter by type (text|image|audio|video|embeddings|agent)
   ${NAME} models list --status=ga Filter by status (ga|preview|deprecated)
 
 DATA SOURCE
@@ -432,7 +490,7 @@ EXAMPLES
 `.trim();
 
 const HELP_MAP = {
-	prompt: HELP_PROMPT, image: HELP_IMAGE, tts: HELP_TTS,
+	prompt: HELP_PROMPT, image: HELP_IMAGE, tts: HELP_TTS, video: HELP_VIDEO,
 	search: HELP_SEARCH, research: HELP_RESEARCH, raw: HELP_RAW,
 	models: HELP_MODELS,
 };
@@ -531,7 +589,7 @@ async function callAPIStream(config, body, outputFile, outputFormat) {
 // `outputs` array. Each item may carry content directly (legacy shape) or
 // nested in a `content` array (new shape).
 function extractOutputs(response) {
-	const r = { text: [], images: [], audio: [], functions: [] };
+	const r = { text: [], images: [], audio: [], videos: [], functions: [] };
 	const items = response?.steps || response?.outputs || [];
 	for (const item of items) {
 		if (item.type === 'function_call') {
@@ -550,11 +608,18 @@ function extractOutputs(response) {
 			r.audio.push({ data: item.data, mime: item.mime_type });
 			continue;
 		}
+		// Video output (Gemini Omni). With response_format delivery:"uri" the part
+		// carries a `uri` to download; with inline delivery it carries base64 `data`.
+		if (item.type === 'video' && (item.data || item.uri)) {
+			r.videos.push({ data: item.data, uri: item.uri, mime: item.mime_type });
+			continue;
+		}
 		if (Array.isArray(item.content)) {
 			for (const part of item.content) {
 				if (part.type === 'text') r.text.push(part.text);
 				else if (part.type === 'image') r.images.push({ data: part.data, mime: part.mime_type });
 				else if (part.type === 'audio') r.audio.push({ data: part.data, mime: part.mime_type });
+				else if (part.type === 'video' && (part.data || part.uri)) r.videos.push({ data: part.data, uri: part.uri, mime: part.mime_type });
 				else if (part.type === 'function_call') r.functions.push(part);
 			}
 		}
@@ -605,6 +670,7 @@ async function uniquePath(dir, base, ext) {
 const MIME_EXT = {
 	'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif',
 	'audio/wav': '.wav', 'audio/pcm': '.wav', 'audio/mpeg': '.mp3',
+	'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm',
 	'application/pdf': '.pdf',
 };
 
@@ -1266,6 +1332,231 @@ async function handleImage(args, values, config) {
 	}
 }
 
+// Read a local media file (image or video) into an Interactions input part.
+// Used by the video command for image→video and video→video editing.
+async function readMediaPart(path) {
+	if (!(await exists(path))) die(`File not found: ${path}`);
+	const mime = extToMime(path);
+	return { type: inputType(mime), data: await readBase64(path), mime_type: mime };
+}
+
+// Video output modality is declared by response_format {type:"video"} (the same
+// mechanism image/audio use post-May-2026). delivery:"uri" makes the API return
+// a downloadable file URI instead of a multi-MB inline base64 blob — always
+// preferred for a CLI. aspect_ratio (16:9 default, or 9:16) is merged when set.
+function videoResponseFormat(values) {
+	const rf = { type: 'video', delivery: 'uri' };
+	if (values['aspect-ratio']) rf.aspect_ratio = values['aspect-ratio'];
+	return rf;
+}
+
+// Download a generated video from its file URI to disk. The download endpoint
+// 302-redirects to a signed media URL (fetch follows redirects by default). The
+// file is usually ready immediately, but retry a few times on 403/404/425 in
+// case a larger clip is still finalizing. Returns the byte count written.
+async function downloadVideoFile(config, uri, destPath) {
+	for (let attempt = 0; attempt < 5; attempt++) {
+		const res = await fetch(uri, { headers: { 'x-goog-api-key': config.apiKey } });
+		if (res.ok) {
+			const buf = Buffer.from(await res.arrayBuffer());
+			await writeFile(destPath, buf);
+			return buf.length;
+		}
+		if (res.status === 403 || res.status === 404 || res.status === 425) {
+			await new Promise(r => setTimeout(r, 2000));
+			continue;
+		}
+		throw new APIError(res.status, await res.text());
+	}
+	die(`Video file was not ready after retries: ${uri}`);
+}
+
+// Actual (not estimated) USD cost of one video interaction, computed from the
+// response `usage` object. Video output tokens are billed at output_video_per_1m,
+// any other output (text/thought) at output_per_1m, input at input_per_1m.
+// Returns null if the model or the video rate isn't priced in the registry.
+function videoUsageCost(registry, modelId, usage) {
+	if (!usage) return null;
+	const p = registry?.models?.find(x => x.id === modelId)?.pricing || {};
+	if (p.output_video_per_1m == null) return null;
+	const vidTok = (usage.output_tokens_by_modality || []).find(o => o.modality === 'video')?.tokens || 0;
+	const otherOut = Math.max(0, (usage.total_output_tokens || 0) - vidTok);
+	let cost = vidTok / 1e6 * p.output_video_per_1m;
+	if (p.output_per_1m != null) cost += otherOut / 1e6 * p.output_per_1m;
+	if (p.input_per_1m != null) cost += (usage.total_input_tokens || 0) / 1e6 * p.input_per_1m;
+	return +cost.toFixed(4);
+}
+
+// Text/image → video, and video/image → video editing, via Gemini Omni Flash.
+// Mirrors the image command's shape: a `generate` (default) and `edit` sub-command,
+// concurrent --count candidates (video is non-deterministic like image), --dry-run
+// cost preview, and a --json envelope. Unlike image, cost is reported from actual
+// usage tokens, and the interaction id is surfaced so --previous can refine a clip
+// conversationally.
+async function handleVideo(args, values, config) {
+	let sub = 'generate';
+	const rest = [...args];
+	if (rest.length && VIDEO_SUBS.includes(rest[0])) sub = rest.shift();
+
+	const model = config.model || MODELS.video;
+	checkSunset(model);
+	const vidConfig = { ...config, model };
+	const rf = videoResponseFormat(values);
+	const previous = values.previous || null;
+
+	// Assemble image parts, text prompt, output hint, and the video_config.task per
+	// sub-command. Images go BEFORE the text part (every Omni docs example does), and
+	// each supplied image is surfaced with the prompt tag it binds to, so the caller
+	// (or the skill) can reference it correctly: a --first-frame image → <FIRST_FRAME>,
+	// each --file reference → <IMAGE_REF_0>, <IMAGE_REF_1>, … in --file order.
+	let promptText;
+	let hint = values.out || 'video';
+	const imageParts = [];
+	const roleMap = [];        // {tag, label, path} — printed so tags can be written correctly
+	let autoTask = null;
+
+	if (sub === 'edit') {
+		const file = rest.shift();
+		if (!file) die('No file. Usage: tiny-gemini video edit <file> "prompt"');
+		imageParts.push(await readMediaPart(file));
+		roleMap.push({ tag: 'input', label: null, path: file });
+		promptText = rest.join(' ') || 'Edit this video';
+		hint = values.out || 'edited';
+		autoTask = 'edit';
+	} else {
+		promptText = rest.join(' ');
+		const firstFrame = values['first-frame'] || null;
+		const refs = fileArgs(values);
+		if (!promptText && !refs.length && !firstFrame) die('No prompt. Usage: tiny-gemini video "your prompt"');
+
+		// Starting-frame image (animate from this exact frame) → <FIRST_FRAME>, sent first.
+		if (firstFrame) {
+			const part = await readMediaPart(firstFrame);
+			if (!part.mime_type.startsWith('image/')) die(`--first-frame must be an image: ${firstFrame} (${part.mime_type})`);
+			imageParts.push(part);
+			roleMap.push({ tag: '<FIRST_FRAME>', label: null, path: firstFrame });
+			// Convenience for the common case: inject the tag if the prompt lacks it.
+			if (!/<FIRST_FRAME>/.test(promptText)) promptText = `<FIRST_FRAME> ${promptText}`.trim();
+		}
+		// Reference images → <IMAGE_REF_0>, <IMAGE_REF_1>, … bound by --file order (0-indexed).
+		for (let i = 0; i < refs.length; i++) {
+			const { name, path } = refs[i];
+			const part = await readMediaPart(path);
+			if (!part.mime_type.startsWith('image/')) die(`Reference must be an image: ${path} (${part.mime_type})`);
+			imageParts.push(part);
+			roleMap.push({ tag: `<IMAGE_REF_${i}>`, label: name, path });
+		}
+		// If references were supplied but the prompt uses no role tags, append a legend
+		// binding each tag to its file/label so the model can still map them (mirrors
+		// the image command's Image A/B legend). The skill teaches inline tag use.
+		if (refs.length && !/<IMAGE_REF_\d+>/.test(promptText)) {
+			const legend = refs.map((r, i) => `<IMAGE_REF_${i}>${r.name ? ` is ${r.name}` : ''}`).join(', ');
+			promptText = `${promptText}\n\nReference images: ${legend}.`.trim();
+		}
+
+		autoTask = firstFrame
+			? (refs.length ? 'reference_to_video' : 'image_to_video')
+			: (refs.length ? 'reference_to_video' : null);   // plain text → let the model infer
+	}
+
+	// Surface the tag→file mapping so tags can be written correctly.
+	for (const r of roleMap) log(`${r.tag} = ${r.label ? `${r.label} (${r.path})` : r.path}`);
+
+	// video_config.task disambiguates the mode. Auto-selected above; --task overrides.
+	// The field is confirmed accepted live (reference_to_video round-trip, 2026-07-17),
+	// and the model also infers when it's unset, so it degrades gracefully.
+	const task = values.task || autoTask;
+
+	const buildBody = () => {
+		const input = imageParts.length ? [...imageParts, { type: 'text', text: promptText }] : promptText;
+		// background/stream:false is the documented synchronous-unary speed best-practice;
+		// store is left at its default so --previous refinement keeps working.
+		const body = { model, input, response_format: rf, background: false, stream: false };
+		if (task) body.generation_config = { video_config: { task } };
+		if (previous) body.previous_interaction_id = previous;
+		return body;
+	};
+
+	const count = values.count ? Math.max(1, parseInt(values.count)) : 1;
+	const wantJson = !!values.json;
+	const registry = wantJson ? await loadModelsRegistry() : null;
+
+	if (values['dry-run']) {
+		// Cost is duration-dependent and duration isn't a request parameter, so we
+		// can't price it before generating — surface the per-second rate instead.
+		const note = `~$0.10 per second of 720p video (a 3–10s clip ≈ $0.30–$1.00 each); ${count} clip(s).`;
+		if (wantJson) {
+			console.log(JSON.stringify({ dry_run: true, model, task: task || 'inferred', count, aspect_ratio: rf.aspect_ratio || '16:9 (default)', cost_note: note }, null, 2));
+		} else {
+			log(`Dry run: ${count} video(s) with ${model}. ${note} No API calls made.`);
+		}
+		return;
+	}
+
+	const single = count === 1;
+	const concurrency = resolveConcurrency(values, count);
+	log(single
+		? 'Generating video (this can take 30–90s)...'
+		: `Generating ${count} videos (up to ${concurrency} at a time; each can take 30–90s)...`);
+
+	const results = await mapPool(Array.from({ length: count }, () => promptText), concurrency, async (_p, i) => {
+		const body = buildBody();
+		if (config.jsonOutput) {
+			console.log(JSON.stringify(await callAPI(vidConfig, body), null, 2));
+			return null;
+		}
+		const resp = await callAPI(vidConfig, body);
+		const out = extractOutputs(resp);
+		const base = single ? hint : `${hint}_${i + 1}`;
+		const files = [];
+		for (const vid of out.videos) {
+			const ext = mimeToExt(vid.mime || 'video/mp4');
+			let path, bytes;
+			if (vid.uri) {
+				await ensureDir(config.outputDir);
+				path = await uniquePath(config.outputDir, sanitize(base), ext);
+				bytes = await downloadVideoFile(vidConfig, vid.uri, path);
+				log(`Saved: ${path}`);
+				if (config.preview) openFile(path);
+			} else if (vid.data) {
+				path = await saveOutput(config.outputDir, base, vid.data, vid.mime, config);
+				bytes = Buffer.from(vid.data, 'base64').length;
+			}
+			files.push({ index: i + 1, path, bytes, format: (vid.mime || 'video/mp4').split('/')[1], prompt: promptText });
+		}
+		if (!files.length) throw new Error('No video output in response');
+		if (!wantJson) for (const t of out.text) console.log(t);
+		return { files, interaction_id: resp.id, cost: videoUsageCost(registry, model, resp.usage) };
+	});
+
+	if (config.jsonOutput) return;
+
+	if (wantJson) {
+		const videos = results.flatMap(r => (r && r.ok && r.value)
+			? r.value.files.map(f => ({ ...f, interaction_id: r.value.interaction_id, cost_usd: r.value.cost }))
+			: []);
+		const failures = results
+			.map((r, i) => (r && !r.ok) ? { index: i + 1, error: r.error?.message || String(r.error) } : null)
+			.filter(Boolean);
+		const totalCost = results.reduce((s, r) => s + ((r && r.ok && r.value && r.value.cost) || 0), 0);
+		const envelope = {
+			model, task: task || 'inferred', count: videos.length, aspect_ratio: rf.aspect_ratio || '16:9',
+			cost_usd: videos.length ? +totalCost.toFixed(4) : null, cost_estimated: false, videos,
+		};
+		if (roleMap.length) envelope.references = roleMap.map(r => ({ tag: r.tag, label: r.label, path: r.path }));
+		if (failures.length) envelope.failures = failures;
+		console.log(JSON.stringify(envelope, null, 2));
+		if (!videos.length) process.exitCode = 1;
+		return;
+	}
+
+	const ok = results.filter(r => r && r.ok && r.value);
+	for (const r of ok) if (r.value.interaction_id) log(`Interaction ID: ${r.value.interaction_id} (pass --previous=<id> to refine)`);
+	const totalCost = ok.reduce((s, r) => s + (r.value.cost || 0), 0);
+	if (totalCost) log(`Cost: $${totalCost.toFixed(2)} (from usage tokens).`);
+	reportBatch(results, 'video');
+}
+
 async function handleTTS(text, values, config) {
 	if (!text) die('No text. Usage: tiny-gemini tts "your text"');
 	const model = config.model || MODELS.tts;
@@ -1503,6 +1794,9 @@ async function main() {
 			transition: { type: 'string' },
 			'aspect-ratio': { type: 'string' },
 			'image-size': { type: 'string' },
+			previous: { type: 'string' },
+			'first-frame': { type: 'string' },
+			task: { type: 'string' },
 			status: { type: 'string' },
 			json: { type: 'boolean' },
 			help: { type: 'boolean', short: 'h' },
@@ -1604,6 +1898,7 @@ async function main() {
 		case 'prompt': await handlePrompt(args.join(' '), values, config); break;
 		case 'image': await handleImage(args, values, config); break;
 		case 'tts': await handleTTS(args.join(' '), values, config); break;
+		case 'video': await handleVideo(args, values, config); break;
 		case 'search': await handleSearch(args.join(' '), values, config); break;
 		case 'research': await handleResearch(args.join(' '), values, config); break;
 		case 'raw': await handleRaw(args.join(' '), values, config); break;

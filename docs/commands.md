@@ -520,6 +520,85 @@ The API returns raw 16-bit, 24kHz, mono PCM (labeled `audio/pcm` or `audio/l16`)
 
 **Model choice:** `gemini-3.1-flash-tts-preview` is the default and recommended TTS model. The 2.5-family `gemini-2.5-flash-preview-tts` and `gemini-2.5-pro-preview-tts` remain available via `--model` (both Preview; see [Model Selection](model-selection.md)).
 
+## video
+
+Text/image → video generation and editing via Gemini Omni Flash. Saves an `.mp4`.
+
+Default model: `gemini-omni-flash-preview` (720p, 24fps, 3–10s clips). Uses the **same synchronous `/v1beta/interactions` endpoint** — the clip returns in one call (no background polling).
+
+### Sub-Command Dispatch
+
+If the first argument after `video` is a recognized sub-command, it's used. Otherwise, defaults to `generate`:
+
+```bash
+tiny-gemini video "a cat leaping in slow motion"         # → generate
+tiny-gemini video generate "a cat" --file cat.png        # → generate (image→video)
+tiny-gemini video edit clip.mp4 "make it night-time"     # → edit
+```
+
+### generate
+
+Text → video, or image(s) → video with `--file`.
+
+```bash
+tiny-gemini video "a paper boat sailing down a rain gutter, slow motion"
+tiny-gemini video "make this photo come alive" --file scene.png
+tiny-gemini video "a neon skyline" --aspect-ratio=9:16
+tiny-gemini video "an abstract loop" --count=2 --json
+```
+
+#### Generate Request Body
+
+Text-only sends `"input": "<prompt>"`. Image → video sends an array (the `aspect_ratio` field is added only when `--aspect-ratio` is set):
+```json
+{
+  "model": "gemini-omni-flash-preview",
+  "input": [
+    { "type": "text", "text": "make this photo come alive" },
+    { "type": "image", "data": "<base64>", "mime_type": "image/png" }
+  ],
+  "response_format": { "type": "video", "delivery": "uri", "aspect_ratio": "9:16" }
+}
+```
+
+### edit
+
+Edit or restyle an existing video (input up to 10s) or image. The first argument after `edit` is the file path, the rest is the edit prompt.
+
+```bash
+tiny-gemini video edit clip.mp4 "make it night-time"
+```
+
+The CLI sends the file as an input part plus the edit text (`video_config.task: "edit"`). Editing an *uploaded* video is region-restricted (EEA/CH/UK) and best suited to short clips; editing a clip Omni just generated is unrestricted — prefer `--previous <interaction-id>` for that.
+
+### Reference Images & Prompt Tags
+
+`--file` reference images bind to `<IMAGE_REF_0>`, `<IMAGE_REF_1>`, … in `--file` order (0-indexed); `--first-frame` binds to `<FIRST_FRAME>`. The CLI prints the tag→file mapping to stderr; place the tags in the prompt where each image should be used, e.g. `"in the style of <IMAGE_REF_0>, <IMAGE_REF_1> walks"` (a legend is auto-appended if references are supplied with no tags). Images are sent **before** the text part, and the CLI sets `background:false, stream:false` (the documented synchronous-unary speed best-practice). The full prompting playbook — audio (Omni generates sound), negatives-in-prompt (no negative-prompt field), timed `[0-3s]` segments — lives in the `tiny-gemini-video` skill.
+
+### Conversational Refinement (--previous)
+
+Refine a prior clip by passing its interaction id (printed after each generation and in the `--json` envelope) as `--previous` — the CLI adds `previous_interaction_id` to the body: `tiny-gemini video "add falling snow" --previous=v1_abc123`.
+
+### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--first-frame <path>` | — | Image to animate FROM → `<FIRST_FRAME>` (task `image_to_video`) |
+| `--file <path>` | — | Reference image, repeatable → `<IMAGE_REF_0..N>` by order; `name=path` to label |
+| `--task <t>` | auto | `text_to_video`/`image_to_video`/`reference_to_video`/`edit` (`generation_config.video_config.task`; auto-selected, model also infers) |
+| `--aspect-ratio <r>` | `16:9` | `16:9` (landscape) or `9:16` (portrait) — the only two Omni supports |
+| `--count <n>` | `1` | Candidate clips to generate (fanned out concurrently, like `image`) |
+| `--concurrency <n>` | `4` | Max parallel generations in a `--count` batch |
+| `--previous <id>` | — | Refine a prior clip via its `interaction_id` |
+| `--out <name>` | `video`/`edited` | Base output filename (`_N` appended for batches) |
+| `--json` | — | Structured envelope: paths, bytes, **actual** cost, interaction ids |
+| `--dry-run` | — | Print the per-second cost note and exit without generating |
+| `--preview` | — | Open the `.mp4` after saving |
+
+### Video Output Handling
+
+`response_format` always carries `{ "type": "video", "delivery": "uri" }`, so the API returns the clip as a downloadable file URI (`steps[].content[]` → `{ type: "video", mime_type: "video/mp4", uri: "…:download?alt=media" }`) rather than a multi-MB inline base64 blob. The CLI fetches it (following the 302 redirect, with the API-key header) and writes the `.mp4` — see `downloadVideoFile` in `cli.js`; inline base64 `data` is also handled. Cost is **actual, not estimated** — `usage.output_tokens_by_modality` × the registry's `output_video_per_1m` ($17.50/1M ≈ $0.10/second). Clips are SynthID-watermarked; editing an *uploaded* video is unavailable in the EEA/Switzerland/UK. See [Gotchas](gotchas.md).
+
 ## search
 
 Google Search-grounded generation. The model can search the web to answer questions about current events.
@@ -632,7 +711,7 @@ tiny-gemini models list --status=ga      # filter by status
 
 | Flag | Values |
 |------|--------|
-| `--type` | `text`, `image`, `audio`, `embeddings`, `agent` |
+| `--type` | `text`, `image`, `audio`, `video`, `embeddings`, `agent` |
 | `--status` | `ga`, `preview`, `deprecated` |
 | `--json` | Output JSON (the full registry shape, after filters applied) |
 

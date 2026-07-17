@@ -1,6 +1,6 @@
 {
-  "snapshot_date": "2026-07-16",
-  "source": "https://ai.google.dev/gemini-api/docs/models (+ per-model pages) + /pricing + /deprecations + /changelog. Last verified against live docs 2026-07-16.",
+  "snapshot_date": "2026-07-17",
+  "source": "https://ai.google.dev/gemini-api/docs/models (+ per-model pages) + /pricing + /deprecations + /changelog. Last verified against live docs 2026-07-17.",
   "models": [
     {
       "id": "gemini-3.5-flash",
@@ -234,6 +234,24 @@
       "shutdown_on": "2026-10-02",
       "replacement": "gemini-3.1-flash-image",
       "free_tier": true
+    },
+    {
+      "id": "gemini-omni-flash-preview",
+      "type": "video",
+      "status": "preview",
+      "context_window": null,
+      "capabilities": ["text_to_video", "image_to_video", "video_editing", "720p", "24fps", "16:9", "9:16"],
+      "pricing": {
+        "input_per_1m": 1.50,
+        "output_per_1m": 9.00,
+        "output_video_per_1m": 17.50,
+        "currency": "USD",
+        "notes": "Preview (launched 2026-06-30). Text/image → 3–10s 720p 24fps MP4 WITH audio (audio is promptable); conversational video editing (video input up to 10s). Accepts reference images (first-frame via <FIRST_FRAME>, style/subject via <IMAGE_REF_0..N>). Video output billed at $17.50/1M tokens (≈ $0.10/second of 720p); text/thought output $9.00/1M; input $1.50/1M. SynthID-watermarked. Video editing of uploaded video unavailable in EEA/Switzerland/UK; audio-input references unsupported. Same synchronous /v1beta/interactions endpoint (no background polling). Codename: Omni Flash. Wrapped by the tiny-gemini `video` command."
+      },
+      "deprecated_on": null,
+      "shutdown_on": null,
+      "replacement": null,
+      "free_tier": false
     },
     {
       "id": "gemini-3.1-flash-tts-preview",

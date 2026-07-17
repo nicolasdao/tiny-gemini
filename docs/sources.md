@@ -11,7 +11,7 @@ source:
 This is the **single source of truth** for every external reference `tiny-gemini` is built on. If a source is not listed here, it is not a source of record — add it here first. When any of these pages change, the CLI's request shapes (`cli.js`), model registry (`models.json`), docs (`docs/`), and the skill constellation (`.agents/skills/`) may need updating.
 
 - **Primary monitoring feed:** the [Gemini API changelog](https://ai.google.dev/gemini-api/docs/changelog) — start every currency check there, then drill into the specific pages below for anything it flags.
-- **Last verified against live docs:** **2026-07-16** (see [Verification log](#verification-log)).
+- **Last verified against live docs:** **2026-07-17** (see [Verification log](#verification-log)).
 - **All docs snapshotted here reflect the post-May-2026 Interactions schema** (legacy schema removed 2026-06-08). The frozen copies under `docs/manual/` predate that migration and are **not** current — see [Gotchas](gotchas.md).
 
 ## 1. Primary API & model sources (canonical — monitor these)
@@ -40,7 +40,8 @@ Gemini capabilities the CLI does **not** wrap with a dedicated command, but whic
 |---------|------------------|-----|-------|
 | Managed Agents API + Antigravity agent | `antigravity-preview-05-2026` | https://ai.google.dev/gemini-api/docs/custom-agents (+ `/docs/agents`, `/docs/agent-environment`) | Autonomous stateful agents in a Google-hosted sandbox. Public preview 2026-05-19. Distinct from Deep Research. |
 | Computer Use tool | tool `computer_use` (model `gemini-3.5-flash`) | https://ai.google.dev/gemini-api/docs/computer-use | Virtual screen / keyboard / mouse. Public preview 2026-06-24. |
-| Gemini Omni Flash (video) | `gemini-omni-flash-preview` | https://ai.google.dev/gemini-api/docs/omni (+ `/docs/models/gemini-omni-flash`) | Text/image → 3–10s 720p video. Preview 2026-06-30. New modality — outside the CLI's current scope. |
+| Gemini Omni Flash (video) | `gemini-omni-flash-preview` | https://ai.google.dev/gemini-api/docs/omni (+ `/docs/models/gemini-omni-flash`) | Text/image → 3–10s 720p video. Preview 2026-06-30. Wrapped by the `video` command (added 2026-07-17). |
+| File Search (RAG) tool | tool `file_search` | https://ai.google.dev/gemini-api/docs/file-search | Grounded generation over uploaded docs; needs a File Search Store first. Reachable via `raw` as a `tools` entry. Surfaced by the 2026-07-17 discovery pass. |
 
 **Watching:** `gemini-3.5-pro` (flagship, ~2M-token context) was rumored for ~2026-07-17 but is **not** on the official models/changelog pages as of 2026-07-16 — could-not-verify. Check the changelog before adding it to `models.json`.
 
@@ -53,6 +54,7 @@ Gemini capabilities the CLI does **not** wrap with a dedicated command, but whic
 | Nano Banana Pro prompting tips (Google blog) | https://blog.google/products-and-platforms/products/gemini/prompting-tips-nano-banana-pro/ | Reference-image prompting (Image A/B/C convention) — `handleImage`, image skill |
 | Gemini image prompt guide (DeepMind) | https://deepmind.google/models/gemini-image/prompt-guide/ | Multi-image prompting guidance |
 | Nano Banana 2 Lite model page (DeepMind) | https://deepmind.google/models/gemini-image/flash-lite/ | `gemini-3.1-flash-lite-image` capabilities |
+| DeepMind Gemini model hub | https://deepmind.google/models/gemini/ | Tier-tracking / "coming soon" signal for new model families (e.g. 3.5 Pro) |
 
 ## 3. Setup / tooling references
 
@@ -89,6 +91,8 @@ The repeatable recipe for "make sure we're up to date." The **`/tiny-gemini-upke
 
 | Date | Scope | Outcome |
 |------|-------|---------|
+| 2026-07-17 | Omni video best-practices deep-dive + reference-image support | Exhaustively mined the Omni docs (https://ai.google.dev/gemini-api/docs/omni) + the Gemini image prompting guides. Added reference-image steering to the `video` command: `--first-frame` (`<FIRST_FRAME>`), `--file` refs (`<IMAGE_REF_0..N>`), `--task` (`video_config.task`), images-before-text ordering, `background/stream:false`. Baked the full prompting playbook (tags, timed segments, promptable audio, cinematographer detail, negatives-in-prompt, region limits) into the `tiny-gemini-video` skill. Live-verified `reference_to_video` round-trip (task field accepted; 2 reference images; ≈ $1.03/clip). |
+| 2026-07-17 | Upkeep run (verify + discover) + video integration | Verify: no API/model/schema change since 2026-07-16 (changelog stops at Jul 6; all shipped model IDs/statuses/dates/prices re-confirmed; `gemini-3.5-pro` still not official). Discover: registered the File Search tool + DeepMind model hub sources. **Integrated video (principal-approved Class 3):** added the `gemini-omni-flash-preview` catalog entry and a new `video` command + `tiny-gemini-video` satellite skill, live-verified end-to-end against the API (text→video round-trip; URI delivery + redirect download confirmed; actual smoke-test cost ≈ $1.02/clip). |
 | 2026-07-16 | Upkeep run (verify + discover) | No API/model changes since the earlier same-day check. Added `gemini-2.5-pro-preview-tts` to the registry (verbatim-verified $1.00/$20.00, Preview, no free tier); documented streaming TTS (2026-06-17); recorded adjacent surfaces (Managed Agents/Antigravity, Computer Use, Omni Flash) in §1b; corrected a stale "deprecated" label on `gemini-2.5-flash-preview-tts`; flagged `gemini-3.5-pro` as unconfirmed. |
 | 2026-07-16 | Full check (sources #1–#11) | Schema migrated off removed `response_modalities` → `response_format`; added GA `gemini-3.1-flash-lite-image`; confirmed all other model IDs + 2.5-family shutdown dates; documented per-model aspect-ratio limits. Live-verified image + TTS. |
 | 2026-06-08 | Model registry snapshot (`models.json`) | Prior snapshot baseline. |

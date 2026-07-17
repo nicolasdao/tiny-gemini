@@ -19,12 +19,13 @@ Follow these rules in order. The FIRST match is your answer.
 3. **Generating images at the lowest possible cost/latency (1K resolution acceptable)?** Use `gemini-3.1-flash-lite-image` (GA "Nano Banana 2 Lite"). The older `gemini-2.5-flash-image` still serves but is deprecated (shutdown 2026-10-02).
 4. **Generating speech from text?** Use `gemini-3.1-flash-tts-preview`.
 5. **Native speech-in / speech-out conversation (not TTS)?** Use `gemini-2.5-flash-native-audio-preview-12-2025`.
-6. **Running deep research (multi-minute autonomous investigation)?** Use `deep-research-preview-04-2026` (speed-optimized) or `deep-research-max-preview-04-2026` (comprehensive). These are agents, not models — set the request `agent` field, not `model`, and require `background: true`.
-7. **Generating multimodal embeddings?** Use `gemini-embedding-2`.
-8. **Need Remote MCP tool integration?** Use `gemini-2.5-flash` (Gemini 3 models do not support Remote MCP yet, and `gemini-2.5-flash` is being shut down on 2026-10-16 — plan accordingly).
-9. **Need maximum reasoning quality regardless of cost?** Use `gemini-3.1-pro-preview`.
-10. **Need the cheapest possible text generation?** Use `gemini-3.1-flash-lite`.
-11. **Everything else (text, multimodal understanding, function calling, structured output, streaming)?** Use `gemini-3-flash-preview`.
+6. **Generating or editing short video (720p, from text or an image)?** Use `gemini-omni-flash-preview` (Omni Flash) — the CLI's `video` default. For higher-fidelity/longer cinematic clips, `veo-3.1-generate-preview` (Veo) is a separate long-running API reachable via `raw`.
+7. **Running deep research (multi-minute autonomous investigation)?** Use `deep-research-preview-04-2026` (speed-optimized) or `deep-research-max-preview-04-2026` (comprehensive). These are agents, not models — set the request `agent` field, not `model`, and require `background: true`.
+8. **Generating multimodal embeddings?** Use `gemini-embedding-2`.
+9. **Need Remote MCP tool integration?** Use `gemini-2.5-flash` (Gemini 3 models do not support Remote MCP yet, and `gemini-2.5-flash` is being shut down on 2026-10-16 — plan accordingly).
+10. **Need maximum reasoning quality regardless of cost?** Use `gemini-3.1-pro-preview`.
+11. **Need the cheapest possible text generation?** Use `gemini-3.1-flash-lite`.
+12. **Everything else (text, multimodal understanding, function calling, structured output, streaming)?** Use `gemini-3-flash-preview`.
 
 ## All Models
 
@@ -45,6 +46,7 @@ Follow these rules in order. The FIRST match is your answer.
 | `gemini-2.5-flash-preview-tts` | Audio | Preview | Lower-cost 2.5-family TTS (older than the default) | In: $0.50 / Out: $10 | Yes |
 | `gemini-2.5-pro-preview-tts` | Audio | Preview | Higher-tier 2.5-family TTS; `gemini-3.1-flash-tts-preview` is the newer default | In: $1.00 / Out: $20.00 | No |
 | `gemini-2.5-flash-native-audio-preview-12-2025` | Audio | Preview | Native speech-in / speech-out (distinct from TTS) | In: $0.50 text / $3 audio. Out: $2 text / $12 audio | No |
+| `gemini-omni-flash-preview` | Video | Preview | Text/image → short 720p video (3–10s, 24fps) + conversational editing. CLI `video` default | In: $1.50 / Out: $17.50 (video), $9.00 (text) — ≈ $0.10/second of 720p | No |
 | `gemini-embedding-2` | Embeddings | GA | Multimodal embeddings (text, image, video, audio, PDF) | $0.20 in / — out | Yes |
 | `deep-research-preview-04-2026` | Agent | Preview | Autonomous deep research (speed-optimized) | Billed via underlying model | No |
 | `deep-research-max-preview-04-2026` | Agent | Preview | Autonomous deep research (comprehensive variant) | Billed via underlying model | No |
@@ -97,6 +99,7 @@ The `tiny-gemini` CLI uses these defaults (overridable with `--model`):
 | `image` (generate, edit, story, icon, pattern, diagram) | `gemini-3.1-flash-image` |
 | `image describe` | `gemini-3-flash-preview` |
 | `tts` | `gemini-3.1-flash-tts-preview` |
+| `video` (generate, edit) | `gemini-omni-flash-preview` |
 | `search` | `gemini-3-flash-preview` |
 | `research` | `deep-research-preview-04-2026` |
 

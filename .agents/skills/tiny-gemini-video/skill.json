@@ -1,24 +1,19 @@
 {
-	"name": "tiny-gemini",
-	"version": "2.2.0",
-	"description": "Suite core for the tiny-gemini NPX CLI. Covers text Q&A, search-grounded answers, and the raw Gemini API passthrough. Bundles satellites for image, TTS, video, deep research, and model lookup.",
+	"name": "tiny-gemini-video",
+	"version": "0.2.0",
+	"description": "Teaches AI agents to use the tiny-gemini CLI video command for Gemini Omni text/image-to-video generation, reference-image steering, and editing. Suite member of nicolasdao/tiny-gemini.",
 	"keywords": [
 		"ai",
-		"api",
 		"gemini",
 		"google",
-		"cli",
-		"suite-core"
+		"video-generation",
+		"text-to-video",
+		"omni",
+		"cli"
 	],
 	"type": "skill",
 	"repository": "https://github.com/nicolasdao/tiny-gemini",
-	"dependencies": {
-		"nicolasdao/tiny-gemini-image": "^0.1.0",
-		"nicolasdao/tiny-gemini-tts": "^0.1.0",
-		"nicolasdao/tiny-gemini-video": "^0.1.0",
-		"nicolasdao/tiny-gemini-research": "^0.1.0",
-		"nicolasdao/tiny-gemini-models": "^0.1.0"
-	},
+	"dependencies": {},
 	"systemDependencies": {
 		"node": {
 			"description": "Node.js runtime",

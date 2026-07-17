@@ -1,6 +1,6 @@
 # tiny-gemini
 
-Zero-dependency CLI for the Google Gemini API. Text, images, TTS, search, deep research, and raw API passthrough — all through `npx`. Ships with a [Claude Code agent skill constellation](#claude-code-agent-skill) managed by [HappySkills](https://happyskills.ai).
+Zero-dependency CLI for the Google Gemini API. Text, images, TTS, video, search, deep research, and raw API passthrough — all through `npx`. Ships with a [Claude Code agent skill constellation](#claude-code-agent-skill) managed by [HappySkills](https://happyskills.ai).
 
 ```bash
 # Ask a question
@@ -29,6 +29,7 @@ Then just ask naturally: *"Use Gemini to generate an image of a dog chasing a ca
   - [prompt (default)](#prompt-default)
   - [image](#image)
   - [tts](#tts)
+  - [video](#video)
   - [search](#search)
   - [research](#research)
   - [raw](#raw)
@@ -62,7 +63,7 @@ This pushed us to create something leaner. `tiny-gemini` doesn't need to be inst
 
 Google's Gemini API is a single unified endpoint (the [Interactions API](https://ai.google.dev/gemini-api/docs/interactions)) that handles text, images, audio, search, research, and more — all through the request body. But using it requires constructing JSON payloads, managing headers, parsing multimodal responses, and converting binary formats.
 
-`tiny-gemini` wraps this API with dedicated subcommands for common use cases (`prompt`, `image`, `tts`, `search`, `research`) plus a `raw` JSON passthrough for full API coverage. It is:
+`tiny-gemini` wraps this API with dedicated subcommands for common use cases (`prompt`, `image`, `tts`, `video`, `search`, `research`) plus a `raw` JSON passthrough for full API coverage. It is:
 
 - **Zero-dependency** — only Node.js built-ins (no `node_modules`)
 - **Single file** — everything in `cli.js` (~1600 lines)
@@ -181,6 +182,23 @@ tiny-gemini tts "Bonjour" --voice=kore --language=fr-fr
 
 Key options: `--voice` (default: Kore), `--language` (default: en-us)
 
+### video
+
+Text/image → video generation and editing via Gemini Omni Flash. Outputs an `.mp4` (720p, 24fps, 3–10s).
+
+```bash
+tiny-gemini video "a paper boat sailing down a rain gutter, slow motion, gentle rain sounds"  # text → video
+tiny-gemini video "make this photo come alive" --first-frame scene.png                        # animate from an image
+tiny-gemini video "in the style of <IMAGE_REF_0>, <IMAGE_REF_1> dances" --file style.png --file dancer.png  # reference images
+tiny-gemini video "a neon skyline" --aspect-ratio=9:16                                         # portrait
+tiny-gemini video edit clip.mp4 "make it night-time, keep everything else the same"           # edit an existing video
+tiny-gemini video "add falling snow" --previous=v1_abc123                                      # refine a prior clip
+```
+
+Key options: `--first-frame` (start-frame image), `--file` (reference images → `<IMAGE_REF_0..N>`), `--aspect-ratio` (16:9 or 9:16), `--task`, `--count`, `--previous`, `--out`, `--json`, `--dry-run`, `--preview`
+
+Reference images bind to `<FIRST_FRAME>` / `<IMAGE_REF_N>` tags you place in the prompt (the CLI prints the mapping). Omni also **generates audio** — describe it. Uses the same synchronous Interactions endpoint; output is billed per token (~$0.10/second of 720p, **no free tier**) and the CLI prints the **actual** cost. Clips carry a SynthID watermark. The `tiny-gemini-video` skill carries the full prompting playbook. For higher-fidelity/longer cinematic video, Veo is a separate API reachable via `raw`.
+
 ### search
 
 Google Search-grounded generation.
@@ -215,7 +233,7 @@ List the available Gemini models from an embedded snapshot. No API key required,
 
 ```bash
 tiny-gemini models                       # human-readable table (alias for `models list`)
-tiny-gemini models list --type=image     # filter by type: text, image, audio, embeddings, agent
+tiny-gemini models list --type=image     # filter by type: text, image, audio, video, embeddings, agent
 tiny-gemini models list --status=ga      # filter by status: ga, preview, deprecated
 tiny-gemini models pricing               # pricing-only table
 tiny-gemini models list --json           # machine-readable
@@ -347,7 +365,7 @@ When the skills are installed in a project, Claude Code automatically knows how 
 - "Run deep research on quantum computing"
 - "Send this JSON to the Gemini API"
 
-Together the skills cover 100% of the CLI surface: all 7 commands, all 7 image sub-commands, all options, model-selection rules, and agentic workflow patterns.
+Together the skills cover 100% of the CLI surface: all 8 commands, all 7 image sub-commands, the 2 video sub-commands, all options, model-selection rules, and agentic workflow patterns.
 
 ### Install the Skill
 
@@ -366,6 +384,7 @@ The suite is a **core skill plus focused satellites**, each auto-invocable for i
 | `tiny-gemini` (core) | Text Q&A, search-grounded answers, and the `raw` JSON passthrough (100% API coverage); ships `references/raw-api.md` |
 | `tiny-gemini-image` | Image generation, editing, and understanding (all 7 image sub-commands) |
 | `tiny-gemini-tts` | Text-to-speech (WAV) |
+| `tiny-gemini-video` | Text/image → video generation and editing (MP4, Gemini Omni Flash) |
 | `tiny-gemini-research` | Multi-minute Deep Research agents |
 | `tiny-gemini-models` | Offline model registry, pricing, and deprecation lookup |
 | `tiny-gemini-upkeep` | Auditing the CLI + skills against the live Gemini docs (see [Keeping Current](#keeping-current)) |
@@ -402,6 +421,7 @@ tiny-gemini/
 │   ├── tiny-gemini/                    # Core — text, search, raw API (references/raw-api.md)
 │   ├── tiny-gemini-image/              # Image generation, editing, understanding
 │   ├── tiny-gemini-tts/                # Text-to-speech
+│   ├── tiny-gemini-video/              # Text/image → video generation and editing
 │   ├── tiny-gemini-research/           # Deep Research agents
 │   ├── tiny-gemini-models/             # Offline model registry lookup
 │   ├── tiny-gemini-upkeep/             # Currency check vs live Gemini docs

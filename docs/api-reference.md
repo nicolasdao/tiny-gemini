@@ -233,6 +233,7 @@ The `response_modalities` field was **removed** in the May 2026 migration (legac
 | Structured JSON | `{ "type": "text", "mime_type": "application/json", "schema": {…} }` |
 | Image | `{ "type": "image", "aspect_ratio": "…", "image_size": "…" }` |
 | Audio (TTS) | `{ "type": "audio" }` (with `generation_config.speech_config`) |
+| Video | `{ "type": "video", "delivery": "uri", "aspect_ratio": "16:9" }` (Gemini Omni; `delivery:"uri"` returns a downloadable file URI, `9:16` also supported) |
 | Multiple (e.g. text + image) | an **array**: `[ { "type": "text" }, { "type": "image" } ]` |
 
 ## Response Body
@@ -308,6 +309,16 @@ Legacy schema (removed 2026-06-08):
 ```
 
 Audio is raw PCM: 16-bit signed little-endian, 24kHz, mono. Requires WAV header to be playable (see [Architecture: WAV Construction](architecture.md#wav-header-construction)).
+
+#### Video Output
+
+With `response_format: { "type": "video", "delivery": "uri" }` (Gemini Omni), the video is returned as a downloadable file URI:
+
+```json
+{ "type": "video", "mime_type": "video/mp4", "uri": "https://generativelanguage.googleapis.com/v1beta/files/<id>:download?alt=media" }
+```
+
+The download endpoint 302-redirects to a signed media URL — fetch the URI with the `x-goog-api-key` header and follow the redirect. Without `delivery: "uri"` (or for small clips) the part may instead carry inline base64 `data`. The interaction completes synchronously — the URI is ready when `status` is `completed` (no background polling). `tiny-gemini`'s `video` command handles both shapes (`downloadVideoFile` in `cli.js`).
 
 #### Function Call Output
 
@@ -459,6 +470,14 @@ Image models return base64 image data; the GA models (`gemini-3.1-flash-image`, 
 | `gemini-2.5-flash-preview-tts` | Preview (not deprecated) — older, lower-cost 2.5-family TTS → prefer `gemini-3.1-flash-tts-preview` |
 | `gemini-2.5-pro-preview-tts` | Preview — higher-tier 2.5-family TTS → prefer `gemini-3.1-flash-tts-preview` |
 | `gemini-2.5-flash-native-audio-preview-12-2025` | Native speech-in / speech-out (distinct from TTS) |
+
+### Video Models
+
+| Model ID | Codename | Notes |
+|----------|----------|-------|
+| `gemini-omni-flash-preview` | Omni Flash | Default in tiny-gemini's `video` command. Text/image → 720p 24fps MP4 (3–10s), plus conversational video editing (video input up to 10s). Preview. Video output ≈ $0.10/second. SynthID-watermarked |
+
+Note: **Veo 3.1** (`veo-3.1-generate-preview` / `-lite`) is a *separate* higher-fidelity video family that uses a different long-running endpoint (`:predictLongRunning`), not the Interactions API — reachable via `raw` with a custom `--api-base`/body, not the `video` command.
 
 ### Embeddings
 

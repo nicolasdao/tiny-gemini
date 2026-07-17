@@ -78,6 +78,14 @@ The Interactions API has **no** parameter that returns multiple image candidates
 
 **How to apply:** A batch of N images (`--count`/`--styles`/`--variations`, or `story` steps) is **N independent requests**. The CLI fans them out concurrently via `mapPool` (bounded by `--concurrency`, default `DEFAULT_IMAGE_CONCURRENCY = 4`) rather than serially — see `handleImage` in `cli.js`. Don't collapse them into one call; the only API-level cost lever is the async Batch API (`:batchGenerateContent`, ~50% cheaper, ~24h turnaround), which is a separate, non-interactive path.
 
+## Video output is delivered as a URI to download, not inline base64
+
+The `video` command (Gemini Omni) sends `response_format: { type: 'video', delivery: 'uri' }`, so the response part is `{ type: 'video', mime_type: 'video/mp4', uri: '…/files/…:download?alt=media' }` — a **`uri`, not `data`**. Two consequences: (1) `extractOutputs` had to learn the `video` part type *and* the `uri` field (it previously only read `data` for image/audio); (2) the download endpoint **302-redirects** to a signed media URL, so the fetch must follow redirects (Node `fetch` does by default) with the `x-goog-api-key` header. The interaction completes **synchronously** — no `background: true`/polling like Deep Research; the URI is ready when `status` is `completed`.
+
+**Risk:** Assuming video comes back as inline base64 like image/audio (it's a multi-MB blob — `uri` delivery deliberately avoids dumping it into stdout/memory), or not following the 302 (a bare GET returns a 95-byte JSON redirect stub, not the MP4).
+
+**How to apply:** See `handleVideo`/`downloadVideoFile` in `cli.js`. Keep `delivery: 'uri'`, follow the redirect, and read the **actual** cost from `usage.output_tokens_by_modality` (video ≈ $0.10/second of 720p — pricey; there is no duration parameter, so cost can't be known before generating). Omni (`/v1beta/interactions`, synchronous) is **not** Veo (`:predictLongRunning`, long-running op) — don't conflate them.
+
 ## The `docs/manual/20260307-gemini/` snapshots are frozen and pre-migration
 
 The files under `docs/manual/20260307-gemini/` are deliberately preserved copies of Google's docs from 2026-03-07 — *before* the May 2026 Interactions schema migration. They still show uppercase `["IMAGE"]`/`["AUDIO"]` and object-form `speech_config`.

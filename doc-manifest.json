@@ -24,6 +24,7 @@
         "prompt (default)",
         "image",
         "tts",
+        "video",
         "search",
         "research",
         "raw",
@@ -48,7 +49,7 @@
         "Changelog",
         "License"
       ],
-      "line_count": 505,
+      "line_count": 525,
       "links_to": [
         ".claude/skills/release-tiny-gemini/SKILL.md",
         ".claude/skills/tiny-gemini-upkeep/SKILL.md",
@@ -108,6 +109,7 @@
         "Text Output",
         "Image Output",
         "Audio Output",
+        "Video Output",
         "Function Call Output",
         "Thought Output",
         "Usage Object",
@@ -123,6 +125,7 @@
         "Text Models",
         "Image Generation Models",
         "Audio Models",
+        "Video Models",
         "Embeddings",
         "Agents",
         "Conversation Management",
@@ -131,7 +134,7 @@
         "Data Retention",
         "Known Limitations"
       ],
-      "line_count": 505,
+      "line_count": 524,
       "links_to": [
         "docs/architecture.md",
         "docs/gotchas.md",
@@ -286,6 +289,15 @@
         "TTS Options",
         "TTS Request Body",
         "TTS Output Format",
+        "video",
+        "Sub-Command Dispatch",
+        "generate",
+        "Generate Request Body",
+        "edit",
+        "Reference Images & Prompt Tags",
+        "Conversational Refinement (--previous)",
+        "Options",
+        "Video Output Handling",
         "search",
         "Search Options",
         "Search Request Body",
@@ -301,7 +313,7 @@
         "Filters",
         "Output Format"
       ],
-      "line_count": 663,
+      "line_count": 742,
       "links_to": [
         "README.md",
         "docs/architecture.md",
@@ -343,9 +355,10 @@
         "Extreme aspect ratios and `512px` are `gemini-3.1-flash-image`-only",
         "GA image models default to JPEG; PNG is available via `mime_type`",
         "The image API returns one image per call — there is no `candidate_count`",
+        "Video output is delivered as a URI to download, not inline base64",
         "The `docs/manual/20260307-gemini/` snapshots are frozen and pre-migration"
       ],
-      "line_count": 87,
+      "line_count": 95,
       "links_to": [],
       "over_size": false,
       "parse_error": null,
@@ -382,7 +395,7 @@
         "CLI Defaults",
         "Live Discovery"
       ],
-      "line_count": 117,
+      "line_count": 120,
       "links_to": [],
       "over_size": false,
       "parse_error": null,
@@ -481,7 +494,7 @@
         "5. Currency-check procedure",
         "Verification log"
       ],
-      "line_count": 94,
+      "line_count": 98,
       "links_to": [
         "README.md",
         "docs/gotchas.md",
